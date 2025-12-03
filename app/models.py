@@ -62,6 +62,19 @@ class Card(db.Model):
     skill_name = db.Column(db.String(100))
     skill_description = db.Column(db.Text)
     skill_damage_multiplier = db.Column(db.Float, default=1.5)
+    skill_cooldown = db.Column(db.Integer, default=3)
+    skill_target = db.Column(db.String(20), default='single')  # single, all
+
+    # 被动技能
+    passive_skill_name = db.Column(db.String(100))
+    passive_skill_description = db.Column(db.Text)
+
+    # 增强战斗属性
+    speed = db.Column(db.Integer, default=50)
+    critical = db.Column(db.Float, default=5.0)
+    critical_dmg = db.Column(db.Float, default=150.0)
+    element = db.Column(db.String(10), default='无')  # 火、水、雷、风、光、暗、无
+    job_class = db.Column(db.String(20), default='战士')  # 战士、法师、刺客、坦克、辅助
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

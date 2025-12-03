@@ -20,11 +20,12 @@ def create_app(config_class=Config):
     login_manager.init_app(app)
 
     # 注册蓝图
-    from app.routes import auth, cards, gacha, battle, main
+    from app.routes import auth, cards, gacha, battle, battle_v2, main
     app.register_blueprint(auth.bp)
     app.register_blueprint(cards.bp)
     app.register_blueprint(gacha.bp)
     app.register_blueprint(battle.bp)
+    app.register_blueprint(battle_v2.bp)
     app.register_blueprint(main.bp)
 
     # 创建数据库表
