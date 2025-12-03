@@ -4,6 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}成人卡牌游戏{% endblock %}</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#667eea">
+    <meta name="description" content="收集稀有卡牌，组建强大队伍，征战四方！">
+
+    <!-- iOS Safari PWA Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="卡牌游戏">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+
+    <!-- Windows Tile -->
+    <meta name="msapplication-TileColor" content="#667eea">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='icons/icon-144x144.png') }}">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
@@ -52,6 +70,125 @@
     </footer>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        // 注册Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker 注册成功:', registration.scope);
+
+                        // 检查更新
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // 有新版本可用
+                                    if (confirm('发现新版本！点击确定刷新页面以更新。')) {
+                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.error('❌ Service Worker 注册失败:', error);
+                    });
+
+                // 监听Service Worker控制器变化
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    console.log('🔄 Service Worker 已更新');
+                });
+            });
+        }
+
+        // PWA安装提示
+        let deferredPrompt;
+        const installButton = document.createElement('button');
+        installButton.textContent = '📱 安装应用';
+        installButton.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+            z-index: 9999;
+            display: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+        `;
+
+        installButton.addEventListener('mouseenter', () => {
+            installButton.style.transform = 'translateY(-2px)';
+            installButton.style.boxShadow = '0 6px 16px rgba(40, 167, 69, 0.4)';
+        });
+
+        installButton.addEventListener('mouseleave', () => {
+            installButton.style.transform = 'translateY(0)';
+            installButton.style.boxShadow = '0 4px 12px rgba(40, 167, 69, 0.3)';
+        });
+
+        installButton.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+
+            // 显示安装提示
+            deferredPrompt.prompt();
+
+            // 等待用户响应
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`用户选择: ${outcome}`);
+
+            if (outcome === 'accepted') {
+                console.log('✅ 用户接受了安装提示');
+            } else {
+                console.log('❌ 用户拒绝了安装提示');
+            }
+
+            // 清除提示
+            deferredPrompt = null;
+            installButton.style.display = 'none';
+        });
+
+        // 监听beforeinstallprompt事件
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // 阻止默认提示
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // 显示自定义安装按钮
+            document.body.appendChild(installButton);
+            installButton.style.display = 'block';
+
+            console.log('💡 PWA 可以安装');
+        });
+
+        // 监听安装完成事件
+        window.addEventListener('appinstalled', () => {
+            console.log('🎉 PWA 安装成功！');
+            installButton.style.display = 'none';
+            deferredPrompt = null;
+
+            // 可以在这里显示欢迎消息
+            alert('🎉 应用安装成功！您现在可以从桌面/主屏幕直接启动游戏了！');
+        });
+
+        // 检测是否在独立模式下运行（已安装为PWA）
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            console.log('🚀 应用正在独立模式下运行');
+            // 隐藏安装按钮
+            installButton.style.display = 'none';
+        }
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>
