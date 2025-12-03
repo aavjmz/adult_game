@@ -1,22 +1,21 @@
 """
-战斗引擎 v2.0 - 增强版
-包含速度排序、元素克制、暴击、Buff/Debuff等完整战斗系统
+战斗引擎 v2.0 - 增强版（三国主题）
+包含速度排序、五行克制、暴击、Buff/Debuff等完整战斗系统
 """
 
 import random
 from typing import List, Dict, Tuple, Optional
 
 class BattleEngine:
-    """增强版战斗引擎"""
+    """增强版战斗引擎（三国主题）"""
 
-    # 元素克制关系
+    # 五行克制关系（金克木，木克土，土克水，水克火，火克金）
     ELEMENT_COUNTER = {
-        '火': '风',
-        '风': '雷',
-        '雷': '水',
+        '金': '木',
+        '木': '土',
+        '土': '水',
         '水': '火',
-        '光': '暗',
-        '暗': '光'
+        '火': '金'
     }
 
     def __init__(self, player_cards, enemy_cards, max_rounds=30):
@@ -60,7 +59,8 @@ class BattleEngine:
             'critical': getattr(card, 'critical', 5.0),
             'critical_dmg': getattr(card, 'critical_dmg', 150.0),
             'element': getattr(card, 'element', '无'),
-            'job_class': getattr(card, 'job_class', '战士'),
+            'job_class': getattr(card, 'job_class', '武将'),
+            'faction': getattr(card, 'faction', '群'),
 
             # 技能
             'skill_name': card.skill_name,

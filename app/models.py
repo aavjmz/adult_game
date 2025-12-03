@@ -73,8 +73,9 @@ class Card(db.Model):
     speed = db.Column(db.Integer, default=50)
     critical = db.Column(db.Float, default=5.0)
     critical_dmg = db.Column(db.Float, default=150.0)
-    element = db.Column(db.String(10), default='无')  # 火、水、雷、风、光、暗、无
-    job_class = db.Column(db.String(20), default='战士')  # 战士、法师、刺客、坦克、辅助
+    element = db.Column(db.String(10), default='无')  # 金、木、水、火、土、无（五行）
+    job_class = db.Column(db.String(20), default='武将')  # 武将、谋士、弓将、骑将、步将
+    faction = db.Column(db.String(10), default='群')  # 魏、蜀、吴、群（势力）
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
