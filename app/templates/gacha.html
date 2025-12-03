@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}抽卡 - 成人卡牌游戏{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <h1 style="text-align: center;">🎲 抽卡系统</h1>
+
+        <!-- 资源显示 -->
+        <div class="resources">
+            <div class="resource-item">
+                <div class="resource-label">当前抽卡券</div>
+                <div class="resource-value" id="ticketCount">{{ tickets }}</div>
+            </div>
+        </div>
+
+        <!-- 保底进度 -->
+        <div style="margin: 30px auto; max-width: 600px;">
+            <h3>保底进度</h3>
+            <div style="margin-top: 15px;">
+                <p>SR保底：<span id="srPity">{{ current_user.sr_pity_count }}</span> / 10</p>
+                <div style="background: #eee; height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div id="srPityBar" style="background: #C77DD8; height: 100%; width: {{ (current_user.sr_pity_count / 10 * 100) }}%;"></div>
+                </div>
+            </div>
+            <div style="margin-top: 15px;">
+                <p>SSR保底：<span id="ssrPity">{{ current_user.ssr_pity_count }}</span> / 90</p>
+                <div style="background: #eee; height: 20px; border-radius: 10px; overflow: hidden;">
+                    <div id="ssrPityBar" style="background: #FFD700; height: 100%; width: {{ (current_user.ssr_pity_count / 90 * 100) }}%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 概率说明 -->
+        <div style="margin: 30px auto; max-width: 600px;">
+            <h3>抽卡概率</h3>
+            <ul style="list-style: none; padding: 0;">
+                {% for rarity, config in rarities.items() %}
+                    <li style="padding: 10px; margin: 5px 0; background: #f8f9fa; border-radius: 5px;">
+                        <span class="card-rarity rarity-{{ rarity }}" style="display: inline-block; min-width: 60px;">{{ rarity }}</span>
+                        <span>{{ config.name }}</span> - <strong>{{ config.probability }}%</strong>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- 抽卡按钮 -->
+        <div class="gacha-buttons">
+            <button onclick="performGacha('single')" class="btn gacha-btn">
+                单抽 (消耗1券)
+            </button>
+            <button onclick="performGacha('multi')" class="btn btn-success gacha-btn">
+                十连抽 (消耗10券)
+            </button>
+        </div>
+
+        <!-- 抽卡结果 -->
+        <div id="gachaResult" class="gacha-result">
+            <h2 style="text-align: center; margin-bottom: 20px;">抽卡结果</h2>
+            <div id="resultCards" class="card-grid"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function performGacha(type) {
+    try {
+        const response = await fetch('/gacha/pull', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ type: type })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.error || '抽卡失败');
+            return;
+        }
+
+        // 更新资源显示
+        document.getElementById('ticketCount').textContent = data.remaining_tickets;
+        document.getElementById('srPity').textContent = data.sr_pity;
+        document.getElementById('ssrPity').textContent = data.ssr_pity;
+        document.getElementById('srPityBar').style.width = (data.sr_pity / 10 * 100) + '%';
+        document.getElementById('ssrPityBar').style.width = (data.ssr_pity / 90 * 100) + '%';
+
+        // 显示抽卡结果
+        const resultDiv = document.getElementById('gachaResult');
+        const cardsDiv = document.getElementById('resultCards');
+        cardsDiv.innerHTML = '';
+
+        data.cards.forEach(card => {
+            const cardElement = document.createElement('div');
+            cardElement.className = 'card-item' + (card.is_golden ? ' golden' : '');
+            cardElement.innerHTML = `
+                <span class="card-rarity rarity-${card.rarity}">${card.rarity}</span>
+                <div class="card-name">${card.name}</div>
+                <div class="card-stats">
+                    <div class="stat">
+                        <div class="stat-label">攻击</div>
+                        <div class="stat-value">${card.attack}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">防御</div>
+                        <div class="stat-value">${card.defense}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">生命</div>
+                        <div class="stat-value">${card.hp}</div>
+                    </div>
+                </div>
+                ${card.skill_name ? `
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                        <strong>${card.skill_name}</strong>
+                        <p style="font-size: 12px; color: #666;">${card.skill_description}</p>
+                    </div>
+                ` : ''}
+            `;
+            cardsDiv.appendChild(cardElement);
+        });
+
+        resultDiv.classList.add('show');
+        resultDiv.scrollIntoView({ behavior: 'smooth' });
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('抽卡时发生错误');
+    }
+}
+</script>
+{% endblock %}

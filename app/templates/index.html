@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 成人卡牌游戏{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card" style="text-align: center;">
+        <h1 style="font-size: 48px; margin-bottom: 20px;">🎴 欢迎来到卡牌世界</h1>
+        <p style="font-size: 20px; color: #666; margin-bottom: 30px;">
+            收集稀有卡牌，组建强大队伍，征战四方！
+        </p>
+
+        {% if current_user.is_authenticated %}
+            <div style="margin-top: 40px;">
+                <a href="{{ url_for('main.dashboard') }}" class="btn" style="font-size: 20px; padding: 15px 40px;">
+                    进入游戏
+                </a>
+            </div>
+        {% else %}
+            <div style="margin-top: 40px; display: flex; gap: 20px; justify-content: center;">
+                <a href="{{ url_for('auth.login') }}" class="btn" style="font-size: 20px; padding: 15px 40px;">
+                    登录
+                </a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-secondary" style="font-size: 20px; padding: 15px 40px;">
+                    注册
+                </a>
+            </div>
+        {% endif %}
+
+        <div style="margin-top: 60px;">
+            <h2 style="margin-bottom: 30px;">游戏特色</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px;">
+                <div>
+                    <h3>🎯 抽卡系统</h3>
+                    <p>五种稀有度，独特的保底机制</p>
+                </div>
+                <div>
+                    <h3>✨ 金色卡牌</h3>
+                    <p>SSR/UR卡牌拥有3D动态效果</p>
+                </div>
+                <div>
+                    <h3>⚔️ 战斗系统</h3>
+                    <p>策略性回合制战斗</p>
+                </div>
+                <div>
+                    <h3>🎫 票券系统</h3>
+                    <p>多种方式获取抽卡券</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

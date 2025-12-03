@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}卡牌图鉴 - 成人卡牌游戏{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <h1>卡牌图鉴</h1>
+        <p>共有 {{ cards|length }} 张可收集卡牌</p>
+
+        <div class="card-grid">
+            {% for card in cards %}
+                <div class="card-item {% if card.is_golden %}golden{% endif %} {% if not card.owned %}opacity: 0.5{% endif %}">
+                    <span class="card-rarity rarity-{{ card.rarity }}">{{ card.rarity }}</span>
+                    <div class="card-name">{{ card.name }}</div>
+
+                    <div class="card-stats">
+                        <div class="stat">
+                            <div class="stat-label">攻击</div>
+                            <div class="stat-value">{{ card.attack }}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">防御</div>
+                            <div class="stat-value">{{ card.defense }}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">生命</div>
+                            <div class="stat-value">{{ card.hp }}</div>
+                        </div>
+                    </div>
+
+                    {% if card.owned %}
+                        <div style="margin-top: 10px; color: #28a745; font-weight: bold;">✓ 已拥有</div>
+                    {% else %}
+                        <div style="margin-top: 10px; color: #999;">未拥有</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

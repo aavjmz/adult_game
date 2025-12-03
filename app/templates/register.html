@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}注册 - 成人卡牌游戏{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card" style="max-width: 500px; margin: 50px auto;">
+        <h2 style="text-align: center; margin-bottom: 30px;">创建账户</h2>
+
+        <form method="POST" action="{{ url_for('auth.register') }}">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">邮箱</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password">确认密码</label>
+                <input type="password" id="confirm_password" name="confirm_password" required>
+            </div>
+
+            <button type="submit" class="btn" style="width: 100%; margin-top: 10px;">注册</button>
+        </form>
+
+        <p style="text-align: center; margin-top: 20px;">
+            已有账户？ <a href="{{ url_for('auth.login') }}" style="color: #667eea;">立即登录</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

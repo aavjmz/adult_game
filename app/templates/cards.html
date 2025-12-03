@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}我的卡牌 - 成人卡牌游戏{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <h1>我的卡牌</h1>
+        <p>共有 {{ user_cards|length }} 张卡牌</p>
+
+        {% if user_cards %}
+            <div class="card-grid">
+                {% for user_card in user_cards %}
+                    {% set card = user_card.card %}
+                    <div class="card-item {% if card.is_golden %}golden{% endif %}">
+                        <span class="card-rarity rarity-{{ card.rarity }}">{{ card.rarity }}</span>
+                        <div class="card-name">{{ card.name }}</div>
+
+                        <div class="card-stats">
+                            <div class="stat">
+                                <div class="stat-label">攻击</div>
+                                <div class="stat-value">{{ card.attack }}</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">防御</div>
+                                <div class="stat-value">{{ card.defense }}</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">生命</div>
+                                <div class="stat-value">{{ card.hp }}</div>
+                            </div>
+                        </div>
+
+                        {% if card.skill_name %}
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                                <strong>{{ card.skill_name }}</strong>
+                                <p style="font-size: 12px; color: #666;">{{ card.skill_description }}</p>
+                            </div>
+                        {% endif %}
+
+                        <div style="margin-top: 10px; font-size: 12px; color: #999;">
+                            等级: {{ user_card.level }} | 经验: {{ user_card.exp }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p style="text-align: center; margin-top: 40px; color: #666;">
+                您还没有任何卡牌，<a href="{{ url_for('gacha.index') }}" style="color: #667eea;">去抽卡吧！</a>
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

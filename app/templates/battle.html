@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}战斗 - 成人卡牌游戏{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <h1 style="text-align: center;">⚔️ 战斗系统</h1>
+
+        {% if user_cards %}
+            <div>
+                <h3>选择出战卡牌（最多3张）</h3>
+                <div class="card-grid" style="margin-top: 20px;">
+                    {% for user_card in user_cards %}
+                        {% set card = user_card.card %}
+                        <div class="card-item {% if card.is_golden %}golden{% endif %}"
+                             onclick="toggleCardSelection({{ card.id }})"
+                             id="card-{{ card.id }}"
+                             style="cursor: pointer;">
+                            <span class="card-rarity rarity-{{ card.rarity }}">{{ card.rarity }}</span>
+                            <div class="card-name">{{ card.name }}</div>
+
+                            <div class="card-stats">
+                                <div class="stat">
+                                    <div class="stat-label">攻击</div>
+                                    <div class="stat-value">{{ card.attack }}</div>
+                                </div>
+                                <div class="stat">
+                                    <div class="stat-label">防御</div>
+                                    <div class="stat-value">{{ card.defense }}</div>
+                                </div>
+                                <div class="stat">
+                                    <div class="stat-label">生命</div>
+                                    <div class="stat-value">{{ card.hp }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <button onclick="startBattle()" class="btn btn-success" style="font-size: 20px; padding: 15px 40px;">
+                        开始战斗
+                    </button>
+                </div>
+            </div>
+
+            <!-- 战斗结果 -->
+            <div id="battleResult" style="display: none; margin-top: 40px;">
+                <h2 style="text-align: center;">战斗结果</h2>
+                <div id="battleStatus" style="text-align: center; font-size: 24px; margin: 20px 0;"></div>
+
+                <!-- 奖励 -->
+                <div id="battleRewards" style="text-align: center; margin: 20px 0;"></div>
+
+                <!-- 战斗日志 -->
+                <div class="battle-log" id="battleLog"></div>
+            </div>
+        {% else %}
+            <p style="text-align: center; margin-top: 40px; color: #666;">
+                您还没有任何卡牌，<a href="{{ url_for('gacha.index') }}" style="color: #667eea;">去抽卡吧！</a>
+            </p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+let selectedCards = [];
+
+function toggleCardSelection(cardId) {
+    const cardElement = document.getElementById('card-' + cardId);
+
+    if (selectedCards.includes(cardId)) {
+        // 取消选择
+        selectedCards = selectedCards.filter(id => id !== cardId);
+        cardElement.style.border = '';
+        cardElement.style.transform = '';
+    } else {
+        // 选择卡牌
+        if (selectedCards.length >= 3) {
+            alert('最多只能选择3张卡牌');
+            return;
+        }
+        selectedCards.push(cardId);
+        cardElement.style.border = '3px solid #28a745';
+        cardElement.style.transform = 'scale(1.05)';
+    }
+}
+
+async function startBattle() {
+    if (selectedCards.length === 0) {
+        alert('请至少选择一张卡牌');
+        return;
+    }
+
+    try {
+        const response = await fetch('/battle/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ card_ids: selectedCards })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.error || '战斗失败');
+            return;
+        }
+
+        // 显示战斗结果
+        const resultDiv = document.getElementById('battleResult');
+        const statusDiv = document.getElementById('battleStatus');
+        const rewardsDiv = document.getElementById('battleRewards');
+        const logDiv = document.getElementById('battleLog');
+
+        // 战斗状态
+        if (data.is_victory) {
+            statusDiv.innerHTML = '<span style="color: #28a745;">🎉 胜利！</span>';
+            rewardsDiv.innerHTML = `
+                <p>获得奖励：</p>
+                <p>💰 游戏币: +${data.rewards.coins}</p>
+                <p>🎫 抽卡券: +${data.rewards.tickets}</p>
+                <p>当前资源：游戏币 ${data.current_resources.coins} | 抽卡券 ${data.current_resources.tickets}</p>
+            `;
+        } else {
+            statusDiv.innerHTML = '<span style="color: #dc3545;">😢 战败...</span>';
+            rewardsDiv.innerHTML = '<p>未获得奖励</p>';
+        }
+
+        // 战斗日志
+        logDiv.innerHTML = '';
+        data.battle_log.forEach(entry => {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'battle-log-entry log-' + entry.type;
+            logEntry.textContent = entry.message;
+            logDiv.appendChild(logEntry);
+        });
+
+        resultDiv.style.display = 'block';
+        resultDiv.scrollIntoView({ behavior: 'smooth' });
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('战斗时发生错误');
+    }
+}
+</script>
+{% endblock %}
