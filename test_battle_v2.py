@@ -5,6 +5,14 @@
 python test_battle_v2.py
 """
 
+import sys
+
+# 设置UTF-8编码输出（解决Windows GBK编码问题）
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 from app import create_app
 from app.models import db, Card
 from app.battle_engine import BattleEngine
