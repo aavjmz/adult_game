@@ -98,7 +98,17 @@ class UserCard(db.Model):
     level = db.Column(db.Integer, default=1)
     exp = db.Column(db.Integer, default=0)
 
+    # 成长系统
+    star_level = db.Column(db.Integer, default=1)
+    awaken_level = db.Column(db.Integer, default=0)
+    breakthrough_level = db.Column(db.Integer, default=0)
+    main_skill_level = db.Column(db.Integer, default=1)
+    passive_skill_level = db.Column(db.Integer, default=1)
+
     obtained_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 关系
+    equipments = db.relationship('Equipment', backref='owner_card', lazy='dynamic', cascade='all, delete-orphan')
 
     def __repr__(self):
         return f'<UserCard user={self.user_id} card={self.card_id}>'
@@ -145,3 +155,64 @@ class Battle(db.Model):
 
     def __repr__(self):
         return f'<Battle {self.id} user={self.user_id}>'
+
+
+class Equipment(db.Model):
+    """装备模型"""
+    __tablename__ = 'equipments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    owner_card_id = db.Column(db.Integer, db.ForeignKey('user_cards.id'))
+
+    name = db.Column(db.String(100), nullable=False)
+    type = db.Column(db.String(20), nullable=False)  # weapon/armor/accessory/treasure
+    quality = db.Column(db.String(20), nullable=False)  # common/rare/epic/legendary/mythic
+
+    # 基础属性
+    base_stat_type = db.Column(db.String(20))  # attack/defense/hp
+    base_stat_value = db.Column(db.Float)
+
+    # 强化等级
+    enhance_level = db.Column(db.Integer, default=0)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 关系
+    user = db.relationship('User', backref='equipments')
+    stats = db.relationship('EquipmentStat', backref='equipment', lazy='dynamic', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<Equipment {self.name} ({self.quality})>'
+
+
+class EquipmentStat(db.Model):
+    """装备附加属性"""
+    __tablename__ = 'equipment_stats'
+
+    id = db.Column(db.Integer, primary_key=True)
+    equipment_id = db.Column(db.Integer, db.ForeignKey('equipments.id'), nullable=False)
+
+    stat_type = db.Column(db.String(20), nullable=False)  # crit_rate/crit_dmg/speed/etc
+    stat_value = db.Column(db.Float, nullable=False)
+
+    def __repr__(self):
+        return f'<EquipmentStat {self.stat_type}={self.stat_value}>'
+
+
+class UserItem(db.Model):
+    """用户材料物品"""
+    __tablename__ = 'user_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    item_type = db.Column(db.String(50), nullable=False)  # exp_potion/skill_book/star_stone/etc
+    item_subtype = db.Column(db.String(50))  # small/medium/large, warrior/mage/etc
+    quantity = db.Column(db.Integer, default=0)
+
+    # 关系
+    user = db.relationship('User', backref='items')
+
+    def __repr__(self):
+        return f'<UserItem user={self.user_id} {self.item_type}:{self.item_subtype} x{self.quantity}>'
