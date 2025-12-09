@@ -22,5 +22,5 @@ def user_info():
         'id': current_user.id,
         'username': current_user.username,
         'coins': current_user.coins,
-        'gems': current_user.gems
+        'tickets': current_user.tickets
     })
