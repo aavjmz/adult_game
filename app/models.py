@@ -22,11 +22,25 @@ class User(UserMixin, db.Model):
     sr_pity_count = db.Column(db.Integer, default=0)   # SR保底计数
     ssr_pity_count = db.Column(db.Integer, default=0)  # SSR保底计数
 
+    # PVE体力系统
+    stamina = db.Column(db.Integer, default=120)  # 当前体力
+    max_stamina = db.Column(db.Integer, default=120)  # 最大体力
+    stamina_updated_at = db.Column(db.DateTime, default=datetime.utcnow)  # 体力更新时间
+
+    # PVE进度
+    main_stage_progress = db.Column(db.Integer, default=0)  # 主线关卡进度
+
+    # PVE统计数据
+    total_pve_battles = db.Column(db.Integer, default=0)  # 总PVE战斗次数
+    total_pve_wins = db.Column(db.Integer, default=0)  # 总PVE胜利次数
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # 关系
     user_cards = db.relationship('UserCard', backref='owner', lazy='dynamic', cascade='all, delete-orphan')
     gacha_records = db.relationship('GachaRecord', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    stage_progress = db.relationship('UserStageProgress', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    battle_records = db.relationship('BattleRecord', backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
     def set_password(self, password):
         """设置密码"""
@@ -322,3 +336,113 @@ class EquipmentTemplate(db.Model):
 
     def __repr__(self):
         return f'<EquipmentTemplate {self.name} ({self.quality})>'
+
+
+class Stage(db.Model):
+    """关卡模型"""
+    __tablename__ = 'stages'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # 基础信息
+    stage_type = db.Column(db.String(20), nullable=False)  # main/daily/special/boss
+    chapter = db.Column(db.Integer)  # 章节（主线关卡）
+    stage_number = db.Column(db.Integer, nullable=False)  # 关卡编号
+    name = db.Column(db.String(100), nullable=False)  # 关卡名称
+    description = db.Column(db.Text)  # 关卡描述
+
+    # 难度信息
+    difficulty = db.Column(db.String(20))  # easy/normal/hard/elite/boss
+    recommended_power = db.Column(db.Integer)  # 推荐战力
+
+    # 消耗
+    stamina_cost = db.Column(db.Integer, default=10)  # 体力消耗
+
+    # 敌人配置
+    enemy_config = db.Column(db.Text)  # JSON格式，敌方阵容配置
+
+    # 奖励配置
+    first_clear_rewards = db.Column(db.Text)  # JSON，首通奖励
+    rewards = db.Column(db.Text)  # JSON，通关奖励
+    drop_config = db.Column(db.Text)  # JSON，掉落配置
+
+    # 星级条件
+    star_1_condition = db.Column(db.String(100))  # 1星条件
+    star_2_condition = db.Column(db.String(100))  # 2星条件
+    star_3_condition = db.Column(db.String(100))  # 3星条件
+
+    # 开放条件
+    unlock_condition = db.Column(db.Text)  # JSON，解锁条件
+
+    # 副本特殊配置
+    daily_limit = db.Column(db.Integer)  # 每日挑战次数限制
+    open_days = db.Column(db.String(50))  # 开放日期（1-7表示周一到周日）
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 关系
+    user_progress = db.relationship('UserStageProgress', backref='stage', lazy='dynamic', cascade='all, delete-orphan')
+    battle_records = db.relationship('BattleRecord', backref='stage', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<Stage {self.stage_number}: {self.name}>'
+
+
+class UserStageProgress(db.Model):
+    """用户关卡进度"""
+    __tablename__ = 'user_stage_progress'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    stage_id = db.Column(db.Integer, db.ForeignKey('stages.id'), nullable=False)
+
+    # 进度信息
+    is_cleared = db.Column(db.Boolean, default=False)  # 是否通关
+    stars = db.Column(db.Integer, default=0)  # 获得星数
+    best_time = db.Column(db.Integer)  # 最快通关时间（秒）
+
+    # 挑战次数
+    total_attempts = db.Column(db.Integer, default=0)  # 总挑战次数
+    today_attempts = db.Column(db.Integer, default=0)  # 今日挑战次数
+    last_attempt_date = db.Column(db.Date)  # 最后挑战日期
+
+    first_clear_at = db.Column(db.DateTime)  # 首通时间
+    last_clear_at = db.Column(db.DateTime)  # 最后通关时间
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<UserStageProgress user={self.user_id} stage={self.stage_id} stars={self.stars}>'
+
+
+class BattleRecord(db.Model):
+    """战斗记录"""
+    __tablename__ = 'battle_records'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    stage_id = db.Column(db.Integer, db.ForeignKey('stages.id'))
+
+    # 战斗信息
+    battle_type = db.Column(db.String(20))  # pve/pvp
+    team_config = db.Column(db.Text)  # JSON，我方阵容
+    enemy_config = db.Column(db.Text)  # JSON，敌方阵容
+
+    # 战斗结果
+    result = db.Column(db.String(10))  # win/lose
+    stars = db.Column(db.Integer, default=0)  # 获得星数
+    battle_duration = db.Column(db.Integer)  # 战斗时长（秒）
+
+    # 战斗数据
+    damage_dealt = db.Column(db.Integer)  # 造成伤害
+    damage_taken = db.Column(db.Integer)  # 承受伤害
+    battle_log = db.Column(db.Text)  # JSON，战斗日志
+
+    # 奖励
+    rewards = db.Column(db.Text)  # JSON，获得奖励
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<BattleRecord {self.id} user={self.user_id} result={self.result}>'
