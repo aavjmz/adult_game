@@ -165,24 +165,35 @@ class Equipment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     owner_card_id = db.Column(db.Integer, db.ForeignKey('user_cards.id'))
 
-    name = db.Column(db.String(100), nullable=False)
-    type = db.Column(db.String(20), nullable=False)  # weapon/armor/accessory/treasure
-    quality = db.Column(db.String(20), nullable=False)  # common/rare/epic/legendary/mythic
+    # 关联装备模板（新系统）
+    template_id = db.Column(db.Integer, db.ForeignKey('equipment_templates.id'))
 
-    # 基础属性
+    # 旧字段（向后兼容）
+    name = db.Column(db.String(100))
+    type = db.Column(db.String(20))  # weapon/armor/accessory/treasure
+    quality = db.Column(db.String(20))  # common/rare/epic/legendary/mythic
     base_stat_type = db.Column(db.String(20))  # attack/defense/hp
     base_stat_value = db.Column(db.Float)
 
     # 强化等级
     enhance_level = db.Column(db.Integer, default=0)
 
+    # 随机附加属性（JSON格式）
+    random_stats = db.Column(db.Text)
+
+    # 是否锁定
+    is_locked = db.Column(db.Boolean, default=False)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # 关系
     user = db.relationship('User', backref='equipments')
+    template = db.relationship('EquipmentTemplate', backref='instances')
     stats = db.relationship('EquipmentStat', backref='equipment', lazy='dynamic', cascade='all, delete-orphan')
 
     def __repr__(self):
+        if self.template:
+            return f'<Equipment {self.template.name} +{self.enhance_level}>'
         return f'<Equipment {self.name} ({self.quality})>'
 
 
@@ -216,3 +227,98 @@ class UserItem(db.Model):
 
     def __repr__(self):
         return f'<UserItem user={self.user_id} {self.item_type}:{self.item_subtype} x{self.quantity}>'
+
+
+class EquipmentSet(db.Model):
+    """套装配置表"""
+    __tablename__ = 'equipment_sets'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    name_en = db.Column(db.String(100))  # 英文名
+
+    # 2件套加成
+    bonus_2_desc = db.Column(db.String(200))
+    bonus_2_attack_pct = db.Column(db.Float, default=0)
+    bonus_2_defense_pct = db.Column(db.Float, default=0)
+    bonus_2_hp_pct = db.Column(db.Float, default=0)
+    bonus_2_crit_rate = db.Column(db.Float, default=0)
+    bonus_2_crit_dmg = db.Column(db.Float, default=0)
+    bonus_2_speed = db.Column(db.Integer, default=0)
+
+    # 4件套加成
+    bonus_4_desc = db.Column(db.String(200))
+    bonus_4_attack_pct = db.Column(db.Float, default=0)
+    bonus_4_defense_pct = db.Column(db.Float, default=0)
+    bonus_4_hp_pct = db.Column(db.Float, default=0)
+    bonus_4_crit_rate = db.Column(db.Float, default=0)
+    bonus_4_crit_dmg = db.Column(db.Float, default=0)
+    bonus_4_speed = db.Column(db.Integer, default=0)
+
+    # 4件套特殊效果
+    bonus_4_special_effect = db.Column(db.String(100))
+    bonus_4_special_desc = db.Column(db.Text)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 关联的装备模板
+    templates = db.relationship('EquipmentTemplate', backref='equipment_set', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<EquipmentSet {self.name}>'
+
+
+class EquipmentTemplate(db.Model):
+    """装备模板表"""
+    __tablename__ = 'equipment_templates'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # 基础信息
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    name_en = db.Column(db.String(100))  # 英文名，用于资源路径
+    type = db.Column(db.String(20), nullable=False)  # weapon/armor/accessory/treasure
+    quality = db.Column(db.String(20), nullable=False)  # common/rare/epic/legendary/mythic
+    element = db.Column(db.String(10), default='无')  # 金/木/水/火/土/无
+
+    # 基础属性加成（百分比）
+    base_attack_pct = db.Column(db.Float, default=0)
+    base_defense_pct = db.Column(db.Float, default=0)
+    base_hp_pct = db.Column(db.Float, default=0)
+
+    # 固定数值属性
+    crit_rate = db.Column(db.Float, default=0)  # 暴击率%
+    crit_dmg = db.Column(db.Float, default=0)  # 暴击伤害%
+    speed = db.Column(db.Integer, default=0)  # 速度
+    penetration = db.Column(db.Float, default=0)  # 穿透%
+    block_rate = db.Column(db.Float, default=0)  # 格挡率%
+    dodge_rate = db.Column(db.Float, default=0)  # 闪避率%
+    lifesteal = db.Column(db.Float, default=0)  # 吸血%
+
+    # 专属信息
+    exclusive_hero_id = db.Column(db.Integer)  # 专属武将ID
+    exclusive_faction = db.Column(db.String(10))  # 专属势力
+
+    # 专属效果
+    exclusive_effect_name = db.Column(db.String(100))
+    exclusive_effect_desc = db.Column(db.Text)
+    exclusive_effect_type = db.Column(db.String(50))  # passive/on_attack/on_hit等
+    exclusive_effect_value = db.Column(db.Float)
+
+    # 套装信息
+    set_id = db.Column(db.Integer, db.ForeignKey('equipment_sets.id'))
+
+    # 强化配置
+    max_enhance_level = db.Column(db.Integer, default=30)
+
+    # 获取方式
+    obtain_method = db.Column(db.String(200))
+
+    # 描述和故事
+    description = db.Column(db.Text)
+    lore = db.Column(db.Text)  # 历史典故
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<EquipmentTemplate {self.name} ({self.quality})>'
