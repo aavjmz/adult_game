@@ -1,0 +1,734 @@
+{% extends "base.html" %}
+
+{% block title %}装备仓库 - 三国卡牌游戏{% endblock %}
+
+{% block extra_css %}
+<style>
+    .equipment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .equipment-stats {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .stat-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .equipment-filters {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 8px 16px;
+        border: 2px solid #667eea;
+        background: white;
+        color: #667eea;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 14px;
+    }
+
+    .filter-btn:hover {
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .filter-btn.active {
+        background: #667eea;
+        color: white;
+    }
+
+    .equipment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .equipment-card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s;
+        position: relative;
+        border: 3px solid transparent;
+    }
+
+    .equipment-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    /* 品质边框颜色 */
+    .equipment-card.mythic {
+        border-color: #ff6b6b;
+        background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+    }
+
+    .equipment-card.legendary {
+        border-color: #ffd700;
+        background: linear-gradient(135deg, #fffdf0 0%, #ffffff 100%);
+    }
+
+    .equipment-card.epic {
+        border-color: #a855f7;
+        background: linear-gradient(135deg, #faf5ff 0%, #ffffff 100%);
+    }
+
+    .equipment-card.rare {
+        border-color: #3b82f6;
+        background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+    }
+
+    .equipment-card.common {
+        border-color: #9ca3af;
+    }
+
+    .equipment-quality {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        padding: 5px 15px;
+        border-radius: 15px;
+        font-size: 12px;
+        font-weight: bold;
+        color: white;
+    }
+
+    .quality-mythic { background: linear-gradient(135deg, #ff6b6b, #ee5a6f); }
+    .quality-legendary { background: linear-gradient(135deg, #ffd700, #ffed4e); color: #333; }
+    .quality-epic { background: linear-gradient(135deg, #a855f7, #c084fc); }
+    .quality-rare { background: linear-gradient(135deg, #3b82f6, #60a5fa); }
+    .quality-common { background: #9ca3af; }
+
+    .equipment-name {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+    }
+
+    .equipment-type {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #f3f4f6;
+        border-radius: 10px;
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 10px;
+    }
+
+    .equipment-enhance {
+        font-size: 18px;
+        font-weight: bold;
+        color: #667eea;
+        margin: 10px 0;
+    }
+
+    .equipment-stats-list {
+        margin: 15px 0;
+        padding: 15px;
+        background: #f9fafb;
+        border-radius: 10px;
+    }
+
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+
+    .stat-label {
+        color: #6b7280;
+        font-size: 14px;
+    }
+
+    .stat-value {
+        color: #059669;
+        font-weight: bold;
+        font-size: 14px;
+    }
+
+    .equipment-set {
+        margin: 10px 0;
+        padding: 10px;
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: bold;
+        color: #92400e;
+    }
+
+    .equipment-exclusive {
+        margin: 10px 0;
+        padding: 10px;
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: bold;
+        color: #991b1b;
+    }
+
+    .equipment-power {
+        text-align: center;
+        margin: 15px 0;
+        font-size: 16px;
+    }
+
+    .power-label {
+        color: #6b7280;
+        font-size: 12px;
+    }
+
+    .power-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #dc2626;
+    }
+
+    .equipment-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .action-btn {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s;
+        font-size: 14px;
+    }
+
+    .btn-enhance {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+
+    .btn-enhance:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-equip {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+    }
+
+    .btn-equip:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-dismantle {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-dismantle:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+    }
+
+    .btn-lock {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .btn-lock:hover {
+        background: #d97706;
+        transform: translateY(-2px);
+    }
+
+    .locked-icon {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        font-size: 24px;
+    }
+
+    .equipped-badge {
+        position: absolute;
+        top: 50px;
+        right: 15px;
+        background: #10b981;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    .random-stats {
+        margin: 10px 0;
+        padding: 10px;
+        background: #dbeafe;
+        border-radius: 8px;
+    }
+
+    .random-stats-title {
+        font-size: 12px;
+        font-weight: bold;
+        color: #1e40af;
+        margin-bottom: 5px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6b7280;
+    }
+
+    .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+    }
+
+    .tab-buttons {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 10px;
+    }
+
+    .tab-btn {
+        padding: 10px 20px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        color: #6b7280;
+        transition: all 0.3s;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -12px;
+    }
+
+    .tab-btn:hover {
+        color: #667eea;
+    }
+
+    .tab-btn.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <!-- 标题和统计 -->
+        <div class="equipment-header">
+            <div>
+                <h1>⚔️ 装备仓库</h1>
+                <p style="color: #6b7280; margin-top: 5px;">管理你的三国神兵利器</p>
+            </div>
+            <div class="equipment-stats">
+                <div class="stat-badge">📦 装备总数: <span id="total-count">0</span></div>
+                <div class="stat-badge">💎 强化石: <span id="enhance-stones">0</span></div>
+                <div class="stat-badge">🔮 碎片: <span id="fragments">0</span></div>
+                <div class="stat-badge">💰 金币: <span id="coins">0</span></div>
+            </div>
+        </div>
+
+        <!-- 标签页 -->
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="switchTab('inventory')">装备仓库</button>
+            <button class="tab-btn" onclick="window.location.href='/equipment/enhance'">强化装备</button>
+            <button class="tab-btn" onclick="window.location.href='/equipment/craft'">装备合成</button>
+            <button class="tab-btn" onclick="window.location.href='/equipment/sets-view'">套装图鉴</button>
+        </div>
+
+        <!-- 过滤器 -->
+        <div class="equipment-filters">
+            <button class="filter-btn active" data-filter="all">全部</button>
+            <button class="filter-btn" data-filter="mythic">神话</button>
+            <button class="filter-btn" data-filter="legendary">传说</button>
+            <button class="filter-btn" data-filter="epic">史诗</button>
+            <button class="filter-btn" data-filter="rare">稀有</button>
+            <button class="filter-btn" data-filter="common">普通</button>
+            <button class="filter-btn" data-filter="weapon">武器</button>
+            <button class="filter-btn" data-filter="armor">防具</button>
+            <button class="filter-btn" data-filter="accessory">饰品</button>
+            <button class="filter-btn" data-filter="treasure">宝物</button>
+            <button class="filter-btn" data-filter="equipped">已装备</button>
+            <button class="filter-btn" data-filter="unequipped">未装备</button>
+        </div>
+
+        <!-- 装备网格 -->
+        <div id="equipment-grid" class="equipment-grid">
+            <!-- 将通过JavaScript动态加载 -->
+        </div>
+
+        <!-- 空状态 -->
+        <div id="empty-state" class="empty-state" style="display: none;">
+            <div class="empty-state-icon">📦</div>
+            <h2>装备仓库是空的</h2>
+            <p>前往<a href="/equipment/craft" style="color: #667eea;">装备合成</a>获取新装备！</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allEquipments = [];
+let currentFilter = 'all';
+
+// 页面加载时获取装备
+document.addEventListener('DOMContentLoaded', function() {
+    loadEquipments();
+    loadMaterials();
+});
+
+// 加载装备列表
+async function loadEquipments() {
+    try {
+        const response = await fetch('/equipment/list');
+        const data = await response.json();
+
+        if (data.success) {
+            allEquipments = data.equipments;
+            document.getElementById('total-count').textContent = data.count;
+            renderEquipments(allEquipments);
+        }
+    } catch (error) {
+        console.error('加载装备失败:', error);
+        alert('加载装备失败，请刷新页面重试');
+    }
+}
+
+// 加载材料信息
+async function loadMaterials() {
+    try {
+        const response = await fetch('/growth/materials');
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('enhance-stones').textContent =
+                data.materials['enhance_stone'] || 0;
+            document.getElementById('fragments').textContent =
+                data.materials['equipment_fragment:universal'] || 0;
+        }
+
+        // 获取金币
+        const dashResponse = await fetch('/api/user/info');
+        const dashData = await dashResponse.json();
+        if (dashData.coins !== undefined) {
+            document.getElementById('coins').textContent = dashData.coins.toLocaleString();
+        }
+    } catch (error) {
+        console.error('加载材料失败:', error);
+    }
+}
+
+// 渲染装备列表
+function renderEquipments(equipments) {
+    const grid = document.getElementById('equipment-grid');
+    const emptyState = document.getElementById('empty-state');
+
+    if (equipments.length === 0) {
+        grid.style.display = 'none';
+        emptyState.style.display = 'block';
+        return;
+    }
+
+    grid.style.display = 'grid';
+    emptyState.style.display = 'none';
+    grid.innerHTML = '';
+
+    equipments.forEach(equip => {
+        const card = createEquipmentCard(equip);
+        grid.appendChild(card);
+    });
+}
+
+// 创建装备卡片
+function createEquipmentCard(equip) {
+    const div = document.createElement('div');
+    div.className = `equipment-card ${equip.quality}`;
+    div.dataset.quality = equip.quality;
+    div.dataset.type = equip.type;
+    div.dataset.equipped = equip.owner_card_id ? 'true' : 'false';
+
+    let statsHtml = '';
+    if (equip.bonus) {
+        for (const [key, value] of Object.entries(equip.bonus)) {
+            if (value > 0) {
+                const label = getStatLabel(key);
+                const displayValue = key.includes('pct') ?
+                    `+${(value * 100).toFixed(1)}%` : `+${value}`;
+                statsHtml += `
+                    <div class="stat-item">
+                        <span class="stat-label">${label}</span>
+                        <span class="stat-value">${displayValue}</span>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    let randomStatsHtml = '';
+    if (equip.random_stats && Object.keys(equip.random_stats).length > 0) {
+        randomStatsHtml = '<div class="random-stats"><div class="random-stats-title">🎲 随机属性</div>';
+        for (const [key, value] of Object.entries(equip.random_stats)) {
+            const label = getStatLabel(key);
+            const displayValue = key.includes('pct') || key.includes('rate') || key.includes('dmg') ?
+                `+${value.toFixed(1)}%` : `+${value}`;
+            randomStatsHtml += `
+                <div class="stat-item">
+                    <span class="stat-label">${label}</span>
+                    <span class="stat-value">${displayValue}</span>
+                </div>
+            `;
+        }
+        randomStatsHtml += '</div>';
+    }
+
+    const setHtml = equip.set_name ?
+        `<div class="equipment-set">🎭 ${equip.set_name}</div>` : '';
+
+    const exclusiveHtml = equip.exclusive_effect ?
+        `<div class="equipment-exclusive">⚡ ${equip.exclusive_effect}</div>` : '';
+
+    const equippedBadge = equip.owner_card_id ?
+        '<div class="equipped-badge">已装备</div>' : '';
+
+    const lockIcon = equip.is_locked ?
+        '<div class="locked-icon">🔒</div>' : '';
+
+    div.innerHTML = `
+        ${lockIcon}
+        <div class="equipment-quality quality-${equip.quality}">${getQualityText(equip.quality)}</div>
+        ${equippedBadge}
+        <div class="equipment-name">${equip.name}</div>
+        <div class="equipment-type">${getTypeIcon(equip.type)} ${getTypeText(equip.type)}</div>
+        <div class="equipment-enhance">强化等级: +${equip.enhance_level}</div>
+        ${setHtml}
+        ${exclusiveHtml}
+        <div class="equipment-stats-list">
+            ${statsHtml}
+        </div>
+        ${randomStatsHtml}
+        <div class="equipment-power">
+            <div class="power-label">战力</div>
+            <div class="power-value">${equip.power}</div>
+        </div>
+        <div class="equipment-actions">
+            <button class="action-btn btn-enhance" onclick="enhanceEquipment(${equip.id})">
+                ⚡ 强化
+            </button>
+            ${equip.owner_card_id ?
+                `<button class="action-btn btn-equip" onclick="unequipEquipment(${equip.id})">卸下</button>` :
+                `<button class="action-btn btn-equip" onclick="showEquipDialog(${equip.id})">装备</button>`
+            }
+            <button class="action-btn btn-lock" onclick="toggleLock(${equip.id}, ${!equip.is_locked})">
+                ${equip.is_locked ? '🔓' : '🔒'}
+            </button>
+            ${!equip.owner_card_id && !equip.is_locked ?
+                `<button class="action-btn btn-dismantle" onclick="dismantleEquipment(${equip.id})">分解</button>` : ''
+            }
+        </div>
+    `;
+
+    return div;
+}
+
+// 过滤装备
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        const filter = this.dataset.filter;
+        currentFilter = filter;
+
+        let filtered = allEquipments;
+
+        if (filter === 'equipped') {
+            filtered = allEquipments.filter(e => e.owner_card_id);
+        } else if (filter === 'unequipped') {
+            filtered = allEquipments.filter(e => !e.owner_card_id);
+        } else if (filter !== 'all') {
+            filtered = allEquipments.filter(e =>
+                e.quality === filter || e.type === filter
+            );
+        }
+
+        renderEquipments(filtered);
+    });
+});
+
+// 强化装备
+function enhanceEquipment(equipId) {
+    window.location.href = `/equipment/enhance?id=${equipId}`;
+}
+
+// 装备到卡牌
+function showEquipDialog(equipId) {
+    // 这里可以显示一个对话框选择卡牌
+    // 暂时先跳转到卡牌列表页面
+    alert('请在"我的卡牌"页面中为卡牌装备此装备');
+    window.location.href = '/cards';
+}
+
+// 卸下装备
+async function unequipEquipment(equipId) {
+    if (!confirm('确定要卸下这件装备吗？')) return;
+
+    try {
+        const response = await fetch('/equipment/unequip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ equipment_id: equipId })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message);
+            loadEquipments();
+        } else {
+            alert(data.error || '卸下失败');
+        }
+    } catch (error) {
+        console.error('卸下失败:', error);
+        alert('卸下失败，请重试');
+    }
+}
+
+// 锁定/解锁装备
+async function toggleLock(equipId, lockState) {
+    try {
+        const response = await fetch('/equipment/lock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                equipment_id: equipId,
+                lock: lockState
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            loadEquipments();
+        } else {
+            alert(data.error || '操作失败');
+        }
+    } catch (error) {
+        console.error('锁定操作失败:', error);
+        alert('操作失败，请重试');
+    }
+}
+
+// 分解装备
+async function dismantleEquipment(equipId) {
+    if (!confirm('确定要分解这件装备吗？分解后将获得装备碎片，但装备会永久消失！')) return;
+
+    try {
+        const response = await fetch('/equipment/dismantle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ equipment_id: equipId })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message);
+            loadEquipments();
+            loadMaterials();
+        } else {
+            alert(data.error || '分解失败');
+        }
+    } catch (error) {
+        console.error('分解失败:', error);
+        alert('分解失败，请重试');
+    }
+}
+
+// 切换标签页
+function switchTab(tab) {
+    if (tab === 'inventory') {
+        // 已在当前页
+        return;
+    }
+}
+
+// 辅助函数
+function getQualityText(quality) {
+    const map = {
+        'mythic': '神话',
+        'legendary': '传说',
+        'epic': '史诗',
+        'rare': '稀有',
+        'common': '普通'
+    };
+    return map[quality] || quality;
+}
+
+function getTypeText(type) {
+    const map = {
+        'weapon': '武器',
+        'armor': '防具',
+        'accessory': '饰品',
+        'treasure': '宝物'
+    };
+    return map[type] || type;
+}
+
+function getTypeIcon(type) {
+    const map = {
+        'weapon': '⚔️',
+        'armor': '🛡️',
+        'accessory': '💍',
+        'treasure': '📜'
+    };
+    return map[type] || '📦';
+}
+
+function getStatLabel(key) {
+    const map = {
+        'attack_pct': '攻击',
+        'defense_pct': '防御',
+        'hp_pct': '生命',
+        'crit_rate': '暴击率',
+        'crit_dmg': '暴击伤害',
+        'speed': '速度',
+        'penetration': '穿透',
+        'lifesteal': '吸血',
+        'block_rate': '格挡',
+        'dodge_rate': '闪避'
+    };
+    return map[key] || key;
+}
+</script>
+{% endblock %}

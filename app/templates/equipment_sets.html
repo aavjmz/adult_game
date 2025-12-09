@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+
+{% block title %}套装图鉴 - 三国卡牌游戏{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sets-grid {
+        display: grid;
+        gap: 30px;
+    }
+
+    .set-card {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        border: 4px solid #ffd700;
+        transition: all 0.3s;
+    }
+
+    .set-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .set-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 20px;
+        border-bottom: 3px solid #f3f4f6;
+    }
+
+    .set-name {
+        font-size: 32px;
+        font-weight: bold;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .set-icon {
+        font-size: 48px;
+    }
+
+    .set-count {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .bonus-section {
+        margin: 25px 0;
+    }
+
+    .bonus-title {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #667eea;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .bonus-card {
+        background: linear-gradient(135deg, #eff6ff, #f9fafb);
+        border-left: 5px solid #3b82f6;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 15px;
+    }
+
+    .bonus-card.four-piece {
+        background: linear-gradient(135deg, #fef3c7, #fef9f3);
+        border-left-color: #f59e0b;
+    }
+
+    .bonus-desc {
+        font-size: 16px;
+        color: #374151;
+        margin-bottom: 15px;
+        font-weight: 500;
+    }
+
+    .bonus-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .bonus-stat-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 15px;
+        background: white;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .stat-name {
+        color: #6b7280;
+    }
+
+    .stat-bonus {
+        color: #059669;
+        font-weight: bold;
+    }
+
+    .special-effect {
+        background: linear-gradient(135deg, #fee2e2, #fef2f2);
+        border-left: 5px solid #ef4444;
+        padding: 20px;
+        border-radius: 12px;
+        margin-top: 15px;
+    }
+
+    .special-effect-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #991b1b;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .special-effect-desc {
+        color: #7f1d1d;
+        line-height: 1.6;
+    }
+
+    .equipment-list-section {
+        margin-top: 30px;
+    }
+
+    .equipment-list-title {
+        font-size: 20px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .equipment-items {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 15px;
+    }
+
+    .equipment-item-card {
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 15px;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+
+    .equipment-item-card:hover {
+        border-color: #667eea;
+        transform: translateY(-3px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .equipment-item-name {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .equipment-item-type {
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .equipment-item-quality {
+        font-size: 11px;
+        padding: 3px 10px;
+        border-radius: 10px;
+        display: inline-block;
+        margin-top: 5px;
+        color: white;
+        font-weight: bold;
+    }
+
+    .quality-mythic {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+    }
+
+    .quality-legendary {
+        background: linear-gradient(135deg, #ffd700, #ffed4e);
+        color: #333;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6b7280;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <h1>🎭 套装图鉴</h1>
+        <p style="color: #6b7280; margin-top: 5px; margin-bottom: 30px;">
+            收集同套装装备可激活强力加成效果
+        </p>
+
+        <div id="sets-grid" class="sets-grid">
+            <!-- 通过JavaScript加载 -->
+        </div>
+
+        <div id="empty-state" class="empty-state" style="display: none;">
+            <div style="font-size: 64px; margin-bottom: 20px;">🎭</div>
+            <h2>暂无套装数据</h2>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadSets();
+});
+
+// 加载套装列表
+async function loadSets() {
+    try {
+        const response = await fetch('/equipment/sets');
+        const data = await response.json();
+
+        if (data.success && data.sets.length > 0) {
+            renderSets(data.sets);
+        } else {
+            document.getElementById('empty-state').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('加载套装失败:', error);
+        document.getElementById('empty-state').style.display = 'block';
+    }
+}
+
+// 渲染套装列表
+function renderSets(sets) {
+    const grid = document.getElementById('sets-grid');
+    grid.innerHTML = '';
+
+    sets.forEach(set => {
+        const card = createSetCard(set);
+        grid.appendChild(card);
+    });
+}
+
+// 创建套装卡片
+function createSetCard(set) {
+    const div = document.createElement('div');
+    div.className = 'set-card';
+
+    // 2件套属性
+    const bonus2Stats = [];
+    if (set.bonus_2.attack_pct > 0) {
+        bonus2Stats.push({ name: '攻击力', value: `+${(set.bonus_2.attack_pct * 100).toFixed(0)}%` });
+    }
+    if (set.bonus_2.defense_pct > 0) {
+        bonus2Stats.push({ name: '防御力', value: `+${(set.bonus_2.defense_pct * 100).toFixed(0)}%` });
+    }
+    if (set.bonus_2.hp_pct > 0) {
+        bonus2Stats.push({ name: '生命值', value: `+${(set.bonus_2.hp_pct * 100).toFixed(0)}%` });
+    }
+    if (set.bonus_2.crit_rate > 0) {
+        bonus2Stats.push({ name: '暴击率', value: `+${set.bonus_2.crit_rate.toFixed(0)}%` });
+    }
+    if (set.bonus_2.crit_dmg > 0) {
+        bonus2Stats.push({ name: '暴击伤害', value: `+${set.bonus_2.crit_dmg.toFixed(0)}%` });
+    }
+    if (set.bonus_2.speed > 0) {
+        bonus2Stats.push({ name: '速度', value: `+${set.bonus_2.speed}` });
+    }
+
+    let bonus2StatsHtml = '';
+    if (bonus2Stats.length > 0) {
+        bonus2StatsHtml = '<div class="bonus-stats">';
+        bonus2Stats.forEach(stat => {
+            bonus2StatsHtml += `
+                <div class="bonus-stat-item">
+                    <span class="stat-name">${stat.name}</span>
+                    <span class="stat-bonus">${stat.value}</span>
+                </div>
+            `;
+        });
+        bonus2StatsHtml += '</div>';
+    }
+
+    // 4件套属性
+    const bonus4Stats = [];
+    if (set.bonus_4.attack_pct > 0) {
+        bonus4Stats.push({ name: '攻击力', value: `+${(set.bonus_4.attack_pct * 100).toFixed(0)}%` });
+    }
+    if (set.bonus_4.defense_pct > 0) {
+        bonus4Stats.push({ name: '防御力', value: `+${(set.bonus_4.defense_pct * 100).toFixed(0)}%` });
+    }
+    if (set.bonus_4.hp_pct > 0) {
+        bonus4Stats.push({ name: '生命值', value: `+${(set.bonus_4.hp_pct * 100).toFixed(0)}%` });
+    }
+    if (set.bonus_4.crit_rate > 0) {
+        bonus4Stats.push({ name: '暴击率', value: `+${set.bonus_4.crit_rate.toFixed(0)}%` });
+    }
+    if (set.bonus_4.crit_dmg > 0) {
+        bonus4Stats.push({ name: '暴击伤害', value: `+${set.bonus_4.crit_dmg.toFixed(0)}%` });
+    }
+    if (set.bonus_4.speed > 0) {
+        bonus4Stats.push({ name: '速度', value: `+${set.bonus_4.speed}` });
+    }
+
+    let bonus4StatsHtml = '';
+    if (bonus4Stats.length > 0) {
+        bonus4StatsHtml = '<div class="bonus-stats">';
+        bonus4Stats.forEach(stat => {
+            bonus4StatsHtml += `
+                <div class="bonus-stat-item">
+                    <span class="stat-name">${stat.name}</span>
+                    <span class="stat-bonus">${stat.value}</span>
+                </div>
+            `;
+        });
+        bonus4StatsHtml += '</div>';
+    }
+
+    // 特殊效果
+    let specialEffectHtml = '';
+    if (set.bonus_4.special_effect) {
+        specialEffectHtml = `
+            <div class="special-effect">
+                <div class="special-effect-title">
+                    ⚡ ${set.bonus_4.special_effect}
+                </div>
+                <div class="special-effect-desc">
+                    ${set.bonus_4.special_desc}
+                </div>
+            </div>
+        `;
+    }
+
+    div.innerHTML = `
+        <div class="set-header">
+            <div class="set-name">
+                <span class="set-icon">${getSetIcon(set.name)}</span>
+                <span>${set.name}</span>
+            </div>
+            <div class="set-count">
+                ${set.equipment_count} 件装备
+            </div>
+        </div>
+
+        <!-- 2件套加成 -->
+        <div class="bonus-section">
+            <div class="bonus-title">
+                <span>🎯</span>
+                <span>2件套加成</span>
+            </div>
+            <div class="bonus-card">
+                <div class="bonus-desc">${set.bonus_2.desc}</div>
+                ${bonus2StatsHtml}
+            </div>
+        </div>
+
+        <!-- 4件套加成 -->
+        <div class="bonus-section">
+            <div class="bonus-title">
+                <span>⭐</span>
+                <span>4件套加成</span>
+            </div>
+            <div class="bonus-card four-piece">
+                <div class="bonus-desc">${set.bonus_4.desc}</div>
+                ${bonus4StatsHtml}
+                ${specialEffectHtml}
+            </div>
+        </div>
+
+        <!-- 套装装备列表 -->
+        <div class="equipment-list-section">
+            <div class="equipment-list-title">
+                <span>⚔️</span>
+                <span>套装装备</span>
+            </div>
+            <div id="set-${set.id}-equipments" class="equipment-items">
+                <!-- 通过JavaScript异步加载 -->
+            </div>
+        </div>
+    `;
+
+    // 异步加载套装装备
+    loadSetEquipments(set.id);
+
+    return div;
+}
+
+// 加载套装的装备列表
+async function loadSetEquipments(setId) {
+    try {
+        const response = await fetch(`/equipment/templates?set_id=${setId}`);
+        const data = await response.json();
+
+        if (data.success) {
+            renderSetEquipments(setId, data.templates);
+        }
+    } catch (error) {
+        console.error(`加载套装${setId}的装备失败:`, error);
+    }
+}
+
+// 渲染套装装备列表
+function renderSetEquipments(setId, templates) {
+    const container = document.getElementById(`set-${setId}-equipments`);
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    templates.forEach(template => {
+        const item = document.createElement('div');
+        item.className = 'equipment-item-card';
+        item.onclick = () => alert(`装备详情：${template.name}\n\n${template.description || '暂无详细信息'}`);
+
+        item.innerHTML = `
+            <div class="equipment-item-name">
+                <span>${getTypeIcon(template.type)}</span>
+                <span>${template.name}</span>
+            </div>
+            <div class="equipment-item-type">
+                ${getTypeText(template.type)} | ${template.element}
+            </div>
+            <div class="equipment-item-quality quality-${template.quality}">
+                ${getQualityText(template.quality)}
+            </div>
+        `;
+
+        container.appendChild(item);
+    });
+}
+
+// 获取套装图标
+function getSetIcon(setName) {
+    const icons = {
+        '五虎上将': '🐯',
+        '卧龙凤雏': '🐉',
+        '三国枭雄': '👑',
+        '江东霸业': '🦁'
+    };
+    return icons[setName] || '🎭';
+}
+
+// 辅助函数
+function getTypeIcon(type) {
+    const map = {
+        'weapon': '⚔️',
+        'armor': '🛡️',
+        'accessory': '💍',
+        'treasure': '📜'
+    };
+    return map[type] || '📦';
+}
+
+function getTypeText(type) {
+    const map = {
+        'weapon': '武器',
+        'armor': '防具',
+        'accessory': '饰品',
+        'treasure': '宝物'
+    };
+    return map[type] || type;
+}
+
+function getQualityText(quality) {
+    const map = {
+        'mythic': '神话',
+        'legendary': '传说',
+        'epic': '史诗',
+        'rare': '稀有',
+        'common': '普通'
+    };
+    return map[quality] || quality;
+}
+</script>
+{% endblock %}

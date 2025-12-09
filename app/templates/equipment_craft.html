@@ -1,0 +1,597 @@
+{% extends "base.html" %}
+
+{% block title %}装备合成 - 三国卡牌游戏{% endblock %}
+
+{% block extra_css %}
+<style>
+    .craft-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .materials-display {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .material-badge {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .craft-filters {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .templates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 25px;
+    }
+
+    .template-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s;
+        border: 3px solid transparent;
+        position: relative;
+    }
+
+    .template-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .template-card.mythic { border-color: #ff6b6b; }
+    .template-card.legendary { border-color: #ffd700; }
+    .template-card.epic { border-color: #a855f7; }
+    .template-card.rare { border-color: #3b82f6; }
+    .template-card.common { border-color: #9ca3af; }
+
+    .template-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+    }
+
+    .template-icon {
+        font-size: 48px;
+    }
+
+    .template-quality {
+        padding: 5px 15px;
+        border-radius: 15px;
+        font-size: 12px;
+        font-weight: bold;
+        color: white;
+    }
+
+    .template-name {
+        font-size: 22px;
+        font-weight: bold;
+        margin: 10px 0;
+        color: #333;
+    }
+
+    .template-element {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #f3f4f6;
+        border-radius: 10px;
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 15px;
+    }
+
+    .template-stats {
+        background: #f9fafb;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 15px 0;
+    }
+
+    .template-set {
+        margin: 10px 0;
+        padding: 12px;
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: bold;
+        color: #92400e;
+    }
+
+    .template-exclusive {
+        margin: 10px 0;
+        padding: 12px;
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        border-radius: 8px;
+    }
+
+    .exclusive-title {
+        font-size: 13px;
+        font-weight: bold;
+        color: #991b1b;
+        margin-bottom: 5px;
+    }
+
+    .exclusive-desc {
+        font-size: 12px;
+        color: #7f1d1d;
+    }
+
+    .template-lore {
+        margin: 15px 0;
+        padding: 15px;
+        background: linear-gradient(135deg, #ede9fe, #f5f3ff);
+        border-radius: 10px;
+        font-size: 13px;
+        color: #5b21b6;
+        font-style: italic;
+        border-left: 4px solid #a855f7;
+    }
+
+    .craft-cost {
+        display: flex;
+        justify-content: space-between;
+        padding: 15px;
+        background: #f3f4f6;
+        border-radius: 10px;
+        margin: 15px 0;
+        font-weight: bold;
+    }
+
+    .cost-sufficient {
+        color: #059669;
+    }
+
+    .cost-insufficient {
+        color: #dc2626;
+    }
+
+    .craft-button {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .craft-button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(16, 185, 129, 0.4);
+    }
+
+    .craft-button:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+    }
+
+    .craft-result-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .craft-result-content {
+        background: white;
+        padding: 40px;
+        border-radius: 20px;
+        text-align: center;
+        max-width: 500px;
+        animation: bounceIn 0.5s;
+    }
+
+    @keyframes bounceIn {
+        0% { transform: scale(0.3); opacity: 0; }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+
+    .result-icon-large {
+        font-size: 120px;
+        margin-bottom: 20px;
+        animation: rotate360 1s;
+    }
+
+    @keyframes rotate360 {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .result-equipment-name {
+        font-size: 28px;
+        font-weight: bold;
+        margin: 20px 0;
+        color: #333;
+    }
+
+    .result-stats-preview {
+        background: #f9fafb;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+        text-align: left;
+    }
+
+    .close-craft-result-btn {
+        padding: 15px 40px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <!-- 标题和材料显示 -->
+        <div class="craft-header">
+            <div>
+                <h1>🔮 装备合成</h1>
+                <p style="color: #6b7280; margin-top: 5px;">使用碎片合成三国神兵利器</p>
+            </div>
+            <div class="materials-display">
+                <div class="material-badge">🔮 碎片: <span id="fragments">0</span></div>
+                <div class="material-badge">💰 金币: <span id="coins">0</span></div>
+            </div>
+        </div>
+
+        <!-- 过滤器 -->
+        <div class="craft-filters">
+            <button class="filter-btn active" data-filter="all">全部</button>
+            <button class="filter-btn" data-filter="mythic">神话</button>
+            <button class="filter-btn" data-filter="legendary">传说</button>
+            <button class="filter-btn" data-filter="epic">史诗</button>
+            <button class="filter-btn" data-filter="weapon">武器</button>
+            <button class="filter-btn" data-filter="armor">防具</button>
+            <button class="filter-btn" data-filter="accessory">饰品</button>
+            <button class="filter-btn" data-filter="treasure">宝物</button>
+        </div>
+
+        <!-- 装备模板网格 -->
+        <div id="templates-grid" class="templates-grid">
+            <!-- 通过JavaScript加载 -->
+        </div>
+    </div>
+</div>
+
+<!-- 合成结果弹窗 -->
+<div id="craft-result-modal" class="craft-result-modal">
+    <div class="craft-result-content">
+        <div class="result-icon-large" id="craft-result-icon">✨</div>
+        <div class="result-equipment-name" id="craft-result-name">装备名称</div>
+        <div id="craft-result-quality" style="color: #6b7280; margin-bottom: 20px;">品质</div>
+        <div class="result-stats-preview" id="craft-result-stats"></div>
+        <div style="font-size: 20px; font-weight: bold; color: #dc2626; margin-top: 15px;">
+            战力: <span id="craft-result-power">0</span>
+        </div>
+        <button class="close-craft-result-btn" onclick="closeCraftResult()">太棒了！</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let templates = [];
+let userFragments = 0;
+let userCoins = 0;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadTemplates();
+    loadMaterials();
+    setupFilters();
+});
+
+// 加载装备模板
+async function loadTemplates() {
+    try {
+        const response = await fetch('/equipment/templates');
+        const data = await response.json();
+
+        if (data.success) {
+            templates = data.templates;
+            renderTemplates(templates);
+        }
+    } catch (error) {
+        console.error('加载装备模板失败:', error);
+        alert('加载失败');
+    }
+}
+
+// 加载材料
+async function loadMaterials() {
+    try {
+        const response = await fetch('/growth/materials');
+        const data = await response.json();
+
+        if (data.success) {
+            userFragments = data.materials['equipment_fragment:universal'] || 0;
+            document.getElementById('fragments').textContent = userFragments;
+        }
+
+        const userResponse = await fetch('/api/user/info');
+        const userData = await userResponse.json();
+        userCoins = userData.coins || 0;
+        document.getElementById('coins').textContent = userCoins.toLocaleString();
+    } catch (error) {
+        console.error('加载材料失败:', error);
+    }
+}
+
+// 渲染模板列表
+function renderTemplates(templateList) {
+    const grid = document.getElementById('templates-grid');
+    grid.innerHTML = '';
+
+    templateList.forEach(template => {
+        const card = createTemplateCard(template);
+        grid.appendChild(card);
+    });
+}
+
+// 创建模板卡片
+function createTemplateCard(template) {
+    const div = document.createElement('div');
+    div.className = `template-card ${template.quality}`;
+    div.dataset.quality = template.quality;
+    div.dataset.type = template.type;
+
+    const cost = getCraftCost(template.quality);
+    const canCraft = userFragments >= cost.fragments && userCoins >= cost.coins;
+
+    let statsHtml = '';
+    if (template.base_attack_pct > 0) {
+        statsHtml += `<div class="stat-item">攻击力: +${(template.base_attack_pct * 100).toFixed(0)}%</div>`;
+    }
+    if (template.base_defense_pct > 0) {
+        statsHtml += `<div class="stat-item">防御力: +${(template.base_defense_pct * 100).toFixed(0)}%</div>`;
+    }
+    if (template.base_hp_pct > 0) {
+        statsHtml += `<div class="stat-item">生命值: +${(template.base_hp_pct * 100).toFixed(0)}%</div>`;
+    }
+    if (template.crit_rate > 0) {
+        statsHtml += `<div class="stat-item">暴击率: +${template.crit_rate.toFixed(0)}%</div>`;
+    }
+    if (template.crit_dmg > 0) {
+        statsHtml += `<div class="stat-item">暴击伤害: +${template.crit_dmg.toFixed(0)}%</div>`;
+    }
+    if (template.speed > 0) {
+        statsHtml += `<div class="stat-item">速度: +${template.speed}</div>`;
+    }
+
+    const setHtml = template.set_name ?
+        `<div class="template-set">🎭 套装: ${template.set_name}</div>` : '';
+
+    const exclusiveHtml = template.exclusive_hero_id ?
+        `<div class="template-exclusive">
+            <div class="exclusive-title">⚡ ${template.exclusive_effect_name || '专属效果'}</div>
+            <div class="exclusive-desc">${template.exclusive_effect_desc || '需要特定武将装备'}</div>
+        </div>` : '';
+
+    const loreHtml = template.lore ?
+        `<div class="template-lore">📜 ${template.lore}</div>` : '';
+
+    div.innerHTML = `
+        <div class="template-header">
+            <div class="template-icon">${getTypeIcon(template.type)}</div>
+            <div class="template-quality quality-${template.quality}">${getQualityText(template.quality)}</div>
+        </div>
+
+        <div class="template-name">${template.name}</div>
+        <div class="template-element">${getElementIcon(template.element)} ${template.element}</div>
+
+        ${setHtml}
+        ${exclusiveHtml}
+
+        <div class="template-stats">
+            ${statsHtml}
+        </div>
+
+        ${loreHtml}
+
+        <div class="craft-cost">
+            <div>
+                碎片: <span class="${userFragments >= cost.fragments ? 'cost-sufficient' : 'cost-insufficient'}">
+                    ${cost.fragments}
+                </span>
+            </div>
+            <div>
+                金币: <span class="${userCoins >= cost.coins ? 'cost-sufficient' : 'cost-insufficient'}">
+                    ${cost.coins.toLocaleString()}
+                </span>
+            </div>
+        </div>
+
+        <button class="craft-button" onclick="craftEquipment(${template.id})" ${!canCraft ? 'disabled' : ''}>
+            ${canCraft ? '🔨 立即合成' : '❌ 材料不足'}
+        </button>
+    `;
+
+    return div;
+}
+
+// 合成装备
+async function craftEquipment(templateId) {
+    if (!confirm('确定要合成这件装备吗？')) return;
+
+    try {
+        const response = await fetch('/equipment/synthesize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ template_id: templateId })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showCraftResult(data.equipment);
+            loadMaterials();
+            loadTemplates();
+        } else {
+            alert(data.error || '合成失败');
+        }
+    } catch (error) {
+        console.error('合成失败:', error);
+        alert('合成失败，请重试');
+    }
+}
+
+// 显示合成结果
+function showCraftResult(equipment) {
+    const modal = document.getElementById('craft-result-modal');
+    document.getElementById('craft-result-icon').textContent = getTypeIcon(equipment.type);
+    document.getElementById('craft-result-name').textContent = equipment.name;
+    document.getElementById('craft-result-quality').textContent = `${getQualityText(equipment.quality)} ${getTypeText(equipment.type)}`;
+    document.getElementById('craft-result-power').textContent = equipment.power;
+
+    let statsHtml = '<h3 style="margin-bottom: 10px;">📊 装备属性</h3>';
+    if (equipment.random_stats) {
+        for (const [key, value] of Object.entries(equipment.random_stats)) {
+            const label = getStatLabel(key);
+            const displayValue = key.includes('pct') || key.includes('rate') || key.includes('dmg') ?
+                `+${value.toFixed(1)}%` : `+${value}`;
+            statsHtml += `
+                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
+                    <span>${label}</span>
+                    <span style="color: #059669; font-weight: bold;">${displayValue}</span>
+                </div>
+            `;
+        }
+    }
+
+    document.getElementById('craft-result-stats').innerHTML = statsHtml;
+    modal.style.display = 'flex';
+}
+
+// 关闭合成结果
+function closeCraftResult() {
+    document.getElementById('craft-result-modal').style.display = 'none';
+}
+
+// 设置过滤器
+function setupFilters() {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            const filter = this.dataset.filter;
+            let filtered = templates;
+
+            if (filter !== 'all') {
+                filtered = templates.filter(t =>
+                    t.quality === filter || t.type === filter
+                );
+            }
+
+            renderTemplates(filtered);
+        });
+    });
+}
+
+// 计算合成消耗
+function getCraftCost(quality) {
+    const costs = {
+        'common': { fragments: 10, coins: 10000 },
+        'rare': { fragments: 20, coins: 50000 },
+        'epic': { fragments: 50, coins: 200000 },
+        'legendary': { fragments: 100, coins: 1000000 },
+        'mythic': { fragments: 200, coins: 5000000 }
+    };
+    return costs[quality] || { fragments: 50, coins: 100000 };
+}
+
+// 辅助函数
+function getQualityText(quality) {
+    const map = {
+        'mythic': '神话',
+        'legendary': '传说',
+        'epic': '史诗',
+        'rare': '稀有',
+        'common': '普通'
+    };
+    return map[quality] || quality;
+}
+
+function getTypeText(type) {
+    const map = {
+        'weapon': '武器',
+        'armor': '防具',
+        'accessory': '饰品',
+        'treasure': '宝物'
+    };
+    return map[type] || type;
+}
+
+function getTypeIcon(type) {
+    const map = {
+        'weapon': '⚔️',
+        'armor': '🛡️',
+        'accessory': '💍',
+        'treasure': '📜'
+    };
+    return map[type] || '📦';
+}
+
+function getElementIcon(element) {
+    const map = {
+        '金': '⚡',
+        '木': '🌲',
+        '水': '💧',
+        '火': '🔥',
+        '土': '🗻',
+        '无': '⭐'
+    };
+    return map[element] || '⭐';
+}
+
+function getStatLabel(key) {
+    const map = {
+        'attack_pct': '攻击力',
+        'defense_pct': '防御力',
+        'hp_pct': '生命值',
+        'crit_rate': '暴击率',
+        'crit_dmg': '暴击伤害',
+        'speed': '速度',
+        'penetration': '穿透',
+        'lifesteal': '吸血',
+        'block_rate': '格挡',
+        'dodge_rate': '闪避'
+    };
+    return map[key] || key;
+}
+</script>
+{% endblock %}

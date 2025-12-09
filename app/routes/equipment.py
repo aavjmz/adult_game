@@ -658,3 +658,37 @@ def get_equipment_sets():
         'count': len(set_list),
         'sets': set_list
     })
+
+
+# ==================== 前端页面路由 ====================
+
+@bp.route('/', methods=['GET'])
+@login_required
+def index():
+    """装备仓库主页"""
+    from flask import render_template
+    return render_template('equipment.html')
+
+
+@bp.route('/enhance', methods=['GET'])
+@login_required
+def enhance_page():
+    """装备强化页面"""
+    from flask import render_template
+    return render_template('equipment_enhance.html')
+
+
+@bp.route('/craft', methods=['GET'])
+@login_required
+def craft_page():
+    """装备合成页面"""
+    from flask import render_template
+    return render_template('equipment_craft.html')
+
+
+@bp.route('/sets-view', methods=['GET'])
+@login_required
+def sets_page():
+    """套装图鉴页面"""
+    from flask import render_template
+    return render_template('equipment_sets.html')
