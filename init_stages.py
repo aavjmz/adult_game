@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 初始化前30个主线关卡
 
@@ -8,9 +9,16 @@
 - 第3章: 群雄割据 (21-30关)
 """
 
+import sys
+import io
 import json
 from app import create_app, db
 from app.models import Stage
+
+# 修复Windows命令行编码问题
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 
 def init_stages():
@@ -18,33 +26,33 @@ def init_stages():
     app = create_app()
 
     with app.app_context():
-        print("🎮 开始初始化主线关卡...")
+        print("[初始化] 开始初始化主线关卡...")
 
         # 检查是否已经初始化过
         existing_count = Stage.query.filter_by(stage_type='main').count()
         if existing_count > 0:
-            print(f"⚠️  已存在 {existing_count} 个主线关卡")
+            print(f"[注意] 已存在 {existing_count} 个主线关卡")
             confirm = input("是否继续添加关卡? (yes/no): ")
             if confirm.lower() != 'yes':
-                print("❌ 已取消初始化")
+                print("[取消] 已取消初始化")
                 return
 
         # 创建关卡
         stages_created = 0
 
         # 第1章: 黄巾起义 (1-10关)
-        print("\n📖 第1章: 黄巾起义")
+        print("\n[第1章] 黄巾起义")
         stages_created += create_chapter_1()
 
         # 第2章: 董卓之乱 (11-20关)
-        print("\n📖 第2章: 董卓之乱")
+        print("\n[第2章] 董卓之乱")
         stages_created += create_chapter_2()
 
         # 第3章: 群雄割据 (21-30关)
-        print("\n📖 第3章: 群雄割据")
+        print("\n[第3章] 群雄割据")
         stages_created += create_chapter_3()
 
-        print(f"\n✅ 成功创建 {stages_created} 个主线关卡!")
+        print(f"\n[成功] 创建了 {stages_created} 个主线关卡!")
 
 
 def create_chapter_1():
@@ -917,7 +925,7 @@ def create_stages(chapter, stages_data):
         ).first()
 
         if existing_stage:
-            print(f"  ⚠️  关卡 {stage_data['stage_number']} 已存在，跳过")
+            print(f"  [跳过] 关卡 {stage_data['stage_number']} 已存在")
             continue
 
         # 创建新关卡
@@ -945,7 +953,7 @@ def create_stages(chapter, stages_data):
 
         db.session.add(stage)
         count += 1
-        print(f"  ✅ 创建关卡 {stage_data['stage_number']}: {stage_data['name']}")
+        print(f"  [OK] 创建关卡 {stage_data['stage_number']}: {stage_data['name']}")
 
     db.session.commit()
     return count
