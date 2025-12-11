@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+
+{% block title %}{{ stage.name }} - PVE冒险{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 关卡详情页样式 */
+.stage-detail-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.stage-detail-header h1 {
+    margin: 0 0 10px 0;
+    font-size: 32px;
+}
+
+.stage-detail-header .stage-number {
+    opacity: 0.8;
+    font-size: 14px;
+}
+
+.stage-detail-header .stage-description {
+    margin-top: 15px;
+    line-height: 1.6;
+    opacity: 0.95;
+}
+
+.back-button {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px 16px;
+    border-radius: 20px;
+    text-decoration: none;
+    color: white;
+    margin-bottom: 15px;
+    transition: all 0.3s;
+}
+
+.back-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateX(-3px);
+}
+
+.stage-info-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.info-card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.info-card .icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.info-card .label {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.info-card .value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #667eea;
+}
+
+.section-card {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    margin-bottom: 25px;
+}
+
+.section-card h2 {
+    margin: 0 0 20px 0;
+    color: #333;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 10px;
+}
+
+.star-conditions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.star-condition {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border-left: 4px solid #ffd700;
+}
+
+.star-condition .stars {
+    font-size: 24px;
+    margin-right: 15px;
+    min-width: 80px;
+}
+
+.star-condition .condition-text {
+    flex: 1;
+    color: #333;
+}
+
+.team-selection {
+    margin-top: 20px;
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.team-card {
+    background: white;
+    border: 3px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.team-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.team-card.selected {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    transform: scale(1.05);
+}
+
+.team-card.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #28a745;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.team-card .card-rarity {
+    margin-bottom: 8px;
+}
+
+.team-card .card-name {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.team-card .card-stats {
+    font-size: 12px;
+    color: #666;
+}
+
+.selected-team-preview {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 20px 0;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    min-height: 80px;
+}
+
+.selected-slot {
+    width: 60px;
+    height: 80px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #ccc;
+}
+
+.selected-slot.filled {
+    border-color: #28a745;
+    border-style: solid;
+    background: white;
+    font-size: 12px;
+    padding: 5px;
+    text-align: center;
+}
+
+.battle-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.battle-buttons .btn {
+    padding: 15px 40px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.sweep-section {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 15px;
+}
+
+.sweep-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.sweep-controls input {
+    width: 100px;
+    padding: 10px;
+    border: 2px solid #ffc107;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 16px;
+}
+
+/* 战斗结果弹窗 */
+.battle-result-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.battle-result-modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.result-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.result-header .result-icon {
+    font-size: 80px;
+    margin-bottom: 15px;
+}
+
+.result-header .result-title {
+    font-size: 32px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.result-stars {
+    text-align: center;
+    font-size: 40px;
+    margin: 20px 0;
+}
+
+.result-rewards {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.result-rewards h3 {
+    margin: 0 0 15px 0;
+    color: #333;
+}
+
+.reward-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.reward-item:last-child {
+    border-bottom: none;
+}
+
+.close-modal-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- 返回按钮 -->
+    <a href="{{ url_for('pve_frontend.index') }}" class="back-button">← 返回关卡列表</a>
+
+    <!-- 关卡详情头部 -->
+    <div class="stage-detail-header">
+        <div class="stage-number">第{{ stage.chapter }}章 - 关卡{{ stage.stage_number }}</div>
+        <h1>{{ stage.name }}</h1>
+        <div class="stage-description">{{ stage.description }}</div>
+    </div>
+
+    <!-- 关卡信息卡片 -->
+    <div class="stage-info-cards">
+        <div class="info-card">
+            <div class="icon">⚡</div>
+            <div class="label">消耗体力</div>
+            <div class="value">{{ stage.stamina_cost }}</div>
+        </div>
+
+        <div class="info-card">
+            <div class="icon">💪</div>
+            <div class="label">推荐战力</div>
+            <div class="value">{{ stage.recommended_power }}</div>
+        </div>
+
+        <div class="info-card">
+            <div class="icon">⭐</div>
+            <div class="label">难度</div>
+            <div class="value">
+                {{ '★★★' if stage.difficulty == 'boss' else '★★' if stage.difficulty == 'hard' else '★' }}
+            </div>
+        </div>
+
+        <div class="info-card">
+            <div class="icon">🎯</div>
+            <div class="label">当前体力</div>
+            <div class="value" style="color: #28a745;">{{ stamina_info.current }}</div>
+        </div>
+    </div>
+
+    <!-- 星级条件 -->
+    <div class="section-card">
+        <h2>🌟 星级目标</h2>
+        <div class="star-conditions">
+            <div class="star-condition">
+                <div class="stars">⭐</div>
+                <div class="condition-text">{{ stage.star_1_condition }}</div>
+            </div>
+            <div class="star-condition">
+                <div class="stars">⭐⭐</div>
+                <div class="condition-text">{{ stage.star_2_condition }}</div>
+            </div>
+            <div class="star-condition">
+                <div class="stars">⭐⭐⭐</div>
+                <div class="condition-text">{{ stage.star_3_condition }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编队选择 -->
+    <div class="section-card">
+        <h2>🎴 选择出战队伍（最多3张）</h2>
+
+        <!-- 已选队伍预览 -->
+        <div class="selected-team-preview" id="teamPreview">
+            <div class="selected-slot" id="slot1">空</div>
+            <div class="selected-slot" id="slot2">空</div>
+            <div class="selected-slot" id="slot3">空</div>
+        </div>
+
+        <!-- 卡牌选择网格 -->
+        <div class="team-grid" id="teamGrid">
+            {% for user_card in user_cards %}
+            {% set card = user_card.card %}
+            <div class="team-card" onclick="toggleCard({{ user_card.id }}, '{{ card.name }}', '{{ card.rarity }}')"
+                 data-card-id="{{ user_card.id }}">
+                <span class="card-rarity rarity-{{ card.rarity }}">{{ card.rarity }}</span>
+                <div class="card-name">{{ card.name }}</div>
+                <div class="card-stats">
+                    ⚔️ {{ card.attack }} | 🛡️ {{ card.defense }} | ❤️ {{ card.hp }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 战斗按钮 -->
+    <div class="battle-buttons">
+        <button class="btn btn-success" onclick="startBattle()" id="battleBtn">
+            ⚔️ 开始战斗
+        </button>
+        {% if user_cards %}
+        <button class="btn btn-secondary" onclick="autoSelect()">
+            🤖 自动选择
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- 扫荡区域（已通关才显示） -->
+    <div class="sweep-section" id="sweepSection" style="display: none;">
+        <h3 style="margin: 0 0 10px 0; text-align: center;">⚡ 快速扫荡</h3>
+        <p style="text-align: center; margin: 0 0 15px 0; color: #856404;">
+            已通关关卡可以快速扫荡，直接获得奖励
+        </p>
+        <div class="sweep-controls">
+            <label for="sweepTimes">扫荡次数:</label>
+            <input type="number" id="sweepTimes" min="1" max="10" value="1">
+            <button class="btn btn-warning" onclick="sweepStage()">
+                💨 开始扫荡
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 战斗结果弹窗 -->
+<div class="battle-result-modal" id="resultModal">
+    <div class="modal-content">
+        <div class="result-header">
+            <div class="result-icon" id="resultIcon">🎉</div>
+            <div class="result-title" id="resultTitle">战斗胜利！</div>
+        </div>
+
+        <div class="result-stars" id="resultStars">
+            ⭐⭐⭐
+        </div>
+
+        <div class="result-rewards" id="resultRewards">
+            <h3>🎁 战斗奖励</h3>
+            <div id="rewardsContent"></div>
+        </div>
+
+        <button class="btn btn-primary close-modal-btn" onclick="closeResultModal()">
+            确定
+        </button>
+    </div>
+</div>
+
+<script>
+const stageId = {{ stage.id }};
+let selectedCards = [];
+
+// 切换卡牌选择
+function toggleCard(cardId, cardName, rarity) {
+    const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+
+    if (selectedCards.includes(cardId)) {
+        // 取消选择
+        selectedCards = selectedCards.filter(id => id !== cardId);
+        cardElement.classList.remove('selected');
+    } else {
+        // 选择卡牌
+        if (selectedCards.length >= 3) {
+            alert('最多只能选择3张卡牌');
+            return;
+        }
+        selectedCards.push(cardId);
+        cardElement.classList.add('selected');
+    }
+
+    updateTeamPreview();
+}
+
+// 更新队伍预览
+function updateTeamPreview() {
+    for (let i = 1; i <= 3; i++) {
+        const slot = document.getElementById(`slot${i}`);
+        if (selectedCards[i - 1]) {
+            const cardElement = document.querySelector(`[data-card-id="${selectedCards[i - 1]}"]`);
+            const cardName = cardElement.querySelector('.card-name').textContent;
+            const rarity = cardElement.querySelector('.card-rarity').textContent;
+
+            slot.textContent = cardName;
+            slot.classList.add('filled');
+            slot.style.background = getRarityColor(rarity);
+        } else {
+            slot.textContent = '空';
+            slot.classList.remove('filled');
+            slot.style.background = '';
+        }
+    }
+}
+
+// 获取稀有度颜色
+function getRarityColor(rarity) {
+    const colors = {
+        'N': '#e0e0e0',
+        'R': '#c3d5f0',
+        'SR': '#e8d5f0',
+        'SSR': '#ffe8b3',
+        'UR': '#ffc0d9'
+    };
+    return colors[rarity] || '#f0f0f0';
+}
+
+// 自动选择（选择战力最高的3张）
+function autoSelect() {
+    selectedCards = [];
+    document.querySelectorAll('.team-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+
+    const cards = Array.from(document.querySelectorAll('.team-card'));
+    const topCards = cards.slice(0, Math.min(3, cards.length));
+
+    topCards.forEach(card => {
+        const cardId = parseInt(card.dataset.cardId);
+        selectedCards.push(cardId);
+        card.classList.add('selected');
+    });
+
+    updateTeamPreview();
+}
+
+// 开始战斗
+async function startBattle() {
+    if (selectedCards.length === 0) {
+        alert('请至少选择一张卡牌');
+        return;
+    }
+
+    const battleBtn = document.getElementById('battleBtn');
+    battleBtn.disabled = true;
+    battleBtn.textContent = '战斗中...';
+
+    try {
+        const response = await fetch('/api/pve/battle/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                stage_id: stageId,
+                team: selectedCards
+            })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            alert(data.message || '战斗失败');
+            return;
+        }
+
+        // 显示战斗结果
+        showBattleResult(data);
+
+    } catch (error) {
+        console.error('战斗错误:', error);
+        alert('发生错误，请重试');
+    } finally {
+        battleBtn.disabled = false;
+        battleBtn.textContent = '⚔️ 开始战斗';
+    }
+}
+
+// 显示战斗结果
+function showBattleResult(result) {
+    const modal = document.getElementById('resultModal');
+    const icon = document.getElementById('resultIcon');
+    const title = document.getElementById('resultTitle');
+    const stars = document.getElementById('resultStars');
+    const rewards = document.getElementById('rewardsContent');
+
+    // 设置结果图标和标题
+    if (result.result === 'win') {
+        icon.textContent = '🎉';
+        title.textContent = '战斗胜利！';
+        title.style.color = '#28a745';
+
+        // 显示星级
+        const starCount = result.stars || 0;
+        stars.innerHTML = '⭐'.repeat(starCount) + '☆'.repeat(3 - starCount);
+    } else {
+        icon.textContent = '😢';
+        title.textContent = '战斗失败';
+        title.style.color = '#dc3545';
+        stars.innerHTML = '';
+    }
+
+    // 显示奖励
+    if (result.result === 'win') {
+        rewards.innerHTML = `
+            <div class="reward-item">
+                <span>💰 金币</span>
+                <span style="color: #ffc107; font-weight: bold;">+${result.total_coins || 0}</span>
+            </div>
+            <div class="reward-item">
+                <span>⭐ 经验</span>
+                <span style="color: #17a2b8; font-weight: bold;">+${result.total_exp || 0}</span>
+            </div>
+        `;
+    } else {
+        rewards.innerHTML = '<p style="text-align: center; color: #666;">未获得奖励</p>';
+    }
+
+    modal.classList.add('show');
+}
+
+// 关闭结果弹窗
+function closeResultModal() {
+    const modal = document.getElementById('resultModal');
+    modal.classList.remove('show');
+    // 重新加载页面刷新体力
+    location.reload();
+}
+
+// 扫荡关卡
+async function sweepStage() {
+    const times = parseInt(document.getElementById('sweepTimes').value);
+
+    if (times < 1 || times > 10) {
+        alert('扫荡次数必须在1-10之间');
+        return;
+    }
+
+    if (!confirm(`确定要扫荡${times}次吗？将消耗${{{ stage.stamina_cost }} * times}点体力`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/pve/battle/sweep', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                stage_id: stageId,
+                times: times
+            })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            alert(data.message || '扫荡失败');
+            return;
+        }
+
+        alert(`扫荡成功！\n获得金币: ${data.total_rewards.coins}\n获得经验: ${data.total_rewards.exp}`);
+        location.reload();
+
+    } catch (error) {
+        console.error('扫荡错误:', error);
+        alert('发生错误，请重试');
+    }
+}
+
+// 页面加载时检查是否已通关（显示扫荡区域）
+document.addEventListener('DOMContentLoaded', function() {
+    // TODO: 从API获取通关状态
+    // 这里可以通过AJAX调用来检查
+});
+</script>
+{% endblock %}

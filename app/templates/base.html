@@ -37,7 +37,8 @@
                     <li><a href="{{ url_for('cards.collection') }}">卡牌图鉴</a></li>
                     <li><a href="{{ url_for('equipment.index') }}">装备</a></li>
                     <li><a href="{{ url_for('gacha.index') }}">抽卡</a></li>
-                    <li><a href="{{ url_for('battle.index') }}">战斗</a></li>
+                    <li><a href="{{ url_for('pve_frontend.index') }}">PVE冒险</a></li>
+                    <li><a href="{{ url_for('battle.index') }}">PVP战斗</a></li>
                     <li><a href="{{ url_for('auth.logout') }}">退出</a></li>
                 {% else %}
                     <li><a href="{{ url_for('auth.login') }}">登录</a></li>

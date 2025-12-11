@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block title %}PVE冒险 - 成人卡牌游戏{% endblock %}
+
+{% block extra_css %}
+<style>
+/* PVE页面自定义样式 */
+.pve-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.pve-header h1 {
+    margin: 0 0 20px 0;
+    font-size: 36px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.stamina-bar {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    padding: 15px 25px;
+    display: inline-block;
+    margin-top: 10px;
+}
+
+.stamina-bar .stamina-value {
+    font-size: 24px;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.stamina-bar .stamina-label {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.stamina-bar .stamina-progress {
+    background: rgba(255, 255, 255, 0.3);
+    height: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+.stamina-bar .stamina-progress-fill {
+    background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.chapter-tabs {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+}
+
+.chapter-tab {
+    background: white;
+    padding: 15px 30px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+    min-width: 150px;
+    text-align: center;
+}
+
+.chapter-tab:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.chapter-tab.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: bold;
+}
+
+.chapter-tab .chapter-name {
+    font-size: 18px;
+    margin-bottom: 5px;
+}
+
+.chapter-tab .chapter-progress {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.stages-container {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    min-height: 400px;
+}
+
+.stages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.stage-card {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    border: 2px solid transparent;
+}
+
+.stage-card:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 12px 30px rgba(102, 126, 234, 0.3);
+    border-color: #667eea;
+}
+
+.stage-card.cleared {
+    background: linear-gradient(135deg, #d4f1f4 0%, #b3e5fc 100%);
+}
+
+.stage-card.boss {
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+}
+
+.stage-card .stage-number {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.stage-card .stage-name {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.stage-card .stage-description {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 15px;
+    line-height: 1.5;
+    min-height: 60px;
+}
+
+.stage-card .stage-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.stage-card .stage-difficulty {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: bold;
+    background: #ffc107;
+    color: #000;
+}
+
+.stage-card .stage-difficulty.hard {
+    background: #ff5722;
+    color: white;
+}
+
+.stage-card .stage-difficulty.boss {
+    background: #f44336;
+    color: white;
+}
+
+.stage-card .stage-stamina {
+    font-size: 14px;
+    color: #667eea;
+    font-weight: bold;
+}
+
+.stage-card .stage-stars {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.stage-card .star {
+    color: #ccc;
+    font-size: 20px;
+    margin: 0 2px;
+}
+
+.stage-card .star.earned {
+    color: #ffd700;
+}
+
+.stage-card .stage-status {
+    margin-top: 15px;
+    text-align: center;
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.stage-card .stage-status.locked {
+    background: #e0e0e0;
+    color: #666;
+}
+
+.stage-card .stage-status.available {
+    background: #28a745;
+    color: white;
+}
+
+.stage-card .stage-status.cleared {
+    background: #17a2b8;
+    color: white;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px;
+    color: #999;
+}
+
+.empty-state .icon {
+    font-size: 60px;
+    margin-bottom: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- PVE头部 -->
+    <div class="pve-header">
+        <h1>⚔️ PVE冒险</h1>
+        <p style="margin: 0 0 15px 0;">挑战关卡，获取丰厚奖励！</p>
+
+        <!-- 体力条 -->
+        <div class="stamina-bar">
+            <div>
+                <span class="stamina-value">⚡ {{ stamina_info.current }}/{{ stamina_info.max }}</span>
+                <span class="stamina-label">体力</span>
+            </div>
+            <div class="stamina-progress">
+                <div class="stamina-progress-fill"
+                     style="width: {{ (stamina_info.current / stamina_info.max * 100) }}%;"></div>
+            </div>
+            <div style="font-size: 12px; margin-top: 8px; opacity: 0.9;">
+                下次恢复: <span id="nextRecovery">计算中...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 章节选择 -->
+    <div class="chapter-tabs" id="chapterTabs">
+        {% for chapter in chapters %}
+        <div class="chapter-tab {% if loop.first %}active{% endif %}"
+             onclick="switchChapter({{ chapter }})"
+             data-chapter="{{ chapter }}">
+            <div class="chapter-name">第{{ chapter }}章</div>
+            <div class="chapter-progress" id="progress-{{ chapter }}">
+                <span class="cleared-count">-</span>/<span class="total-count">-</span> 关卡
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 关卡列表容器 -->
+    <div class="stages-container">
+        <h2 id="chapterTitle">第1章</h2>
+        <div class="stages-grid" id="stagesGrid">
+            <div class="loading">
+                <div style="font-size: 30px;">⏳</div>
+                <div>加载关卡中...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentChapter = 1;
+let stagesData = {};
+
+// 页面加载时
+document.addEventListener('DOMContentLoaded', function() {
+    loadChapter(1);
+    updateStaminaTimer();
+    setInterval(updateStaminaTimer, 60000); // 每分钟更新一次
+});
+
+// 切换章节
+function switchChapter(chapter) {
+    currentChapter = chapter;
+
+    // 更新标签页样式
+    document.querySelectorAll('.chapter-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelector(`[data-chapter="${chapter}"]`).classList.add('active');
+
+    // 加载关卡
+    loadChapter(chapter);
+}
+
+// 加载章节关卡
+async function loadChapter(chapter) {
+    const grid = document.getElementById('stagesGrid');
+    const title = document.getElementById('chapterTitle');
+
+    // 显示加载状态
+    grid.innerHTML = '<div class="loading"><div style="font-size: 30px;">⏳</div><div>加载关卡中...</div></div>';
+
+    // 根据章节显示标题
+    const chapterNames = {
+        1: '黄巾起义',
+        2: '董卓之乱',
+        3: '群雄割据'
+    };
+    title.textContent = `第${chapter}章：${chapterNames[chapter] || '未知章节'}`;
+
+    try {
+        const response = await fetch(`/api/pve/stages?type=main&chapter=${chapter}`);
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.message || '加载失败');
+        }
+
+        stagesData[chapter] = data.stages;
+        renderStages(data.stages);
+        updateChapterProgress(chapter, data.stages);
+
+    } catch (error) {
+        console.error('加载关卡失败:', error);
+        grid.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">❌</div>
+                <div>加载失败，请刷新页面重试</div>
+            </div>
+        `;
+    }
+}
+
+// 渲染关卡列表
+function renderStages(stages) {
+    const grid = document.getElementById('stagesGrid');
+
+    if (!stages || stages.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <div>暂无关卡</div>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = stages.map(stage => {
+        const stars = stage.user_progress.stars || 0;
+        const isCleared = stage.user_progress.is_cleared;
+        const isBoss = stage.difficulty === 'boss';
+
+        return `
+            <div class="stage-card ${isCleared ? 'cleared' : ''} ${isBoss ? 'boss' : ''}"
+                 onclick="goToStage(${stage.id})">
+                <div class="stage-number">${stage.stage_number}</div>
+                <div class="stage-name">${stage.name}</div>
+                <div class="stage-description">${stage.description}</div>
+
+                <div class="stage-info">
+                    <div class="stage-difficulty ${stage.difficulty}">
+                        ${stage.difficulty === 'boss' ? 'BOSS' : stage.difficulty === 'hard' ? '困难' : '普通'}
+                    </div>
+                    <div class="stage-stamina">⚡ ${stage.stamina_cost}</div>
+                </div>
+
+                <div class="stage-stars">
+                    ${generateStars(stars)}
+                </div>
+
+                <div class="stage-status ${isCleared ? 'cleared' : 'available'}">
+                    ${isCleared ? '✓ 已通关' : '可挑战'}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 生成星星显示
+function generateStars(earned) {
+    let html = '';
+    for (let i = 1; i <= 3; i++) {
+        html += `<span class="star ${i <= earned ? 'earned' : ''}">★</span>`;
+    }
+    return html;
+}
+
+// 更新章节进度
+function updateChapterProgress(chapter, stages) {
+    const clearedCount = stages.filter(s => s.user_progress.is_cleared).length;
+    const totalCount = stages.length;
+
+    const progressElem = document.getElementById(`progress-${chapter}`);
+    if (progressElem) {
+        progressElem.querySelector('.cleared-count').textContent = clearedCount;
+        progressElem.querySelector('.total-count').textContent = totalCount;
+    }
+}
+
+// 前往关卡详情页面
+function goToStage(stageId) {
+    window.location.href = `/pve/stage/${stageId}`;
+}
+
+// 更新体力恢复倒计时
+function updateStaminaTimer() {
+    const nextRecoveryElem = document.getElementById('nextRecovery');
+    if (!nextRecoveryElem) return;
+
+    // 简化版：每6分钟恢复1点
+    const now = new Date();
+    const seconds = now.getSeconds();
+    const minutes = now.getMinutes() % 6;
+
+    const remainingMinutes = 5 - minutes;
+    const remainingSeconds = 60 - seconds;
+
+    nextRecoveryElem.textContent = `${remainingMinutes}分${remainingSeconds}秒`;
+}
+</script>
+{% endblock %}
