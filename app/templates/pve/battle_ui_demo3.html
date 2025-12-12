@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方案3：炉石风格高级交互UI - 策略增强版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            user-select: none;
+        }
+
+        .battle-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* 回合指示器 */
+        .turn-banner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px 60px;
+            border-radius: 20px;
+            font-size: 36px;
+            font-weight: bold;
+            z-index: 2000;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+
+        .turn-banner.show {
+            animation: bannerPop 1.5s ease;
+        }
+
+        @keyframes bannerPop {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+        }
+
+        /* 状态栏 */
+        .status-bar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 14px;
+            z-index: 100;
+        }
+
+        .turn-info {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffd43b;
+            margin-bottom: 5px;
+        }
+
+        .energy-bar {
+            margin-top: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+        }
+
+        .energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* 敌方区域 */
+        .enemy-zone {
+            flex: 0 0 35%;
+            background: linear-gradient(180deg, rgba(255, 107, 107, 0.2) 0%, transparent 100%);
+            border-bottom: 2px solid rgba(255, 107, 107, 0.5);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .zone-label {
+            text-align: center;
+            font-size: 14px;
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+
+        .cards-row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex: 1;
+            align-items: center;
+        }
+
+        /* 战斗卡牌 */
+        .battle-card {
+            width: 140px;
+            height: 200px;
+            background: linear-gradient(135deg, #2d3561 0%, #1f2347 100%);
+            border: 3px solid #4a5578;
+            border-radius: 15px;
+            padding: 10px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .battle-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .battle-card.can-attack {
+            border-color: #28a745;
+            box-shadow: 0 0 30px rgba(40, 167, 69, 0.6);
+            animation: glowPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(40, 167, 69, 0.6); }
+            50% { box-shadow: 0 0 40px rgba(40, 167, 69, 0.9); }
+        }
+
+        .battle-card.selected {
+            transform: translateY(-15px) scale(1.05);
+            border-color: #ffd43b;
+            box-shadow: 0 15px 40px rgba(255, 212, 59, 0.8);
+        }
+
+        .battle-card.targetable {
+            border-color: #ffd43b;
+            box-shadow: 0 0 25px rgba(255, 212, 59, 0.7);
+            cursor: crosshair;
+        }
+
+        .battle-card.targetable:hover {
+            border-color: #ff6b6b;
+            box-shadow: 0 0 30px rgba(255, 107, 107, 0.8);
+        }
+
+        .battle-card.dead {
+            opacity: 0.3;
+            filter: grayscale(100%);
+            cursor: not-allowed;
+            transform: scale(0.9);
+        }
+
+        .battle-card.attacking {
+            animation: attackMove 0.5s ease;
+        }
+
+        @keyframes attackMove {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .battle-card.taking-damage {
+            animation: shakeCard 0.4s ease;
+        }
+
+        @keyframes shakeCard {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .card-portrait {
+            font-size: 48px;
+            text-align: center;
+            margin: 5px 0;
+        }
+
+        .card-name {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .hp-bar {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            height: 18px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .hp-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #51cf66 0%, #37b24d 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hp-bar-fill.medium {
+            background: linear-gradient(90deg, #ffd43b 0%, #fab005 100%);
+        }
+
+        .hp-bar-fill.low {
+            background: linear-gradient(90deg, #ff6b6b 0%, #fa5252 100%);
+        }
+
+        .hp-text {
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .card-stats {
+            display: flex;
+            justify-content: space-around;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .attack-ready {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #28a745;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            animation: rotate 2s linear infinite;
+            box-shadow: 0 0 15px rgba(40, 167, 69, 0.8);
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* 状态效果标识 */
+        .status-effects {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            right: 5px;
+            display: flex;
+            gap: 3px;
+            flex-wrap: wrap;
+            font-size: 16px;
+        }
+
+        .status-icon {
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .status-count {
+            position: absolute;
+            bottom: -3px;
+            right: -3px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+            font-size: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 技能按钮 */
+        .skill-btn {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 2px solid #ffd43b;
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 10px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .skill-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(255, 212, 59, 0.8);
+        }
+
+        .skill-btn.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* 连击指示器 */
+        .combo-indicator {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: linear-gradient(135deg, #fa5252 0%, #c92a2a 100%);
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 10px;
+            font-weight: bold;
+            animation: comboPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes comboPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* 战斗场地 */
+        .battle-field {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .battle-log {
+            width: 60%;
+            max-width: 600px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 13px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 3px 8px;
+            border-radius: 5px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .log-entry.attack {
+            color: #ffd43b;
+        }
+
+        .log-entry.skill {
+            color: #a78bfa;
+        }
+
+        .log-entry.critical {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        /* 玩家区域 */
+        .player-zone {
+            flex: 0 0 35%;
+            background: linear-gradient(0deg, rgba(102, 126, 234, 0.2) 0%, transparent 100%);
+            border-top: 2px solid rgba(102, 126, 234, 0.5);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-bar {
+            text-align: center;
+            margin-top: 15px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .end-turn-btn {
+            padding: 12px 35px;
+            background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(55, 178, 77, 0.4);
+        }
+
+        .end-turn-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(55, 178, 77, 0.6);
+        }
+
+        .end-turn-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .end-turn-btn.pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .action-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 20px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .action-btn.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* 伤害数字 */
+        .damage-number {
+            position: fixed;
+            font-size: 32px;
+            font-weight: bold;
+            color: #ff6b6b;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 3000;
+            animation: damageRise 1.2s ease-out forwards;
+        }
+
+        .damage-number.critical {
+            font-size: 48px;
+            color: #ffd43b;
+            text-shadow: 0 0 10px rgba(255, 212, 59, 0.8);
+        }
+
+        .damage-number.heal {
+            color: #51cf66;
+        }
+
+        @keyframes damageRise {
+            0% {
+                transform: translateY(0) scale(0.5) rotate(-10deg);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-40px) scale(1.5) rotate(5deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) scale(1) rotate(0deg);
+                opacity: 0;
+            }
+        }
+
+        /* 说明提示 */
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 20px;
+            border-radius: 12px;
+            font-size: 11px;
+            max-width: 320px;
+            z-index: 100;
+            border: 2px solid rgba(255, 212, 59, 0.3);
+        }
+
+        .instructions h4 {
+            margin-bottom: 8px;
+            color: #ffd43b;
+            font-size: 13px;
+        }
+
+        .instructions li {
+            margin-bottom: 4px;
+            color: #ccc;
+        }
+
+        .reset-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #868e96 0%, #495057 100%);
+            border: none;
+            border-radius: 20px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .reset-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* 威胁度指示器 */
+        .threat-indicator {
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 107, 107, 0.9);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="battle-container">
+        <!-- 回合横幅 -->
+        <div class="turn-banner" id="turnBanner">我的回合</div>
+
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <div class="turn-info" id="turnInfo">我的回合</div>
+            <div>回合: <span id="turnCount">1</span></div>
+            <div class="energy-bar">
+                <div class="energy-fill" id="energyFill" style="width: 100%;">
+                    <span id="energyText">⚡ 3/3</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 敌方区域 -->
+        <div class="enemy-zone">
+            <div class="zone-label" style="color: #ff6b6b;">🔥 敌方阵营</div>
+            <div class="cards-row" id="enemyCards"></div>
+        </div>
+
+        <!-- 战斗场地 -->
+        <div class="battle-field">
+            <div class="battle-log" id="battleLog">
+                <div class="log-entry">⚔️ 战斗开始！点击我方卡牌或技能按钮发起行动</div>
+            </div>
+        </div>
+
+        <!-- 玩家区域 -->
+        <div class="player-zone">
+            <div class="cards-row" id="playerCards"></div>
+            <div class="control-bar">
+                <button class="action-btn" id="defendBtn" onclick="enterDefendMode()">
+                    🛡️ 防御姿态 (1⚡)
+                </button>
+                <button class="end-turn-btn pulse" id="endTurnBtn" onclick="endTurn()">
+                    结束回合 ▶️
+                </button>
+                <button class="reset-btn" onclick="resetBattle()">
+                    🔄 重置
+                </button>
+            </div>
+        </div>
+
+        <!-- 操作说明 -->
+        <div class="instructions">
+            <h4>💡 操作说明</h4>
+            <ul style="list-style: none; padding-left: 0;">
+                <li>✨ <strong>普通攻击</strong>：点击我方卡牌→点击敌方目标</li>
+                <li>⚡ <strong>技能系统</strong>：点击卡牌上的"技能"按钮使用</li>
+                <li>🔗 <strong>连击</strong>：连续攻击同一目标+50%伤害</li>
+                <li>💥 <strong>暴击</strong>：20%几率造成2倍伤害</li>
+                <li>🛡️ <strong>防御姿态</strong>：消耗1能量，全员获得护盾</li>
+                <li>⚡ <strong>能量</strong>：每回合恢复3点，用于技能</li>
+                <li>🎯 <strong>威胁度</strong>：红色标记显示敌方危险程度</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const enemyData = [
+            {
+                id: 1, name: '张角', emoji: '🧙',
+                hp: 2200, maxHp: 2200, attack: 250, defense: 180,
+                hasAttacked: false, effects: [],
+                skill: {name: '太平术', cost: 2, desc: '恢复所有友军200HP'}
+            },
+            {
+                id: 2, name: '黄巾贼兵', emoji: '⚔️',
+                hp: 600, maxHp: 600, attack: 60, defense: 40,
+                hasAttacked: false, effects: []
+            },
+            {
+                id: 3, name: '黄巾弓手', emoji: '🏹',
+                hp: 550, maxHp: 550, attack: 65, defense: 35,
+                hasAttacked: false, effects: [],
+                skill: {name: '连射', cost: 1, desc: '对随机敌人造成2次伤害'}
+            },
+            {
+                id: 4, name: '黄巾法师', emoji: '🔮',
+                hp: 500, maxHp: 500, attack: 70, defense: 30,
+                hasAttacked: false, effects: []
+            },
+            {
+                id: 5, name: '黄巾将领', emoji: '🛡️',
+                hp: 1000, maxHp: 1000, attack: 100, defense: 80,
+                hasAttacked: false, effects: [],
+                skill: {name: '怒吼', cost: 1, desc: '降低随机敌人30%攻击力'}
+            },
+        ];
+
+        const playerData = [
+            {
+                id: 1, name: '关羽', emoji: '🐉',
+                hp: 5200, maxHp: 5200, attack: 530, defense: 400,
+                hasAttacked: false, effects: [],
+                skill: {name: '武圣', cost: 2, desc: '必定暴击+额外50%伤害'}
+            },
+            {
+                id: 2, name: '张飞', emoji: '🦁',
+                hp: 5300, maxHp: 5300, attack: 540, defense: 410,
+                hasAttacked: false, effects: [],
+                skill: {name: '咆哮', cost: 1, desc: '眩晕目标1回合'}
+            },
+            {
+                id: 3, name: '赵云', emoji: '🐯',
+                hp: 5100, maxHp: 5100, attack: 525, defense: 395,
+                hasAttacked: false, effects: [],
+                skill: {name: '龙胆', cost: 2, desc: '攻击并获得护盾'}
+            },
+        ];
+
+        let currentTurn = 1;
+        let isPlayerTurn = true;
+        let selectedAttacker = null;
+        let lastTarget = null;  // 用于连击判定
+        let playerEnergy = 3;
+        const MAX_ENERGY = 3;
+
+        function renderCards() {
+            renderEnemyCards();
+            renderPlayerCards();
+            updateAttackableStatus();
+            updateEnergyDisplay();
+        }
+
+        function renderEnemyCards() {
+            const container = document.getElementById('enemyCards');
+            container.innerHTML = enemyData.map(card => createCardHTML(card, 'enemy')).join('');
+
+            enemyData.forEach(card => {
+                const element = document.querySelector(`[data-id="${card.id}"][data-type="enemy"]`);
+                if (element) {
+                    element.onclick = () => onCardClick(card, 'enemy');
+                    // 添加技能按钮事件
+                    const skillBtn = element.querySelector('.skill-btn');
+                    if (skillBtn) {
+                        skillBtn.onclick = (e) => {
+                            e.stopPropagation();
+                        };
+                    }
+                }
+            });
+        }
+
+        function renderPlayerCards() {
+            const container = document.getElementById('playerCards');
+            container.innerHTML = playerData.map(card => createCardHTML(card, 'player')).join('');
+
+            playerData.forEach(card => {
+                const element = document.querySelector(`[data-id="${card.id}"][data-type="player"]`);
+                if (element) {
+                    element.onclick = () => onCardClick(card, 'player');
+                    // 添加技能按钮事件
+                    const skillBtn = element.querySelector('.skill-btn');
+                    if (skillBtn && card.skill) {
+                        skillBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            useSkill(card, 'player');
+                        };
+                    }
+                }
+            });
+        }
+
+        function createCardHTML(card, type) {
+            const hpPercent = (card.hp / card.maxHp) * 100;
+            let hpClass = hpPercent < 30 ? 'low' : hpPercent < 60 ? 'medium' : '';
+            const canAttack = type === 'player' && !card.hasAttacked && isPlayerTurn && card.hp > 0;
+
+            // 计算威胁度（仅敌方）
+            let threatLevel = '';
+            if (type === 'enemy' && card.hp > 0) {
+                const threat = card.attack / card.defense;
+                if (threat > 2) threatLevel = '高威胁';
+                else if (threat > 1) threatLevel = '中威胁';
+            }
+
+            // 状态效果图标
+            let effectsHTML = '';
+            if (card.effects && card.effects.length > 0) {
+                effectsHTML = '<div class="status-effects">';
+                card.effects.forEach(eff => {
+                    const icon = eff.type === 'shield' ? '🛡️' :
+                                 eff.type === 'stun' ? '💫' :
+                                 eff.type === 'poison' ? '🧪' :
+                                 eff.type === 'weak' ? '⬇️' : '✨';
+                    effectsHTML += `<div class="status-icon">${icon}<div class="status-count">${eff.duration}</div></div>`;
+                });
+                effectsHTML += '</div>';
+            }
+
+            // 技能按钮
+            let skillHTML = '';
+            if (card.skill) {
+                const canUseSkill = type === 'player' && isPlayerTurn && !card.hasAttacked &&
+                                   playerEnergy >= card.skill.cost && card.hp > 0;
+                skillHTML = `<div class="skill-btn ${canUseSkill ? '' : 'disabled'}"
+                                 title="${card.skill.desc}">
+                                技能(${card.skill.cost}⚡)
+                             </div>`;
+            }
+
+            // 连击指示器
+            let comboHTML = '';
+            if (lastTarget && lastTarget.id === card.id && type === 'enemy') {
+                comboHTML = '<div class="combo-indicator">连击!</div>';
+            }
+
+            return `
+                <div class="battle-card ${type} ${card.hp <= 0 ? 'dead' : ''}"
+                     data-id="${card.id}"
+                     data-type="${type}">
+                    ${canAttack ? '<div class="attack-ready">⚔️</div>' : ''}
+                    ${threatLevel ? `<div class="threat-indicator">${threatLevel}</div>` : ''}
+                    ${skillHTML}
+                    ${comboHTML}
+                    <div class="card-portrait">${card.emoji}</div>
+                    <div class="card-name">${card.name}</div>
+                    <div class="hp-bar">
+                        <div class="hp-bar-fill ${hpClass}" style="width: ${hpPercent}%">
+                            <div class="hp-text">${Math.floor(card.hp)}/${card.maxHp}</div>
+                        </div>
+                    </div>
+                    <div class="card-stats">
+                        <div>⚔️ ${Math.floor(card.attack)}</div>
+                        <div>🛡️ ${card.defense}</div>
+                    </div>
+                    ${effectsHTML}
+                </div>
+            `;
+        }
+
+        function updateAttackableStatus() {
+            document.querySelectorAll('.battle-card').forEach(el => {
+                el.classList.remove('can-attack', 'targetable', 'selected', 'no-hover');
+            });
+
+            if (!isPlayerTurn) return;
+
+            // 标记可攻击的卡牌
+            playerData.forEach(card => {
+                if (card.hp > 0 && !card.hasAttacked && !hasEffect(card, 'stun')) {
+                    const element = document.querySelector(`[data-id="${card.id}"][data-type="player"]`);
+                    if (element) {
+                        element.classList.add('can-attack');
+                    }
+                }
+            });
+
+            // 如果有选中的攻击者，标记可选目标
+            if (selectedAttacker) {
+                const attackerElement = document.querySelector(`[data-id="${selectedAttacker.id}"][data-type="player"]`);
+                if (attackerElement) {
+                    attackerElement.classList.add('selected', 'no-hover');
+                }
+
+                enemyData.forEach(card => {
+                    if (card.hp > 0) {
+                        const element = document.querySelector(`[data-id="${card.id}"][data-type="enemy"]`);
+                        if (element) {
+                            element.classList.add('targetable');
+                        }
+                    }
+                });
+            }
+
+            // 更新防御按钮状态
+            const defendBtn = document.getElementById('defendBtn');
+            if (defendBtn) {
+                defendBtn.classList.toggle('disabled', playerEnergy < 1 || !isPlayerTurn);
+            }
+        }
+
+        function onCardClick(card, type) {
+            if (card.hp <= 0) return;
+            if (hasEffect(card, 'stun') && type === 'player') {
+                addLog(`${card.name} 被眩晕，无法行动！`);
+                return;
+            }
+
+            if (type === 'player' && isPlayerTurn) {
+                // 选择攻击者
+                if (!card.hasAttacked) {
+                    if (selectedAttacker && selectedAttacker.id === card.id) {
+                        selectedAttacker = null;
+                        addLog('取消选择');
+                    } else {
+                        selectedAttacker = card;
+                        addLog(`选择 ${card.name} 准备攻击`);
+                    }
+                    updateAttackableStatus();
+                }
+            } else if (type === 'enemy' && selectedAttacker) {
+                // 执行攻击
+                performAttack(selectedAttacker, card);
+                selectedAttacker.hasAttacked = true;
+                selectedAttacker = null;
+
+                // 检查是否所有我方卡牌都攻击过
+                const allAttacked = playerData.filter(c => c.hp > 0 && !hasEffect(c, 'stun')).every(c => c.hasAttacked);
+                if (allAttacked) {
+                    setTimeout(() => {
+                        endTurn();
+                    }, 1500);
+                } else {
+                    renderCards();
+                }
+            }
+        }
+
+        function performAttack(attacker, target, skillMultiplier = 1) {
+            // 检查护盾
+            const shieldEffect = target.effects.find(e => e.type === 'shield');
+
+            // 计算基础伤害
+            let damage = Math.max(10, attacker.attack * skillMultiplier - target.defense / 2);
+
+            // 连击加成
+            const isCombo = lastTarget && lastTarget.id === target.id;
+            if (isCombo) {
+                damage *= 1.5;
+                addLog(`🔗 连击加成！`, 'skill');
+            }
+
+            // 暴击判定
+            const isCritical = Math.random() < 0.2;
+            if (isCritical) {
+                damage *= 2;
+                addLog(`💥 暴击！`, 'critical');
+            }
+
+            // 护盾抵消
+            if (shieldEffect) {
+                const blocked = Math.min(damage, shieldEffect.value);
+                shieldEffect.value -= blocked;
+                damage -= blocked;
+                addLog(`🛡️ 护盾抵消了 ${Math.floor(blocked)} 点伤害`);
+                if (shieldEffect.value <= 0) {
+                    removeEffect(target, 'shield');
+                }
+            }
+
+            target.hp = Math.max(0, target.hp - damage);
+            lastTarget = target;
+
+            const attackerEl = document.querySelector(`[data-id="${attacker.id}"][data-type="${attacker.id <= 3 ? 'player' : 'enemy'}"]`);
+            const targetEl = document.querySelector(`[data-id="${target.id}"][data-type="${target.id <= 3 ? 'player' : 'enemy'}"]`);
+
+            // 攻击动画
+            if (attackerEl) attackerEl.classList.add('attacking');
+            setTimeout(() => {
+                if (targetEl) {
+                    targetEl.classList.add('taking-damage');
+                    showDamage(targetEl, Math.floor(damage), isCritical);
+                }
+
+                setTimeout(() => {
+                    if (attackerEl) attackerEl.classList.remove('attacking');
+                    if (targetEl) targetEl.classList.remove('taking-damage');
+                    renderCards();
+                    checkBattleEnd();
+                }, 400);
+            }, 250);
+
+            addLog(`${attacker.name} 攻击 ${target.name}，造成 ${Math.floor(damage)} 点伤害${isCombo ? '(连击)' : ''}`, isCritical ? 'critical' : 'attack');
+        }
+
+        function useSkill(card, type) {
+            if (!card.skill) return;
+            if (type === 'player' && (!isPlayerTurn || card.hasAttacked || playerEnergy < card.skill.cost)) {
+                return;
+            }
+
+            playerEnergy -= card.skill.cost;
+            card.hasAttacked = true;
+
+            addLog(`${card.name} 使用技能：${card.skill.name}！`, 'skill');
+
+            // 技能效果
+            if (card.name === '关羽') {
+                // 武圣：选择目标后必定暴击
+                selectedAttacker = card;
+                selectedAttacker._guaranteedCritical = true;
+                selectedAttacker._skillMultiplier = 1.5;
+                updateAttackableStatus();
+                addLog('请选择攻击目标...');
+            } else if (card.name === '张飞') {
+                // 咆哮：眩晕目标
+                selectedAttacker = card;
+                selectedAttacker._stunTarget = true;
+                updateAttackableStatus();
+                addLog('请选择眩晕目标...');
+            } else if (card.name === '赵云') {
+                // 龙胆：攻击并获得护盾
+                selectedAttacker = card;
+                selectedAttacker._gainShield = true;
+                updateAttackableStatus();
+                addLog('请选择攻击目标...');
+            }
+
+            renderCards();
+        }
+
+        function enterDefendMode() {
+            if (!isPlayerTurn || playerEnergy < 1) return;
+
+            playerEnergy -= 1;
+
+            // 给所有存活的我方武将加护盾
+            playerData.forEach(card => {
+                if (card.hp > 0) {
+                    addEffect(card, {type: 'shield', value: 300, duration: 2});
+                    showDamage(document.querySelector(`[data-id="${card.id}"][data-type="player"]`), '+300', false, true);
+                }
+            });
+
+            addLog('🛡️ 全员进入防御姿态，获得300点护盾！', 'skill');
+            renderCards();
+        }
+
+        function enemyTurn() {
+            const aliveEnemies = enemyData.filter(c => c.hp > 0 && !hasEffect(c, 'stun'));
+            const alivePlayers = playerData.filter(c => c.hp > 0);
+
+            if (aliveEnemies.length === 0 || alivePlayers.length === 0) {
+                checkBattleEnd();
+                return;
+            }
+
+            addLog('敌方回合开始...');
+
+            let attackIndex = 0;
+            const attackInterval = setInterval(() => {
+                const availableEnemies = aliveEnemies.filter(e => !e.hasAttacked);
+                if (availableEnemies.length === 0 || attackIndex >= aliveEnemies.length) {
+                    clearInterval(attackInterval);
+                    setTimeout(() => {
+                        startPlayerTurn();
+                    }, 800);
+                    return;
+                }
+
+                const attacker = availableEnemies[0];
+
+                // 敌方技能使用（简单AI）
+                if (attacker.skill && Math.random() < 0.3) {
+                    if (attacker.name === '张角') {
+                        // 太平术：恢复所有友军
+                        enemyData.forEach(c => {
+                            if (c.hp > 0 && c.hp < c.maxHp) {
+                                c.hp = Math.min(c.maxHp, c.hp + 200);
+                            }
+                        });
+                        addLog(`${attacker.name} 使用 ${attacker.skill.name}，恢复友军HP！`, 'skill');
+                        attacker.hasAttacked = true;
+                        renderCards();
+                    } else if (attacker.name === '黄巾弓手') {
+                        // 连射
+                        const target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+                        performAttack(attacker, target, 0.8);
+                        setTimeout(() => {
+                            performAttack(attacker, target, 0.8);
+                        }, 600);
+                        attacker.hasAttacked = true;
+                    } else if (attacker.name === '黄巾将领') {
+                        // 怒吼：降低攻击
+                        const target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+                        addEffect(target, {type: 'weak', value: 0.7, duration: 2});
+                        addLog(`${attacker.name} 使用 ${attacker.skill.name}，降低 ${target.name} 的攻击力！`, 'skill');
+                        attacker.hasAttacked = true;
+                        renderCards();
+                    }
+                } else {
+                    // 普通攻击
+                    const target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+                    performAttack(attacker, target);
+                    attacker.hasAttacked = true;
+                }
+
+                attackIndex++;
+            }, 1500);
+        }
+
+        function endTurn() {
+            if (!isPlayerTurn) return;
+
+            isPlayerTurn = false;
+            selectedAttacker = null;
+            lastTarget = null;
+            document.getElementById('endTurnBtn').disabled = true;
+            document.getElementById('turnInfo').textContent = '敌方回合';
+            updateAttackableStatus();
+
+            setTimeout(() => {
+                enemyTurn();
+            }, 500);
+        }
+
+        function startPlayerTurn() {
+            currentTurn++;
+            isPlayerTurn = true;
+
+            // 重置攻击状态
+            [...playerData, ...enemyData].forEach(c => c.hasAttacked = false);
+
+            // 恢复能量
+            playerEnergy = Math.min(MAX_ENERGY, playerEnergy + 3);
+
+            // 更新状态效果持续时间
+            [...playerData, ...enemyData].forEach(card => {
+                if (card.effects) {
+                    card.effects = card.effects.filter(eff => {
+                        eff.duration--;
+                        if (eff.duration <= 0) {
+                            addLog(`${card.name} 的 ${getEffectName(eff.type)} 效果消失`);
+                            return false;
+                        }
+                        return true;
+                    });
+                }
+            });
+
+            document.getElementById('turnCount').textContent = currentTurn;
+            document.getElementById('turnInfo').textContent = '我的回合';
+            document.getElementById('endTurnBtn').disabled = false;
+
+            // 显示回合横幅
+            const banner = document.getElementById('turnBanner');
+            banner.textContent = '我的回合';
+            banner.classList.add('show');
+            setTimeout(() => banner.classList.remove('show'), 1500);
+
+            renderCards();
+            addLog('我的回合开始');
+        }
+
+        function showDamage(element, damage, isCritical = false, isHeal = false) {
+            const rect = element.getBoundingClientRect();
+            const dmg = document.createElement('div');
+            dmg.className = `damage-number ${isCritical ? 'critical' : ''} ${isHeal ? 'heal' : ''}`;
+            dmg.textContent = isHeal ? `+${damage}` : `-${damage}`;
+            dmg.style.left = rect.left + rect.width / 2 - 30 + 'px';
+            dmg.style.top = rect.top + rect.height / 2 - 30 + 'px';
+            document.body.appendChild(dmg);
+            setTimeout(() => dmg.remove(), 1200);
+        }
+
+        function addLog(message, type = '') {
+            const log = document.getElementById('battleLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function checkBattleEnd() {
+            const aliveEnemies = enemyData.filter(c => c.hp > 0);
+            const alivePlayers = playerData.filter(c => c.hp > 0);
+
+            if (aliveEnemies.length === 0) {
+                setTimeout(() => {
+                    alert('🎉 胜利！');
+                    addLog('========== 胜利! ==========');
+                }, 500);
+            } else if (alivePlayers.length === 0) {
+                setTimeout(() => {
+                    alert('😢 战败...');
+                    addLog('========== 战败... ==========');
+                }, 500);
+            }
+        }
+
+        function resetBattle() {
+            enemyData.forEach(c => { c.hp = c.maxHp; c.hasAttacked = false; c.effects = []; });
+            playerData.forEach(c => { c.hp = c.maxHp; c.hasAttacked = false; c.effects = []; });
+            currentTurn = 1;
+            isPlayerTurn = true;
+            selectedAttacker = null;
+            lastTarget = null;
+            playerEnergy = 3;
+            document.getElementById('turnCount').textContent = currentTurn;
+            document.getElementById('turnInfo').textContent = '我的回合';
+            document.getElementById('endTurnBtn').disabled = false;
+            document.getElementById('battleLog').innerHTML = '<div class="log-entry">⚔️ 战斗开始！点击我方卡牌或技能按钮发起行动</div>';
+            renderCards();
+        }
+
+        function updateEnergyDisplay() {
+            const fill = document.getElementById('energyFill');
+            const text = document.getElementById('energyText');
+            const percent = (playerEnergy / MAX_ENERGY) * 100;
+            fill.style.width = percent + '%';
+            text.textContent = `⚡ ${playerEnergy}/${MAX_ENERGY}`;
+        }
+
+        // 状态效果系统
+        function addEffect(card, effect) {
+            if (!card.effects) card.effects = [];
+            const existing = card.effects.find(e => e.type === effect.type);
+            if (existing) {
+                existing.duration = Math.max(existing.duration, effect.duration);
+                if (effect.value) existing.value = effect.value;
+            } else {
+                card.effects.push(effect);
+            }
+        }
+
+        function removeEffect(card, type) {
+            if (card.effects) {
+                card.effects = card.effects.filter(e => e.type !== type);
+            }
+        }
+
+        function hasEffect(card, type) {
+            return card.effects && card.effects.some(e => e.type === type);
+        }
+
+        function getEffectName(type) {
+            const names = {
+                'shield': '护盾',
+                'stun': '眩晕',
+                'poison': '中毒',
+                'weak': '虚弱'
+            };
+            return names[type] || type;
+        }
+
+        // 初始化
+        renderCards();
+        addLog('战斗准备就绪');
+        console.log('方案3：策略增强版已加载');
+    </script>
+</body>
+</html>

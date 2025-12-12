@@ -59,6 +59,12 @@ def battle_ui_demo2():
     return render_template('pve/battle_ui_demo2.html')
 
 
+@pve_frontend_bp.route('/battle-ui-demo3')
+def battle_ui_demo3():
+    """战斗UI演示 - 方案3：炉石高级交互"""
+    return render_template('pve/battle_ui_demo3.html')
+
+
 @pve_frontend_bp.route('/battle-ui-comparison')
 def battle_ui_comparison():
     """战斗UI方案对比页面"""

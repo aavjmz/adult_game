@@ -42,7 +42,7 @@
 
         .comparison-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
             gap: 30px;
             margin-bottom: 40px;
         }
@@ -257,6 +257,12 @@
             transform: translateX(-5px);
         }
 
+        @media (max-width: 1024px) {
+            .comparison-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
         @media (max-width: 768px) {
             .comparison-grid {
                 grid-template-columns: 1fr;
@@ -387,6 +393,61 @@
                     点击体验方案2 →
                 </button>
             </div>
+
+            <!-- 方案3 -->
+            <div class="scheme-card" onclick="window.open('/pve/battle-ui-demo3', '_blank')">
+                <div class="scheme-header">
+                    <div class="scheme-title">方案3：炉石高级交互</div>
+                    <div class="scheme-subtitle">点选攻击 · 策略战斗</div>
+                </div>
+
+                <div class="scheme-preview">
+                    ⚔️
+                </div>
+
+                <div class="features">
+                    <div class="feature-item">
+                        <span class="feature-icon">🎯</span>
+                        <span>点击选择攻击者和目标</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✨</span>
+                        <span>攻击就绪状态高亮提示</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🔄</span>
+                        <span>回合制系统，策略性强</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">💡</span>
+                        <span>丰富视觉反馈，操作直观</span>
+                    </div>
+                </div>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>✅ 优势</h4>
+                        <ul>
+                            <li>策略性极强</li>
+                            <li>交互丰富</li>
+                            <li>经典玩法</li>
+                            <li>反馈清晰</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>⚠️ 劣势</h4>
+                        <ul>
+                            <li>需手动操作</li>
+                            <li>节奏较慢</li>
+                            <li>学习门槛中等</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button class="action-button">
+                    点击体验方案3 →
+                </button>
+            </div>
         </div>
 
         <!-- 详细对比表 -->
@@ -398,6 +459,7 @@
                         <th>对比维度</th>
                         <th>方案1: 炉石风格</th>
                         <th>方案2: 麻将风格</th>
+                        <th>方案3: 高级交互</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -405,46 +467,61 @@
                         <td><strong>视觉效果</strong></td>
                         <td><span class="rating">⭐⭐⭐⭐</span> 经典美观</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 立体震撼</td>
+                        <td><span class="rating">⭐⭐⭐⭐</span> 清晰专业</td>
                     </tr>
                     <tr>
                         <td><strong>实现难度</strong></td>
                         <td><span class="rating">⭐⭐⭐</span> 中等（2-3天）</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 较高（5-7天）</td>
+                        <td><span class="rating">⭐⭐⭐⭐</span> 中高（3-4天）</td>
                     </tr>
                     <tr>
                         <td><strong>信息展示</strong></td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 清晰完整</td>
                         <td><span class="rating">⭐⭐⭐</span> 远端较小</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 一目了然</td>
+                    </tr>
+                    <tr>
+                        <td><strong>交互体验</strong></td>
+                        <td><span class="rating">⭐⭐⭐</span> 自动播放</td>
+                        <td><span class="rating">⭐⭐⭐</span> 自动播放</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 手动策略</td>
                     </tr>
                     <tr>
                         <td><strong>用户熟悉度</strong></td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 很高</td>
                         <td><span class="rating">⭐⭐⭐</span> 较低</td>
+                        <td><span class="rating">⭐⭐⭐⭐</span> 中高</td>
                     </tr>
                     <tr>
                         <td><strong>移动端适配</strong></td>
                         <td><span class="rating">⭐⭐⭐⭐</span> 良好</td>
                         <td><span class="rating">⭐⭐</span> 需优化</td>
+                        <td><span class="rating">⭐⭐⭐</span> 中等</td>
                     </tr>
                     <tr>
                         <td><strong>战斗沉浸感</strong></td>
                         <td><span class="rating">⭐⭐⭐</span> 中等</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 很强</td>
+                        <td><span class="rating">⭐⭐⭐⭐</span> 策略性强</td>
                     </tr>
                     <tr>
                         <td><strong>性能要求</strong></td>
                         <td><span class="rating">⭐⭐</span> 低</td>
                         <td><span class="rating">⭐⭐⭐⭐</span> 较高</td>
+                        <td><span class="rating">⭐⭐</span> 低</td>
                     </tr>
                     <tr>
                         <td><strong>扩展性</strong></td>
                         <td><span class="rating">⭐⭐⭐⭐</span> 易扩展</td>
                         <td><span class="rating">⭐⭐⭐</span> 中等</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 最易扩展</td>
                     </tr>
                     <tr>
                         <td><strong>推荐场景</strong></td>
                         <td>快速上线、移动端为主</td>
                         <td>追求创新、PC端为主</td>
+                        <td>策略玩法、桌面端为主</td>
                     </tr>
                 </tbody>
             </table>
@@ -452,10 +529,10 @@
 
         <div style="text-align: center; margin: 40px 0;">
             <p style="color: white; font-size: 18px; margin-bottom: 20px;">
-                💡 <strong>建议</strong>：短期推荐方案1快速上线，长期可迭代到方案2
+                💡 <strong>建议</strong>：短期推荐方案1快速上线，策略玩法选方案3，长期可迭代到方案2
             </p>
             <p style="color: rgba(255,255,255,0.8); font-size: 14px;">
-                两个方案均为可交互原型，点击卡片可在新窗口中体验完整功能
+                三个方案均为可交互原型，点击卡片可在新窗口中体验完整功能
             </p>
         </div>
     </div>
