@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方案1：炉石风格战斗UI原型</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .battle-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 敌方区域 */
+        .enemy-zone {
+            flex: 0 0 35%;
+            background: linear-gradient(180deg, rgba(255, 107, 107, 0.2) 0%, rgba(238, 90, 111, 0.1) 100%);
+            border-bottom: 3px solid #ff6b6b;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .enemy-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .enemy-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+
+        .cards-row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex: 1;
+            align-items: center;
+        }
+
+        .battle-card {
+            width: 140px;
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .battle-card.enemy {
+            border: 2px solid #ff6b6b;
+        }
+
+        .battle-card.player {
+            border: 2px solid #4dabf7;
+        }
+
+        .battle-card:hover {
+            transform: translateY(-10px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+        }
+
+        .battle-card.attacking {
+            animation: attackPulse 0.5s ease;
+        }
+
+        @keyframes attackPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); box-shadow: 0 0 30px #ffd43b; }
+        }
+
+        .battle-card.taking-damage {
+            animation: shake 0.3s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .card-portrait {
+            width: 100%;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .card-name {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .card-hp {
+            margin-bottom: 5px;
+        }
+
+        .hp-label {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 3px;
+        }
+
+        .hp-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .hp-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #51cf66 0%, #40c057 100%);
+            transition: width 0.5s ease, background 0.3s ease;
+            position: relative;
+        }
+
+        .hp-bar-fill.medium {
+            background: linear-gradient(90deg, #ffd43b 0%, #fab005 100%);
+        }
+
+        .hp-bar-fill.low {
+            background: linear-gradient(90deg, #ff6b6b 0%, #fa5252 100%);
+        }
+
+        .hp-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .card-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        /* 战斗场地 */
+        .battle-field {
+            flex: 0 0 30%;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .battle-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .battle-log {
+            width: 80%;
+            max-width: 600px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 12px;
+            overflow-y: auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #e0e0e0;
+            color: #333;
+            font-size: 13px;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-entry.attack {
+            color: #e03131;
+        }
+
+        .log-entry.heal {
+            color: #2f9e44;
+        }
+
+        .damage-number {
+            position: absolute;
+            font-size: 32px;
+            font-weight: bold;
+            color: #ff6b6b;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            animation: damageFloat 1s ease-out forwards;
+        }
+
+        @keyframes damageFloat {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-80px) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* 玩家区域 */
+        .player-zone {
+            flex: 0 0 35%;
+            background: linear-gradient(0deg, rgba(74, 171, 247, 0.2) 0%, rgba(51, 154, 240, 0.1) 100%);
+            border-top: 3px solid #4dabf7;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .player-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #4dabf7;
+        }
+
+        /* 控制栏 */
+        .control-bar {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .control-btn {
+            padding: 10px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .control-btn.secondary {
+            background: linear-gradient(135deg, #868e96 0%, #495057 100%);
+        }
+
+        .control-btn.danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        }
+
+        /* 回合指示器 */
+        .turn-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .turn-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffd43b;
+        }
+    </style>
+</head>
+<body>
+    <div class="battle-container">
+        <!-- 敌方区域 -->
+        <div class="enemy-zone">
+            <div class="enemy-info">
+                <div class="enemy-name">🔥 敌方阵营 - 黄巾军</div>
+                <div>⚡ 总战力: 3,800</div>
+            </div>
+            <div class="cards-row" id="enemyCards">
+                <!-- 敌方卡牌通过JS生成 -->
+            </div>
+        </div>
+
+        <!-- 战斗场地 -->
+        <div class="battle-field">
+            <div class="turn-indicator">
+                回合 <span class="turn-number" id="turnNumber">1</span> / 50
+            </div>
+            <div class="battle-title">⚔️ 战斗进行中 ⚔️</div>
+            <div class="battle-log" id="battleLog">
+                <div class="log-entry">战斗开始！</div>
+            </div>
+        </div>
+
+        <!-- 玩家区域 -->
+        <div class="player-zone">
+            <div class="cards-row" id="playerCards">
+                <!-- 玩家卡牌通过JS生成 -->
+            </div>
+            <div class="player-info">
+                <div class="player-name">🛡️ 我方阵营</div>
+                <div>💪 总战力: 5,250</div>
+            </div>
+            <div class="control-bar">
+                <button class="control-btn" onclick="startBattle()">▶️ 开始战斗</button>
+                <button class="control-btn secondary" onclick="autoPlay()">🤖 自动战斗</button>
+                <button class="control-btn secondary" onclick="speedUp()">⚡ 倍速 x<span id="speed">1</span></button>
+                <button class="control-btn danger" onclick="resetBattle()">🔄 重置</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 卡牌数据
+        const enemyData = [
+            {id: 1, name: '张角', emoji: '🧙', hp: 2200, maxHp: 2200, attack: 250, defense: 180},
+            {id: 2, name: '黄巾贼兵', emoji: '⚔️', hp: 600, maxHp: 600, attack: 60, defense: 40},
+            {id: 3, name: '黄巾弓手', emoji: '🏹', hp: 550, maxHp: 550, attack: 65, defense: 35},
+            {id: 4, name: '黄巾法师', emoji: '🔮', hp: 500, maxHp: 500, attack: 70, defense: 30},
+            {id: 5, name: '黄巾将领', emoji: '🛡️', hp: 1000, maxHp: 1000, attack: 100, defense: 80},
+        ];
+
+        const playerData = [
+            {id: 1, name: '关羽', emoji: '🐉', hp: 5200, maxHp: 5200, attack: 530, defense: 400},
+            {id: 2, name: '张飞', emoji: '🦁', hp: 5300, maxHp: 5300, attack: 540, defense: 410},
+            {id: 3, name: '赵云', emoji: '🐯', hp: 5100, maxHp: 5100, attack: 525, defense: 395},
+        ];
+
+        let battleSpeed = 1;
+        let currentTurn = 1;
+        let battleInterval = null;
+
+        // 渲染卡牌
+        function renderCards() {
+            const enemyContainer = document.getElementById('enemyCards');
+            const playerContainer = document.getElementById('playerCards');
+
+            enemyContainer.innerHTML = enemyData.map(card => createCardHTML(card, 'enemy')).join('');
+            playerContainer.innerHTML = playerData.map(card => createCardHTML(card, 'player')).join('');
+        }
+
+        function createCardHTML(card, type) {
+            const hpPercent = (card.hp / card.maxHp) * 100;
+            let hpClass = '';
+            if (hpPercent < 30) hpClass = 'low';
+            else if (hpPercent < 60) hpClass = 'medium';
+
+            return `
+                <div class="battle-card ${type}" data-id="${card.id}" data-type="${type}">
+                    <div class="card-portrait">${card.emoji}</div>
+                    <div class="card-name">${card.name}</div>
+                    <div class="card-hp">
+                        <div class="hp-label">生命值</div>
+                        <div class="hp-bar">
+                            <div class="hp-bar-fill ${hpClass}" style="width: ${hpPercent}%">
+                                <div class="hp-text">${card.hp}/${card.maxHp}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-stats">
+                        <div class="stat">⚔️ ${card.attack}</div>
+                        <div class="stat">🛡️ ${card.defense}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 添加战斗日志
+        function addLog(message, type = '') {
+            const logContainer = document.getElementById('battleLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = message;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // 显示伤害数字
+        function showDamage(cardElement, damage) {
+            const rect = cardElement.getBoundingClientRect();
+            const damageNum = document.createElement('div');
+            damageNum.className = 'damage-number';
+            damageNum.textContent = `-${damage}`;
+            damageNum.style.left = rect.left + rect.width / 2 + 'px';
+            damageNum.style.top = rect.top + rect.height / 2 + 'px';
+            document.body.appendChild(damageNum);
+
+            setTimeout(() => damageNum.remove(), 1000);
+        }
+
+        // 执行攻击
+        function performAttack(attacker, target, attackerData, targetData) {
+            const damage = Math.max(10, attackerData.attack - targetData.defense / 2);
+            targetData.hp = Math.max(0, targetData.hp - damage);
+
+            // 动画
+            attacker.classList.add('attacking');
+            setTimeout(() => {
+                target.classList.add('taking-damage');
+                showDamage(target, Math.floor(damage));
+                updateCardHP(target, targetData);
+
+                setTimeout(() => {
+                    attacker.classList.remove('attacking');
+                    target.classList.remove('taking-damage');
+                }, 300);
+            }, 250);
+
+            // 日志
+            addLog(`${attackerData.name} 攻击 ${targetData.name}，造成 ${Math.floor(damage)} 点伤害`, 'attack');
+        }
+
+        // 更新HP显示
+        function updateCardHP(cardElement, cardData) {
+            const hpPercent = (cardData.hp / cardData.maxHp) * 100;
+            const hpFill = cardElement.querySelector('.hp-bar-fill');
+            const hpText = cardElement.querySelector('.hp-text');
+
+            hpFill.style.width = hpPercent + '%';
+            hpText.textContent = `${Math.floor(cardData.hp)}/${cardData.maxHp}`;
+
+            // 更新颜色
+            hpFill.className = 'hp-bar-fill';
+            if (hpPercent < 30) hpFill.classList.add('low');
+            else if (hpPercent < 60) hpFill.classList.add('medium');
+
+            // 死亡检测
+            if (cardData.hp <= 0) {
+                cardElement.style.opacity = '0.3';
+                cardElement.style.filter = 'grayscale(100%)';
+            }
+        }
+
+        // 执行一回合
+        function executeTurn() {
+            const aliveEnemies = enemyData.filter(c => c.hp > 0);
+            const alivePlayers = playerData.filter(c => c.hp > 0);
+
+            if (aliveEnemies.length === 0) {
+                endBattle('胜利');
+                return;
+            }
+            if (alivePlayers.length === 0) {
+                endBattle('失败');
+                return;
+            }
+
+            currentTurn++;
+            document.getElementById('turnNumber').textContent = currentTurn;
+
+            // 随机选择攻击者和目标
+            const attackers = [...alivePlayers, ...aliveEnemies];
+            const randomAttacker = attackers[Math.floor(Math.random() * attackers.length)];
+            const isPlayerAttacking = alivePlayers.includes(randomAttacker);
+
+            const targets = isPlayerAttacking ? aliveEnemies : alivePlayers;
+            const randomTarget = targets[Math.floor(Math.random() * targets.length)];
+
+            const attackerElement = document.querySelector(`[data-id="${randomAttacker.id}"][data-type="${isPlayerAttacking ? 'player' : 'enemy'}"]`);
+            const targetElement = document.querySelector(`[data-id="${randomTarget.id}"][data-type="${isPlayerAttacking ? 'enemy' : 'player'}"]`);
+
+            performAttack(attackerElement, targetElement, randomAttacker, randomTarget);
+        }
+
+        // 结束战斗
+        function endBattle(result) {
+            if (battleInterval) {
+                clearInterval(battleInterval);
+                battleInterval = null;
+            }
+
+            addLog(`========== 战斗${result}! ==========`, result === '胜利' ? 'heal' : 'attack');
+            alert(`战斗${result}！`);
+        }
+
+        // 开始战斗
+        function startBattle() {
+            if (battleInterval) return;
+
+            addLog('开始自动战斗...');
+            battleInterval = setInterval(executeTurn, 2000 / battleSpeed);
+        }
+
+        // 自动战斗
+        function autoPlay() {
+            startBattle();
+        }
+
+        // 倍速
+        function speedUp() {
+            battleSpeed = battleSpeed === 1 ? 2 : battleSpeed === 2 ? 4 : 1;
+            document.getElementById('speed').textContent = battleSpeed;
+
+            if (battleInterval) {
+                clearInterval(battleInterval);
+                battleInterval = setInterval(executeTurn, 2000 / battleSpeed);
+            }
+        }
+
+        // 重置
+        function resetBattle() {
+            if (battleInterval) {
+                clearInterval(battleInterval);
+                battleInterval = null;
+            }
+
+            // 重置数据
+            enemyData.forEach(c => c.hp = c.maxHp);
+            playerData.forEach(c => c.hp = c.maxHp);
+            currentTurn = 1;
+            document.getElementById('turnNumber').textContent = currentTurn;
+            document.getElementById('battleLog').innerHTML = '<div class="log-entry">战斗重置</div>';
+
+            renderCards();
+        }
+
+        // 初始化
+        renderCards();
+    </script>
+</body>
+</html>

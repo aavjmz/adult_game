@@ -45,3 +45,21 @@ def stage_detail(stage_id):
                          stage=stage,
                          user_cards=user_cards,
                          stamina_info=stamina_info)
+
+
+@pve_frontend_bp.route('/battle-ui-demo1')
+def battle_ui_demo1():
+    """战斗UI演示 - 方案1：炉石风格"""
+    return render_template('pve/battle_ui_demo1.html')
+
+
+@pve_frontend_bp.route('/battle-ui-demo2')
+def battle_ui_demo2():
+    """战斗UI演示 - 方案2：麻将3D风格"""
+    return render_template('pve/battle_ui_demo2.html')
+
+
+@pve_frontend_bp.route('/battle-ui-comparison')
+def battle_ui_comparison():
+    """战斗UI方案对比页面"""
+    return render_template('pve/battle_ui_comparison.html')

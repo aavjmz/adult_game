@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>战斗UI方案对比</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+
+        .header h1 {
+            font-size: 42px;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 18px;
+            opacity: 0.95;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .scheme-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .scheme-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .scheme-header {
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .scheme-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .scheme-subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .scheme-preview {
+            width: 100%;
+            height: 300px;
+            background: #f5f7fa;
+            border-radius: 12px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scheme-preview::before {
+            content: 'DEMO';
+            position: absolute;
+            font-size: 120px;
+            color: rgba(0,0,0,0.03);
+            font-weight: bold;
+        }
+
+        .features {
+            margin: 20px 0;
+        }
+
+        .feature-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-item:last-child {
+            border-bottom: none;
+        }
+
+        .feature-icon {
+            font-size: 20px;
+        }
+
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .pros, .cons {
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .pros {
+            background: #d4edda;
+        }
+
+        .cons {
+            background: #f8d7da;
+        }
+
+        .pros h4, .cons h4 {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .pros h4 {
+            color: #155724;
+        }
+
+        .cons h4 {
+            color: #721c24;
+        }
+
+        .pros ul, .cons ul {
+            list-style: none;
+            font-size: 13px;
+        }
+
+        .pros li {
+            color: #155724;
+            padding: 3px 0;
+        }
+
+        .cons li {
+            color: #721c24;
+            padding: 3px 0;
+        }
+
+        .pros li::before {
+            content: '✓ ';
+            font-weight: bold;
+        }
+
+        .cons li::before {
+            content: '⚠ ';
+        }
+
+        .action-button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .comparison-table {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 40px;
+        }
+
+        .comparison-table h2 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 25px;
+            font-size: 32px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 16px;
+        }
+
+        th:first-child {
+            border-radius: 10px 0 0 0;
+        }
+
+        th:last-child {
+            border-radius: 0 10px 0 0;
+        }
+
+        .rating {
+            font-size: 20px;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            margin-bottom: 30px;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-5px);
+        }
+
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pros-cons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← 返回首页</a>
+
+        <div class="header">
+            <h1>⚔️ 战斗UI设计方案对比</h1>
+            <p>选择您喜欢的战斗界面风格</p>
+        </div>
+
+        <div class="comparison-grid">
+            <!-- 方案1 -->
+            <div class="scheme-card" onclick="window.open('/pve/battle-ui-demo1', '_blank')">
+                <div class="scheme-header">
+                    <div class="scheme-title">方案1：炉石传说风格</div>
+                    <div class="scheme-subtitle">经典卡牌游戏布局 · 稳定可靠</div>
+                </div>
+
+                <div class="scheme-preview">
+                    🃏
+                </div>
+
+                <div class="features">
+                    <div class="feature-item">
+                        <span class="feature-icon">📱</span>
+                        <span>上下对称布局，信息清晰</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">⚡</span>
+                        <span>实现快速，2-3天上线</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎯</span>
+                        <span>用户熟悉度高，易上手</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📐</span>
+                        <span>横向卡牌展示，适合多卡</span>
+                    </div>
+                </div>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>✅ 优势</h4>
+                        <ul>
+                            <li>经典美观</li>
+                            <li>实现简单</li>
+                            <li>移动端友好</li>
+                            <li>易扩展维护</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>⚠️ 劣势</h4>
+                        <ul>
+                            <li>缺少立体感</li>
+                            <li>创新度一般</li>
+                            <li>纵向空间有限</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button class="action-button">
+                    点击体验方案1 →
+                </button>
+            </div>
+
+            <!-- 方案2 -->
+            <div class="scheme-card" onclick="window.open('/pve/battle-ui-demo2', '_blank')">
+                <div class="scheme-header">
+                    <div class="scheme-title">方案2：麻将3D风格</div>
+                    <div class="scheme-subtitle">立体透视布局 · 创新沉浸</div>
+                </div>
+
+                <div class="scheme-preview">
+                    🎴
+                </div>
+
+                <div class="features">
+                    <div class="feature-item">
+                        <span class="feature-icon">🎨</span>
+                        <span>3D透视效果，视觉震撼</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🌟</span>
+                        <span>近大远小，沉浸体验</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">💫</span>
+                        <span>粒子特效，战斗氛围强</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎯</span>
+                        <span>差异化设计，品牌记忆点</span>
+                    </div>
+                </div>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>✅ 优势</h4>
+                        <ul>
+                            <li>视觉震撼</li>
+                            <li>沉浸感强</li>
+                            <li>独特创新</li>
+                            <li>层次丰富</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>⚠️ 劣势</h4>
+                        <ul>
+                            <li>实现复杂</li>
+                            <li>移动端适配难</li>
+                            <li>性能要求高</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button class="action-button">
+                    点击体验方案2 →
+                </button>
+            </div>
+        </div>
+
+        <!-- 详细对比表 -->
+        <div class="comparison-table">
+            <h2>📊 详细功能对比</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>对比维度</th>
+                        <th>方案1: 炉石风格</th>
+                        <th>方案2: 麻将风格</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>视觉效果</strong></td>
+                        <td><span class="rating">⭐⭐⭐⭐</span> 经典美观</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 立体震撼</td>
+                    </tr>
+                    <tr>
+                        <td><strong>实现难度</strong></td>
+                        <td><span class="rating">⭐⭐⭐</span> 中等（2-3天）</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 较高（5-7天）</td>
+                    </tr>
+                    <tr>
+                        <td><strong>信息展示</strong></td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 清晰完整</td>
+                        <td><span class="rating">⭐⭐⭐</span> 远端较小</td>
+                    </tr>
+                    <tr>
+                        <td><strong>用户熟悉度</strong></td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 很高</td>
+                        <td><span class="rating">⭐⭐⭐</span> 较低</td>
+                    </tr>
+                    <tr>
+                        <td><strong>移动端适配</strong></td>
+                        <td><span class="rating">⭐⭐⭐⭐</span> 良好</td>
+                        <td><span class="rating">⭐⭐</span> 需优化</td>
+                    </tr>
+                    <tr>
+                        <td><strong>战斗沉浸感</strong></td>
+                        <td><span class="rating">⭐⭐⭐</span> 中等</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 很强</td>
+                    </tr>
+                    <tr>
+                        <td><strong>性能要求</strong></td>
+                        <td><span class="rating">⭐⭐</span> 低</td>
+                        <td><span class="rating">⭐⭐⭐⭐</span> 较高</td>
+                    </tr>
+                    <tr>
+                        <td><strong>扩展性</strong></td>
+                        <td><span class="rating">⭐⭐⭐⭐</span> 易扩展</td>
+                        <td><span class="rating">⭐⭐⭐</span> 中等</td>
+                    </tr>
+                    <tr>
+                        <td><strong>推荐场景</strong></td>
+                        <td>快速上线、移动端为主</td>
+                        <td>追求创新、PC端为主</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div style="text-align: center; margin: 40px 0;">
+            <p style="color: white; font-size: 18px; margin-bottom: 20px;">
+                💡 <strong>建议</strong>：短期推荐方案1快速上线，长期可迭代到方案2
+            </p>
+            <p style="color: rgba(255,255,255,0.8); font-size: 14px;">
+                两个方案均为可交互原型，点击卡片可在新窗口中体验完整功能
+            </p>
+        </div>
+    </div>
+</body>
+</html>

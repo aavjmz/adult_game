@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方案2：麻将3D风格战斗UI原型</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+            background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            perspective: 1500px;
+        }
+
+        .battle-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transform-style: preserve-3d;
+        }
+
+        /* 远端敌方区域 */
+        .enemy-zone {
+            flex: 0 0 25%;
+            padding: 20px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: translateZ(-150px) rotateX(20deg);
+            transform-style: preserve-3d;
+        }
+
+        .enemy-label {
+            font-size: 16px;
+            color: #ff6b6b;
+            margin-bottom: 15px;
+            opacity: 0.8;
+        }
+
+        .enemy-cards-row {
+            display: flex;
+            gap: 10px;
+            transform: scale(0.7);
+        }
+
+        .battle-card-3d {
+            width: 100px;
+            height: 140px;
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+            transition: all 0.4s ease;
+            cursor: pointer;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+
+        .battle-card-3d.enemy {
+            border: 2px solid #ff6b6b;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .battle-card-3d.player {
+            border: 2px solid #4dabf7;
+            box-shadow: 0 0 30px rgba(77, 171, 247, 0.5);
+        }
+
+        .battle-card-3d:hover {
+            transform: rotateY(5deg) translateY(-10px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+        }
+
+        .battle-card-3d.attacking {
+            animation: attack3D 0.6s ease;
+        }
+
+        @keyframes attack3D {
+            0%, 100% { transform: rotateY(0) translateZ(0); }
+            50% { transform: rotateY(360deg) translateZ(50px); }
+        }
+
+        .battle-card-3d.taking-damage {
+            animation: shake3D 0.4s ease;
+        }
+
+        @keyframes shake3D {
+            0%, 100% { transform: translateX(0) rotateZ(0); }
+            25% { transform: translateX(-8px) rotateZ(-5deg); }
+            75% { transform: translateX(8px) rotateZ(5deg); }
+        }
+
+        .card-portrait-3d {
+            width: 100%;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 6px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .card-name-3d {
+            text-align: center;
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 6px;
+        }
+
+        .hp-mini {
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+
+        .hp-mini-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #51cf66 0%, #40c057 100%);
+            transition: width 0.5s ease;
+        }
+
+        .stats-mini {
+            display: flex;
+            justify-content: space-around;
+            font-size: 10px;
+        }
+
+        /* 中央战斗区域 */
+        .battle-field-3d {
+            flex: 1;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .side-panel {
+            width: 200px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .central-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .battle-arena {
+            width: 500px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 70%);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: rgba(255, 255, 255, 0.2);
+        }
+
+        .particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #ffd43b;
+            border-radius: 50%;
+            animation: float 3s infinite ease-in-out;
+            box-shadow: 0 0 10px #ffd43b;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(-100px) translateX(var(--drift)); opacity: 0; }
+        }
+
+        .battle-log-side {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+
+        .log-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ffd43b;
+        }
+
+        .log-item {
+            padding: 5px;
+            border-left: 2px solid #667eea;
+            margin-bottom: 5px;
+            padding-left: 8px;
+        }
+
+        /* 近端玩家区域 */
+        .player-zone-3d {
+            flex: 0 0 30%;
+            padding: 20px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: translateZ(100px) rotateX(-8deg);
+            transform-style: preserve-3d;
+        }
+
+        .player-cards-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .player-card-large {
+            width: 180px;
+            height: 240px;
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9),
+                        inset 0 1px 0 rgba(255,255,255,0.1);
+            transition: all 0.4s ease;
+            cursor: pointer;
+            position: relative;
+            border: 3px solid #4dabf7;
+        }
+
+        .player-card-large:hover {
+            transform: translateY(-15px) rotateY(-5deg);
+            box-shadow: 0 25px 70px rgba(77, 171, 247, 0.5);
+        }
+
+        .player-card-large::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            background: linear-gradient(45deg, #4dabf7, #4dabf7, transparent, transparent);
+            border-radius: 12px;
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        .card-portrait-large {
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .card-name-large {
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #4dabf7;
+        }
+
+        .hp-large {
+            margin-bottom: 10px;
+        }
+
+        .hp-label-large {
+            font-size: 12px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .hp-bar-large {
+            height: 18px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 9px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .hp-bar-large-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #51cf66 0%, #40c057 100%);
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .stats-large {
+            display: flex;
+            justify-content: space-around;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .stat-large {
+            text-align: center;
+        }
+
+        .stat-large .value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffd43b;
+        }
+
+        /* 控制面板 */
+        .control-panel {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn-3d {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-3d:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-3d:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-3d::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn-3d:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        /* 状态栏 */
+        .status-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 30px;
+            display: flex;
+            gap: 30px;
+            font-size: 14px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffd43b;
+        }
+
+        .damage-3d {
+            position: fixed;
+            font-size: 40px;
+            font-weight: bold;
+            color: #ff6b6b;
+            text-shadow: 0 0 20px #ff6b6b,
+                         2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            animation: damage3DFloat 1.2s ease-out forwards;
+            z-index: 1000;
+        }
+
+        @keyframes damage3DFloat {
+            0% {
+                transform: translateY(0) translateZ(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) translateZ(200px) scale(2);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="battle-container">
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <div class="status-item">
+                <span>⚡体力</span>
+                <span class="status-value">10</span>
+            </div>
+            <div class="status-item">
+                <span>🎯回合</span>
+                <span class="status-value" id="turn3d">1</span> / 50
+            </div>
+            <div class="status-item">
+                <span>⚡倍速</span>
+                <span class="status-value">x<span id="speed3d">1</span></span>
+            </div>
+        </div>
+
+        <!-- 远端敌方 -->
+        <div class="enemy-zone">
+            <div class="enemy-label">🔥 敌方阵营</div>
+            <div class="enemy-cards-row" id="enemyCards3d">
+                <!-- 通过JS生成 -->
+            </div>
+        </div>
+
+        <!-- 中央战斗场 -->
+        <div class="battle-field-3d">
+            <!-- 左侧面板 -->
+            <div class="side-panel">
+                <div class="log-title">📜 战斗日志</div>
+                <div class="battle-log-side" id="battleLog3d">
+                    <div class="log-item">战斗开始...</div>
+                </div>
+            </div>
+
+            <!-- 中央竞技场 -->
+            <div class="central-area">
+                <div class="battle-arena">
+                    ⚔️ VS ⚔️
+                    <div class="particles" id="particles"></div>
+                </div>
+            </div>
+
+            <!-- 右侧面板（可放技能/道具） -->
+            <div class="side-panel">
+                <div class="log-title">🎯 战场信息</div>
+                <div style="padding: 10px; font-size: 12px;">
+                    <div style="margin-bottom: 10px;">当前阶段: 黄巾起义</div>
+                    <div style="margin-bottom: 10px;">敌方剩余: <span id="enemyCount">5</span></div>
+                    <div style="margin-bottom: 10px;">我方剩余: <span id="playerCount">3</span></div>
+                    <div style="margin-bottom: 10px;">战斗状态: <span id="battleStatus">准备中</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 近端玩家 -->
+        <div class="player-zone-3d">
+            <div class="player-cards-row" id="playerCards3d">
+                <!-- 通过JS生成 -->
+            </div>
+            <div class="control-panel">
+                <button class="btn-3d" onclick="startBattle3D()">▶️ 开始</button>
+                <button class="btn-3d" onclick="autoBattle3D()">🤖 自动</button>
+                <button class="btn-3d" onclick="speedUp3D()">⚡ 倍速</button>
+                <button class="btn-3d" onclick="resetBattle3D()">🔄 重置</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const enemyData3d = [
+            {id: 1, name: '张角', emoji: '🧙', hp: 2200, maxHp: 2200, attack: 250, defense: 180},
+            {id: 2, name: '黄巾兵', emoji: '⚔️', hp: 600, maxHp: 600, attack: 60, defense: 40},
+            {id: 3, name: '黄巾弓', emoji: '🏹', hp: 550, maxHp: 550, attack: 65, defense: 35},
+            {id: 4, name: '黄巾法', emoji: '🔮', hp: 500, maxHp: 500, attack: 70, defense: 30},
+            {id: 5, name: '黄巾将', emoji: '🛡️', hp: 1000, maxHp: 1000, attack: 100, defense: 80},
+        ];
+
+        const playerData3d = [
+            {id: 1, name: '关羽', emoji: '🐉', hp: 5200, maxHp: 5200, attack: 530, defense: 400},
+            {id: 2, name: '张飞', emoji: '🦁', hp: 5300, maxHp: 5300, attack: 540, defense: 410},
+            {id: 3, name: '赵云', emoji: '🐯', hp: 5100, maxHp: 5100, attack: 525, defense: 395},
+        ];
+
+        let battleSpeed3d = 1;
+        let currentTurn3d = 1;
+        let battleInterval3d = null;
+
+        // 生成粒子效果
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 3 + 's';
+                particle.style.setProperty('--drift', (Math.random() - 0.5) * 100 + 'px');
+                container.appendChild(particle);
+            }
+        }
+
+        function renderCards3D() {
+            const enemyContainer = document.getElementById('enemyCards3d');
+            const playerContainer = document.getElementById('playerCards3d');
+
+            enemyContainer.innerHTML = enemyData3d.map(card => `
+                <div class="battle-card-3d enemy" data-id="${card.id}" data-type="enemy">
+                    <div class="card-portrait-3d">${card.emoji}</div>
+                    <div class="card-name-3d">${card.name}</div>
+                    <div class="hp-mini">
+                        <div class="hp-mini-fill" style="width: ${(card.hp/card.maxHp)*100}%"></div>
+                    </div>
+                    <div class="stats-mini">
+                        <span>⚔️${card.attack}</span>
+                        <span>🛡️${card.defense}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            playerContainer.innerHTML = playerData3d.map(card => `
+                <div class="player-card-large battle-card-3d player" data-id="${card.id}" data-type="player">
+                    <div class="card-portrait-large">${card.emoji}</div>
+                    <div class="card-name-large">${card.name}</div>
+                    <div class="hp-large">
+                        <div class="hp-label-large">
+                            <span>❤️ 生命值</span>
+                            <span>${card.hp}/${card.maxHp}</span>
+                        </div>
+                        <div class="hp-bar-large">
+                            <div class="hp-bar-large-fill" style="width: ${(card.hp/card.maxHp)*100}%"></div>
+                        </div>
+                    </div>
+                    <div class="stats-large">
+                        <div class="stat-large">
+                            <div class="value">⚔️ ${card.attack}</div>
+                        </div>
+                        <div class="stat-large">
+                            <div class="value">🛡️ ${card.defense}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addLog3D(message) {
+            const log = document.getElementById('battleLog3d');
+            const item = document.createElement('div');
+            item.className = 'log-item';
+            item.textContent = message;
+            log.appendChild(item);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function showDamage3D(element, damage) {
+            const rect = element.getBoundingClientRect();
+            const dmg = document.createElement('div');
+            dmg.className = 'damage-3d';
+            dmg.textContent = `-${damage}`;
+            dmg.style.left = rect.left + rect.width / 2 + 'px';
+            dmg.style.top = rect.top + 'px';
+            document.body.appendChild(dmg);
+            setTimeout(() => dmg.remove(), 1200);
+        }
+
+        function updateHP3D(element, data, isLarge) {
+            const percent = (data.hp / data.maxHp) * 100;
+            const hpFill = element.querySelector(isLarge ? '.hp-bar-large-fill' : '.hp-mini-fill');
+            hpFill.style.width = percent + '%';
+
+            if (isLarge) {
+                const label = element.querySelector('.hp-label-large span:last-child');
+                label.textContent = `${Math.floor(data.hp)}/${data.maxHp}`;
+            }
+
+            if (data.hp <= 0) {
+                element.style.opacity = '0.3';
+                element.style.filter = 'grayscale(100%)';
+            }
+        }
+
+        function performAttack3D(attacker, target, attackerData, targetData) {
+            const damage = Math.max(10, attackerData.attack - targetData.defense / 2);
+            targetData.hp = Math.max(0, targetData.hp - damage);
+
+            attacker.classList.add('attacking');
+            setTimeout(() => {
+                target.classList.add('taking-damage');
+                showDamage3D(target, Math.floor(damage));
+
+                const isLargeTarget = target.classList.contains('player-card-large');
+                updateHP3D(target, targetData, isLargeTarget);
+
+                setTimeout(() => {
+                    attacker.classList.remove('attacking');
+                    target.classList.remove('taking-damage');
+                }, 400);
+            }, 300);
+
+            addLog3D(`${attackerData.name} → ${targetData.name} (-${Math.floor(damage)})`);
+        }
+
+        function executeTurn3D() {
+            const aliveEnemies = enemyData3d.filter(c => c.hp > 0);
+            const alivePlayers = playerData3d.filter(c => c.hp > 0);
+
+            document.getElementById('enemyCount').textContent = aliveEnemies.length;
+            document.getElementById('playerCount').textContent = alivePlayers.length;
+
+            if (aliveEnemies.length === 0 || alivePlayers.length === 0) {
+                endBattle3D(aliveEnemies.length === 0 ? '胜利' : '失败');
+                return;
+            }
+
+            currentTurn3d++;
+            document.getElementById('turn3d').textContent = currentTurn3d;
+
+            const attackers = [...alivePlayers, ...aliveEnemies];
+            const attacker = attackers[Math.floor(Math.random() * attackers.length)];
+            const isPlayer = alivePlayers.includes(attacker);
+
+            const targets = isPlayer ? aliveEnemies : alivePlayers;
+            const target = targets[Math.floor(Math.random() * targets.length)];
+
+            const attackerEl = document.querySelector(`[data-id="${attacker.id}"][data-type="${isPlayer?'player':'enemy'}"]`);
+            const targetEl = document.querySelector(`[data-id="${target.id}"][data-type="${isPlayer?'enemy':'player'}"]`);
+
+            performAttack3D(attackerEl, targetEl, attacker, target);
+        }
+
+        function endBattle3D(result) {
+            if (battleInterval3d) {
+                clearInterval(battleInterval3d);
+                battleInterval3d = null;
+            }
+            document.getElementById('battleStatus').textContent = `战斗${result}`;
+            addLog3D(`========== ${result}! ==========`);
+            alert(`战斗${result}！`);
+        }
+
+        function startBattle3D() {
+            if (battleInterval3d) return;
+            document.getElementById('battleStatus').textContent = '激战中';
+            addLog3D('开始战斗!');
+            battleInterval3d = setInterval(executeTurn3D, 2500 / battleSpeed3d);
+        }
+
+        function autoBattle3D() {
+            startBattle3D();
+        }
+
+        function speedUp3D() {
+            battleSpeed3d = battleSpeed3d === 1 ? 2 : battleSpeed3d === 2 ? 4 : 1;
+            document.getElementById('speed3d').textContent = battleSpeed3d;
+            if (battleInterval3d) {
+                clearInterval(battleInterval3d);
+                battleInterval3d = setInterval(executeTurn3D, 2500 / battleSpeed3d);
+            }
+        }
+
+        function resetBattle3D() {
+            if (battleInterval3d) {
+                clearInterval(battleInterval3d);
+                battleInterval3d = null;
+            }
+            enemyData3d.forEach(c => c.hp = c.maxHp);
+            playerData3d.forEach(c => c.hp = c.maxHp);
+            currentTurn3d = 1;
+            document.getElementById('turn3d').textContent = currentTurn3d;
+            document.getElementById('battleStatus').textContent = '准备中';
+            document.getElementById('battleLog3d').innerHTML = '<div class="log-item">战斗重置</div>';
+            renderCards3D();
+        }
+
+        // 初始化
+        createParticles();
+        renderCards3D();
+    </script>
+</body>
+</html>
