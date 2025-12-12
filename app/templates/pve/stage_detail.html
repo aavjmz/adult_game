@@ -488,6 +488,7 @@
 
 <script>
 const stageId = {{ stage.id }};
+const staminaCost = {{ stage.stamina_cost }};
 let selectedCards = [];
 
 // 切换卡牌选择
@@ -664,7 +665,7 @@ async function sweepStage() {
         return;
     }
 
-    if (!confirm(`确定要扫荡${times}次吗？将消耗${{{ stage.stamina_cost }} * times}点体力`)) {
+    if (!confirm(`确定要扫荡${times}次吗？将消耗${staminaCost * times}点体力`)) {
         return;
     }
 
