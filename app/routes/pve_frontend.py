@@ -65,6 +65,12 @@ def battle_ui_demo3():
     return render_template('pve/battle_ui_demo3.html')
 
 
+@pve_frontend_bp.route('/battle-ui-demo4')
+def battle_ui_demo4():
+    """战斗UI演示 - 方案4：完整新系统"""
+    return render_template('pve/battle_ui_demo4.html')
+
+
 @pve_frontend_bp.route('/battle-ui-comparison')
 def battle_ui_comparison():
     """战斗UI方案对比页面"""
