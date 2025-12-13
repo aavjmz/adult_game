@@ -351,6 +351,163 @@
             cursor: not-allowed;
         }
 
+        /* 稀有度边框 - UR神话 */
+        .battle-card.rarity-UR {
+            border: 3px solid;
+            border-image: linear-gradient(45deg, #FFD700, #FF6B6B, #4ECDC4, #FFD700) 1;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6),
+                        0 0 40px rgba(255, 107, 107, 0.4),
+                        inset 0 0 20px rgba(255, 215, 0, 0.1);
+            animation: rarityGlowUR 2s ease-in-out infinite;
+        }
+
+        @keyframes rarityGlowUR {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.6),
+                            0 0 40px rgba(255, 107, 107, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(255, 215, 0, 0.9),
+                            0 0 60px rgba(255, 107, 107, 0.6);
+            }
+        }
+
+        /* 稀有度边框 - SSR超稀有 */
+        .battle-card.rarity-SSR {
+            border: 3px solid;
+            border-image: linear-gradient(135deg, #a78bfa 0%, #ec4899 50%, #f59e0b 100%) 1;
+            box-shadow: 0 0 15px rgba(167, 139, 250, 0.5),
+                        inset 0 0 15px rgba(167, 139, 250, 0.1);
+        }
+
+        /* 稀有度边框 - SR稀有 */
+        .battle-card.rarity-SR {
+            border: 3px solid;
+            border-image: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) 1;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
+
+        /* 稀有度边框 - R普通 */
+        .battle-card.rarity-R {
+            border: 3px solid #6b7280;
+            box-shadow: 0 0 5px rgba(107, 116, 128, 0.3);
+        }
+
+        /* 势力主题 - 魏国（深蓝龙纹） */
+        .battle-card.faction-WEI {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #0f172a 100%);
+        }
+
+        .battle-card.faction-WEI::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(96, 165, 250, 0.1) 0%, transparent 50%);
+            background-size: 100% 100%;
+            pointer-events: none;
+            border-radius: 10px;
+            opacity: 0.8;
+        }
+
+        /* 势力主题 - 蜀国（赤红虎纹） */
+        .battle-card.faction-SHU {
+            background: linear-gradient(135deg, #991b1b 0%, #dc2626 50%, #450a0a 100%);
+        }
+
+        .battle-card.faction-SHU::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(248, 113, 113, 0.08) 10px, rgba(248, 113, 113, 0.08) 20px),
+                radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.12) 0%, transparent 50%);
+            background-size: 100% 100%;
+            pointer-events: none;
+            border-radius: 10px;
+        }
+
+        /* 势力主题 - 吴国（翠绿凤纹） */
+        .battle-card.faction-WU {
+            background: linear-gradient(135deg, #065f46 0%, #059669 50%, #022c22 100%);
+        }
+
+        .battle-card.faction-WU::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                radial-gradient(ellipse at 30% 20%, rgba(52, 211, 153, 0.15) 0%, transparent 40%),
+                radial-gradient(ellipse at 70% 80%, rgba(16, 185, 129, 0.12) 0%, transparent 40%);
+            background-size: 100% 100%;
+            pointer-events: none;
+            border-radius: 10px;
+        }
+
+        /* 势力主题 - 群雄（金黄云纹） */
+        .battle-card.faction-QUN {
+            background: linear-gradient(135deg, #92400e 0%, #d97706 50%, #451a03 100%);
+        }
+
+        .battle-card.faction-QUN::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                radial-gradient(circle at 25% 25%, rgba(251, 191, 36, 0.1) 0%, transparent 30%),
+                radial-gradient(circle at 75% 75%, rgba(245, 158, 11, 0.1) 0%, transparent 30%),
+                radial-gradient(circle at 50% 50%, rgba(217, 119, 6, 0.08) 0%, transparent 40%);
+            background-size: 100% 100%;
+            pointer-events: none;
+            border-radius: 10px;
+        }
+
+        /* 势力标识 */
+        .faction-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            z-index: 11;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .faction-badge.faction-WEI {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        }
+
+        .faction-badge.faction-SHU {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+        }
+
+        .faction-badge.faction-WU {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        }
+
+        .faction-badge.faction-QUN {
+            background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+        }
+
         /* 兵种标识 */
         .unit-type {
             position: absolute;
@@ -385,6 +542,8 @@
             font-size: 44px;
             text-align: center;
             margin: 8px 0 5px 0;
+            position: relative;
+            z-index: 1;
         }
 
         /* 名字+职业 */
@@ -393,6 +552,8 @@
             font-size: 13px;
             font-weight: bold;
             margin-bottom: 4px;
+            position: relative;
+            z-index: 1;
         }
 
         .job-icon {
@@ -408,6 +569,7 @@
             margin-bottom: 5px;
             overflow: hidden;
             position: relative;
+            z-index: 1;
         }
 
         .hp-bar-fill {
@@ -440,6 +602,8 @@
             justify-content: space-around;
             font-size: 11px;
             margin-bottom: 4px;
+            position: relative;
+            z-index: 1;
         }
 
         /* 技能按钮 */
@@ -454,6 +618,8 @@
             font-weight: bold;
             cursor: pointer;
             margin-bottom: 3px;
+            position: relative;
+            z-index: 1;
         }
 
         .skill-btn.disabled {
@@ -1035,41 +1201,49 @@
             MAGE: {icon: '📜', name: '谋士', counters: 'ARCHER', weakness: 'INFANTRY'}
         };
 
+        // 势力定义
+        const Factions = {
+            WEI: {name: '魏', icon: '🐉', color: '#1e40af', pattern: 'dragon'},
+            SHU: {name: '蜀', icon: '🐯', color: '#dc2626', pattern: 'tiger'},
+            WU: {name: '吴', icon: '🦅', color: '#059669', pattern: 'phoenix'},
+            QUN: {name: '群', icon: '⭐', color: '#d97706', pattern: 'cloud'}
+        };
+
         // 数据
         const enemyData = [
-            {id: 1, name: '马超', emoji: '🐴', type: 'CAVALRY', job: '刺客',
-             hp: 4500, maxHp: 4500, attack: 580, defense: 320, rarity: 'SSR',
-             skill: {name: '神威', cost: 2}, rage: 0, bond: '五虎上将'},
-            {id: 2, name: '黄忠', emoji: '🏹', type: 'ARCHER', job: '射手',
-             hp: 4200, maxHp: 4200, attack: 620, defense: 280, rarity: 'SSR',
-             skill: {name: '穿杨', cost: 2}, rage: 0, bond: '五虎上将'},
+            {id: 1, name: '周瑜', emoji: '🎭', type: 'MAGE', job: '法师',
+             hp: 4000, maxHp: 4000, attack: 500, defense: 300, rarity: 'SSR',
+             skill: {name: '反计', cost: 2}, rage: 0, faction: 'WU'},
+            {id: 2, name: '吕布', emoji: '⚡', type: 'CAVALRY', job: '刺客',
+             hp: 4800, maxHp: 4800, attack: 650, defense: 280, rarity: 'UR',
+             skill: {name: '无双', cost: 3}, rage: 0, faction: 'QUN'},
             {id: 3, name: '张辽', emoji: '⚔️', type: 'INFANTRY', job: '战士',
              hp: 5000, maxHp: 5000, attack: 500, defense: 380, rarity: 'SR',
-             skill: {name: '突袭', cost: 1}, rage: 0},
+             skill: {name: '突袭', cost: 1}, rage: 0, faction: 'WEI'},
             {id: 4, name: '许褚', emoji: '🛡️', type: 'SHIELD', job: '坦克',
              hp: 6500, maxHp: 6500, attack: 350, defense: 550, rarity: 'SR',
-             skill: {name: '裸衣', cost: 2}, rage: 0},
+             skill: {name: '裸衣', cost: 2}, rage: 0, faction: 'WEI'},
             {id: 5, name: '郭嘉', emoji: '🧙', type: 'MAGE', job: '法师',
              hp: 3800, maxHp: 3800, attack: 420, defense: 250, rarity: 'SSR',
-             skill: {name: '遗计', cost: 2}, rage: 0}
+             skill: {name: '遗计', cost: 2}, rage: 0, faction: 'WEI'}
         ];
 
         const playerData = [
             {id: 1, name: '关羽', emoji: '🐉', type: 'INFANTRY', job: '战士',
              hp: 5200, maxHp: 5200, attack: 530, defense: 400, rarity: 'SSR',
-             skill: {name: '武圣', cost: 2}, rage: 0, bond: '桃园三结义'},
+             skill: {name: '武圣', cost: 2}, rage: 0, bond: '桃园三结义', faction: 'SHU'},
             {id: 2, name: '张飞', emoji: '🦁', type: 'INFANTRY', job: '战士',
              hp: 5300, maxHp: 5300, attack: 540, defense: 410, rarity: 'SSR',
-             skill: {name: '咆哮', cost: 1}, rage: 0, bond: '桃园三结义'},
+             skill: {name: '咆哮', cost: 1}, rage: 0, bond: '桃园三结义', faction: 'SHU'},
             {id: 3, name: '赵云', emoji: '🐯', type: 'CAVALRY', job: '刺客',
              hp: 5100, maxHp: 5100, attack: 525, defense: 395, rarity: 'SSR',
-             skill: {name: '龙胆', cost: 2}, rage: 0, bond: '桃园三结义'},
+             skill: {name: '龙胆', cost: 2}, rage: 0, bond: '桃园三结义', faction: 'SHU'},
             {id: 4, name: '诸葛亮', emoji: '🔮', type: 'MAGE', job: '法师',
              hp: 4000, maxHp: 4000, attack: 450, defense: 280, rarity: 'UR',
-             skill: {name: '东风', cost: 3}, rage: 0},
+             skill: {name: '东风', cost: 3}, rage: 0, faction: 'SHU'},
             {id: 5, name: '黄月英', emoji: '💝', type: 'MAGE', job: '辅助',
              hp: 3900, maxHp: 3900, attack: 320, defense: 350, rarity: 'SR',
-             skill: {name: '奇谋', cost: 1}, rage: 0}
+             skill: {name: '奇谋', cost: 1}, rage: 0, faction: 'SHU'}
         ];
 
         let currentTurn = 1;
@@ -1092,11 +1266,17 @@
             const unitType = UnitType[card.type];
             const ragePercent = (card.rage / 100) * 100;
 
+            // 获取势力信息
+            const faction = card.faction ? Factions[card.faction] : null;
+            const factionClass = card.faction ? `faction-${card.faction}` : '';
+            const rarityClass = card.rarity ? `rarity-${card.rarity}` : '';
+
             return `
-                <div class="battle-card ${type} ${card.hp <= 0 ? 'dead' : ''} ${canAttack ? 'can-attack' : ''}"
+                <div class="battle-card ${type} ${factionClass} ${rarityClass} ${card.hp <= 0 ? 'dead' : ''} ${canAttack ? 'can-attack' : ''}"
                      data-id="${card.id}"
                      data-type="${type}">
                     <div class="unit-type" title="${unitType.name}">${unitType.icon}</div>
+                    ${faction ? `<div class="faction-badge faction-${card.faction}" title="${faction.name}国">${faction.icon}</div>` : ''}
                     <div class="rarity">${card.rarity}</div>
 
                     <div class="rage-bar">
