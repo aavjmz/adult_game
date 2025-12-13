@@ -388,10 +388,55 @@
 
         /* 战斗日志 */
         .battle-log {
-            flex: 1;
-            padding: 15px;
-            overflow-y: auto;
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            width: 400px;
+            max-height: 200px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            border-radius: 10px;
+            padding: 0;
+            overflow: hidden;
             font-size: 12px;
+            z-index: 100;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .battle-log::before {
+            content: '📜 战斗日志';
+            display: block;
+            background: rgba(255, 215, 0, 0.15);
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            padding: 8px 12px;
+            font-weight: bold;
+            color: #FFD700;
+            font-size: 13px;
+        }
+
+        .battle-log-content {
+            max-height: 160px;
+            overflow-y: auto;
+            padding: 10px 12px;
+        }
+
+        /* 自定义滚动条 */
+        .battle-log-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .battle-log-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .battle-log-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 215, 0, 0.3);
+            border-radius: 3px;
+        }
+
+        .battle-log-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 215, 0, 0.5);
         }
 
         .log-entry {
@@ -400,6 +445,7 @@
             border-radius: 5px;
             background: rgba(0, 0, 0, 0.3);
             animation: slideIn 0.3s ease;
+            line-height: 1.4;
         }
 
         @keyframes slideIn {
@@ -410,6 +456,7 @@
         .log-entry.critical { color: #ff6b6b; font-weight: bold; }
         .log-entry.skill { color: #a78bfa; }
         .log-entry.bond { color: #FFD700; }
+        .log-entry.attack { color: #ffd43b; }
 
         /* 兵种克制提示器 */
         .counter-tips {
@@ -705,10 +752,12 @@
         <!-- 中央信息区 -->
         <div class="center-zone">
             <!-- 战斗日志 -->
-            <div class="battle-log" id="battleLog">
-                <div class="log-entry">⚔️ 战斗开始！官渡之战！</div>
-                <div class="log-entry bond">✨ 羁绊激活：桃园三结义 (3/3)</div>
-                <div class="log-entry">💡 提示：点击我方卡牌，再点击敌方目标发起攻击</div>
+            <div class="battle-log">
+                <div class="battle-log-content" id="battleLog">
+                    <div class="log-entry">⚔️ 战斗开始！官渡之战！</div>
+                    <div class="log-entry bond">✨ 羁绊激活：桃园三结义 (3/3)</div>
+                    <div class="log-entry">💡 提示：点击我方卡牌，再点击敌方目标发起攻击</div>
+                </div>
             </div>
 
             <!-- 兵种克制提示器 -->
