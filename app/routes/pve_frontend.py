@@ -71,6 +71,12 @@ def battle_ui_demo4():
     return render_template('pve/battle_ui_demo4.html')
 
 
+@pve_frontend_bp.route('/battle-animation-demo')
+def battle_animation_demo():
+    """战场动画系统演示"""
+    return render_template('pve/battle_animation_demo.html')
+
+
 @pve_frontend_bp.route('/battle-ui-comparison')
 def battle_ui_comparison():
     """战斗UI方案对比页面"""

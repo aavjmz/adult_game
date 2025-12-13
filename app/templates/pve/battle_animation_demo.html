@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方案4增强版：战场动画系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            user-select: none;
+        }
+
+        .battle-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 顶部信息栏 */
+        .top-bar {
+            height: 60px;
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+        }
+
+        .terrain-card {
+            background: rgba(139, 69, 19, 0.3);
+            padding: 8px 15px;
+            border-radius: 10px;
+            border: 2px solid #8B4513;
+        }
+
+        .turn-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #FFD700;
+        }
+
+        /* 敌方/玩家区域 */
+        .enemy-zone, .player-zone {
+            flex: 0 0 25%;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .enemy-zone {
+            background: linear-gradient(180deg, rgba(255, 107, 107, 0.15) 0%, transparent 100%);
+            border-bottom: 2px solid rgba(255, 107, 107, 0.4);
+        }
+
+        .player-zone {
+            background: linear-gradient(0deg, rgba(102, 126, 234, 0.15) 0%, transparent 100%);
+            border-top: 2px solid rgba(102, 126, 234, 0.4);
+        }
+
+        .cards-row {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex: 1;
+            align-items: center;
+        }
+
+        /* 卡牌样式 */
+        .battle-card {
+            width: 120px;
+            height: 160px;
+            background: linear-gradient(135deg, #2d3561 0%, #1f2347 100%);
+            border: 3px solid #4a5578;
+            border-radius: 12px;
+            padding: 8px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .battle-card:hover {
+            transform: translateY(-8px);
+        }
+
+        .battle-card.can-attack {
+            border-color: #28a745;
+            box-shadow: 0 0 25px rgba(40, 167, 69, 0.6);
+        }
+
+        .battle-card.selected {
+            border-color: #ffd43b;
+            box-shadow: 0 12px 35px rgba(255, 212, 59, 0.8);
+        }
+
+        .card-portrait {
+            font-size: 40px;
+            text-align: center;
+            margin: 5px 0;
+        }
+
+        .card-name {
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .hp-bar {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            height: 12px;
+            margin: 5px 0;
+            overflow: hidden;
+        }
+
+        .hp-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #51cf66 0%, #37b24d 100%);
+            transition: width 0.3s;
+        }
+
+        .card-stats {
+            display: flex;
+            justify-content: space-around;
+            font-size: 11px;
+        }
+
+        /* 中央战场动画区 */
+        .battle-field {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 战场背景网格 */
+        .battle-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                linear-gradient(rgba(255, 215, 0, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 215, 0, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0.3;
+        }
+
+        /* 飞行卡牌 */
+        .flying-card {
+            position: absolute;
+            width: 100px;
+            height: 140px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 3px solid #FFD700;
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.8);
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .flying-card .card-portrait {
+            font-size: 50px;
+            text-align: center;
+        }
+
+        /* 卡牌飞行轨迹 */
+        .card-trail {
+            position: absolute;
+            width: 4px;
+            height: 100px;
+            background: linear-gradient(180deg, #FFD700 0%, transparent 100%);
+            transform-origin: top center;
+            opacity: 0.8;
+            z-index: 999;
+            pointer-events: none;
+        }
+
+        /* 碰撞特效 */
+        .impact-effect {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, transparent 70%);
+            animation: impactExpand 0.5s ease-out forwards;
+            z-index: 998;
+            pointer-events: none;
+        }
+
+        @keyframes impactExpand {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        /* 技能特效圈 */
+        .skill-circle {
+            position: absolute;
+            border: 3px solid;
+            border-radius: 50%;
+            animation: skillPulse 1s ease-out infinite;
+            pointer-events: none;
+        }
+
+        .skill-circle.fire {
+            border-color: #ff6b6b;
+            box-shadow: 0 0 30px #ff6b6b;
+        }
+
+        .skill-circle.ice {
+            border-color: #4dabf7;
+            box-shadow: 0 0 30px #4dabf7;
+        }
+
+        .skill-circle.lightning {
+            border-color: #ffd43b;
+            box-shadow: 0 0 30px #ffd43b;
+        }
+
+        @keyframes skillPulse {
+            0% {
+                width: 50px;
+                height: 50px;
+                opacity: 1;
+            }
+            100% {
+                width: 300px;
+                height: 300px;
+                opacity: 0;
+            }
+        }
+
+        /* 火焰特效 */
+        .fire-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: radial-gradient(circle, #ff6b6b 0%, #ff8c42 50%, transparent 100%);
+            border-radius: 50%;
+            animation: fireRise 2s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes fireRise {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-200px) scale(0.3);
+                opacity: 0;
+            }
+        }
+
+        /* 闪电特效 */
+        .lightning-bolt {
+            position: absolute;
+            width: 4px;
+            height: 150px;
+            background: linear-gradient(180deg, #ffd43b 0%, #fff 50%, #ffd43b 100%);
+            box-shadow: 0 0 20px #ffd43b;
+            animation: lightningStrike 0.3s ease-out;
+            pointer-events: none;
+            z-index: 1001;
+        }
+
+        @keyframes lightningStrike {
+            0%, 100% { opacity: 0; }
+            10%, 30%, 50% { opacity: 1; }
+            20%, 40% { opacity: 0.3; }
+        }
+
+        /* 剑气特效 */
+        .sword-slash {
+            position: absolute;
+            width: 300px;
+            height: 8px;
+            background: linear-gradient(90deg, transparent 0%, #fff 20%, #4dabf7 50%, #fff 80%, transparent 100%);
+            box-shadow: 0 0 20px #4dabf7;
+            animation: slashSwipe 0.5s ease-out forwards;
+            pointer-events: none;
+            z-index: 1001;
+        }
+
+        @keyframes slashSwipe {
+            0% {
+                transform: translateX(-300px) scaleX(0);
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(300px) scaleX(1);
+                opacity: 0;
+            }
+        }
+
+        /* 治疗光效 */
+        .heal-particle {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: radial-gradient(circle, #51cf66 0%, transparent 100%);
+            border-radius: 50%;
+            animation: healFloat 1.5s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes healFloat {
+            0% {
+                transform: translateY(100px) scale(0.5);
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-50px) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* 连击特效 */
+        .combo-text {
+            position: absolute;
+            font-size: 80px;
+            font-weight: bold;
+            color: #ff6b6b;
+            text-shadow: 0 0 20px #ff6b6b, 0 0 40px #ff6b6b;
+            animation: comboShow 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 1002;
+        }
+
+        @keyframes comboShow {
+            0% {
+                transform: scale(0) rotate(-15deg);
+                opacity: 0;
+            }
+            30% {
+                transform: scale(1.3) rotate(5deg);
+                opacity: 1;
+            }
+            70% {
+                transform: scale(1.1) rotate(-2deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0.8) translateY(-50px);
+                opacity: 0;
+            }
+        }
+
+        /* 必杀技全屏特效 */
+        .ultimate-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle, transparent 20%, rgba(0, 0, 0, 0.9) 100%);
+            z-index: 2000;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .ultimate-overlay.active {
+            animation: ultimateFlash 2s ease-out forwards;
+        }
+
+        @keyframes ultimateFlash {
+            0% { opacity: 0; }
+            10% { opacity: 1; background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, rgba(0, 0, 0, 0.95) 100%); }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .ultimate-name {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 100px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 0 0 30px #FFD700, 0 0 60px #FFD700;
+            z-index: 2001;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .ultimate-name.active {
+            animation: ultimateNameShow 2s ease-out forwards;
+        }
+
+        @keyframes ultimateNameShow {
+            0% {
+                transform: translate(-50%, -50%) scale(0) rotate(-20deg);
+                opacity: 0;
+            }
+            20% {
+                transform: translate(-50%, -50%) scale(1.5) rotate(5deg);
+                opacity: 1;
+            }
+            80% {
+                transform: translate(-50%, -50%) scale(1.2) rotate(-2deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+                opacity: 0;
+            }
+        }
+
+        /* 战斗日志（缩小到角落） */
+        .battle-log {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 300px;
+            max-height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 11px;
+            z-index: 100;
+        }
+
+        .log-entry {
+            margin-bottom: 3px;
+            padding: 3px 6px;
+            border-radius: 3px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .log-entry.critical { color: #ff6b6b; font-weight: bold; }
+        .log-entry.skill { color: #a78bfa; }
+
+        /* 操作提示 */
+        .battle-tips {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 24px;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* 底部控制栏 */
+        .bottom-bar {
+            height: 100px;
+            background: rgba(0, 0, 0, 0.7);
+            border-top: 2px solid rgba(255, 215, 0, 0.3);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+        }
+
+        .action-btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+            border: none;
+            border-radius: 20px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(55, 178, 77, 0.6);
+        }
+
+        .action-btn.secondary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* 伤害数字 */
+        .damage-number {
+            position: absolute;
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff6b6b;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8), 0 0 20px #ff6b6b;
+            pointer-events: none;
+            z-index: 3000;
+            animation: damageFloat 1.5s ease-out forwards;
+        }
+
+        .damage-number.critical {
+            font-size: 72px;
+            color: #ffd43b;
+            text-shadow: 0 0 30px #ffd43b, 0 0 60px #ffd43b;
+        }
+
+        @keyframes damageFloat {
+            0% { transform: translateY(0) scale(0.5); opacity: 1; }
+            50% { transform: translateY(-60px) scale(1.3); opacity: 1; }
+            100% { transform: translateY(-150px) scale(1); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="battle-container">
+        <!-- 顶部信息栏 -->
+        <div class="top-bar">
+            <div class="terrain-card">
+                <div style="color: #FFD700; font-weight: bold;">🏔️ 官渡之战</div>
+            </div>
+            <div class="turn-display">回合 <span id="turnCount">1</span></div>
+            <div style="color: #4facfe;">能量: ⚡⚡⚡</div>
+        </div>
+
+        <!-- 敌方区域 -->
+        <div class="enemy-zone">
+            <div style="text-align: center; margin-bottom: 10px; font-size: 14px;">🔴 敌方阵营</div>
+            <div class="cards-row" id="enemyCards"></div>
+        </div>
+
+        <!-- 中央战场动画区 -->
+        <div class="battle-field">
+            <!-- 背景网格 -->
+            <div class="battle-grid"></div>
+
+            <!-- 操作提示 -->
+            <div class="battle-tips" id="battleTips">
+                💡 点击我方卡牌，再点击敌方目标发起攻击<br>
+                <span style="font-size: 16px; color: rgba(255,255,255,0.6);">观看战场中央的华丽动画效果</span>
+            </div>
+
+            <!-- 战斗日志（缩小到角落） -->
+            <div class="battle-log" id="battleLog">
+                <div class="log-entry">⚔️ 战斗开始！</div>
+            </div>
+
+            <!-- 必杀技全屏特效 -->
+            <div class="ultimate-overlay" id="ultimateOverlay"></div>
+            <div class="ultimate-name" id="ultimateName"></div>
+        </div>
+
+        <!-- 玩家区域 -->
+        <div class="player-zone">
+            <div class="cards-row" id="playerCards"></div>
+            <div style="text-align: center; margin-top: 10px; font-size: 14px;">🔵 我方阵营</div>
+        </div>
+
+        <!-- 底部控制栏 -->
+        <div class="bottom-bar">
+            <button class="action-btn secondary" onclick="showSkillAnimation('fire')">
+                🔥 火攻演示
+            </button>
+            <button class="action-btn secondary" onclick="showSkillAnimation('lightning')">
+                ⚡ 闪电演示
+            </button>
+            <button class="action-btn secondary" onclick="showSkillAnimation('slash')">
+                🗡️ 剑气演示
+            </button>
+            <button class="action-btn secondary" onclick="showUltimate()">
+                💥 必杀技演示
+            </button>
+            <button class="action-btn" id="normalAttackBtn">
+                普通攻击
+            </button>
+            <button class="action-btn" onclick="resetBattle()">
+                🔄 重置
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const enemyData = [
+            {id: 1, name: '马超', emoji: '🐴', hp: 4500, maxHp: 4500},
+            {id: 2, name: '黄忠', emoji: '🏹', hp: 4200, maxHp: 4200},
+            {id: 3, name: '张辽', emoji: '⚔️', hp: 5000, maxHp: 5000}
+        ];
+
+        const playerData = [
+            {id: 1, name: '关羽', emoji: '🐉', hp: 5200, maxHp: 5200},
+            {id: 2, name: '张飞', emoji: '🦁', hp: 5300, maxHp: 5300},
+            {id: 3, name: '赵云', emoji: '🐯', hp: 5100, maxHp: 5100}
+        ];
+
+        let selectedAttacker = null;
+        let comboCount = 0;
+
+        function renderCards() {
+            const enemyContainer = document.getElementById('enemyCards');
+            const playerContainer = document.getElementById('playerCards');
+
+            enemyContainer.innerHTML = enemyData.map(card => createCardHTML(card, 'enemy')).join('');
+            playerContainer.innerHTML = playerData.map(card => createCardHTML(card, 'player')).join('');
+
+            // 添加点击事件
+            enemyData.forEach(card => {
+                const el = enemyContainer.querySelector(`[data-id="${card.id}"]`);
+                if (el) el.onclick = () => onCardClick(card, 'enemy');
+            });
+
+            playerData.forEach(card => {
+                const el = playerContainer.querySelector(`[data-id="${card.id}"]`);
+                if (el) el.onclick = () => onCardClick(card, 'player');
+            });
+        }
+
+        function createCardHTML(card, type) {
+            const hpPercent = (card.hp / card.maxHp) * 100;
+            const canAttack = type === 'player' && card.hp > 0;
+
+            return `
+                <div class="battle-card ${canAttack ? 'can-attack' : ''}"
+                     data-id="${card.id}"
+                     data-type="${type}">
+                    <div class="card-portrait">${card.emoji}</div>
+                    <div class="card-name">${card.name}</div>
+                    <div class="hp-bar">
+                        <div class="hp-bar-fill" style="width: ${hpPercent}%"></div>
+                    </div>
+                    <div class="card-stats">
+                        <div>HP: ${Math.floor(card.hp)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function onCardClick(card, type) {
+            if (card.hp <= 0) return;
+
+            if (type === 'player') {
+                if (selectedAttacker && selectedAttacker.id === card.id) {
+                    selectedAttacker = null;
+                    addLog('取消选择');
+                } else {
+                    selectedAttacker = card;
+                    addLog(`选择 ${card.name} 准备攻击`);
+                }
+                updateSelection();
+            } else if (type === 'enemy' && selectedAttacker) {
+                performAttack(selectedAttacker, card);
+                selectedAttacker = null;
+                updateSelection();
+            }
+        }
+
+        function updateSelection() {
+            document.querySelectorAll('.battle-card').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            if (selectedAttacker) {
+                const el = document.querySelector(`[data-id="${selectedAttacker.id}"][data-type="player"]`);
+                if (el) el.classList.add('selected');
+            }
+        }
+
+        function performAttack(attacker, target) {
+            const attackerEl = document.querySelector(`[data-id="${attacker.id}"][data-type="player"]`);
+            const targetEl = document.querySelector(`[data-id="${target.id}"][data-type="enemy"]`);
+
+            // 创建飞行卡牌动画
+            createFlyingCard(attackerEl, targetEl, attacker.emoji, () => {
+                // 伤害计算
+                const damage = 300 + Math.random() * 200;
+                const isCritical = Math.random() < 0.3;
+
+                target.hp = Math.max(0, target.hp - damage);
+
+                // 碰撞特效
+                createImpactEffect(targetEl);
+
+                // 伤害数字
+                showDamage(targetEl, Math.floor(damage), isCritical);
+
+                // 连击检测
+                comboCount++;
+                if (comboCount >= 3) {
+                    showCombo(comboCount);
+                    comboCount = 0;
+                }
+
+                addLog(`${attacker.name} 攻击 ${target.name}，造成 ${Math.floor(damage)} 点伤害${isCritical ? '（暴击！）' : ''}`, isCritical ? 'critical' : '');
+
+                renderCards();
+            });
+        }
+
+        function createFlyingCard(fromEl, toEl, emoji, onComplete) {
+            const fromRect = fromEl.getBoundingClientRect();
+            const toRect = toEl.getBoundingClientRect();
+
+            const card = document.createElement('div');
+            card.className = 'flying-card';
+            card.innerHTML = `<div class="card-portrait">${emoji}</div>`;
+            card.style.left = fromRect.left + 'px';
+            card.style.top = fromRect.top + 'px';
+
+            document.body.appendChild(card);
+
+            // 创建轨迹线
+            const trail = document.createElement('div');
+            trail.className = 'card-trail';
+            trail.style.left = (fromRect.left + fromRect.width / 2) + 'px';
+            trail.style.top = fromRect.top + 'px';
+
+            const angle = Math.atan2(toRect.top - fromRect.top, toRect.left - fromRect.left);
+            trail.style.transform = `rotate(${angle}rad)`;
+            document.body.appendChild(trail);
+
+            // 飞行动画
+            setTimeout(() => {
+                card.style.transition = 'all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                card.style.left = toRect.left + 'px';
+                card.style.top = toRect.top + 'px';
+                card.style.transform = 'rotate(360deg)';
+
+                setTimeout(() => {
+                    card.remove();
+                    trail.remove();
+                    if (onComplete) onComplete();
+                }, 500);
+            }, 10);
+        }
+
+        function createImpactEffect(element) {
+            const rect = element.getBoundingClientRect();
+            const impact = document.createElement('div');
+            impact.className = 'impact-effect';
+            impact.style.left = (rect.left + rect.width / 2 - 100) + 'px';
+            impact.style.top = (rect.top + rect.height / 2 - 100) + 'px';
+            document.body.appendChild(impact);
+
+            setTimeout(() => impact.remove(), 500);
+        }
+
+        function showDamage(element, damage, isCritical) {
+            const rect = element.getBoundingClientRect();
+            const dmg = document.createElement('div');
+            dmg.className = `damage-number ${isCritical ? 'critical' : ''}`;
+            dmg.textContent = `-${damage}${isCritical ? '!' : ''}`;
+            dmg.style.left = (rect.left + rect.width / 2 - 40) + 'px';
+            dmg.style.top = (rect.top + rect.height / 2 - 40) + 'px';
+            document.body.appendChild(dmg);
+
+            setTimeout(() => dmg.remove(), 1500);
+        }
+
+        function showCombo(count) {
+            const battlefield = document.querySelector('.battle-field');
+            const combo = document.createElement('div');
+            combo.className = 'combo-text';
+            combo.textContent = `${count} COMBO!`;
+            combo.style.left = '50%';
+            combo.style.top = '50%';
+            combo.style.transform = 'translate(-50%, -50%)';
+            battlefield.appendChild(combo);
+
+            setTimeout(() => combo.remove(), 1000);
+        }
+
+        function showSkillAnimation(type) {
+            const battlefield = document.querySelector('.battle-field');
+            const rect = battlefield.getBoundingClientRect();
+
+            if (type === 'fire') {
+                // 火焰粒子效果
+                for (let i = 0; i < 30; i++) {
+                    setTimeout(() => {
+                        const particle = document.createElement('div');
+                        particle.className = 'fire-particle';
+                        particle.style.left = (rect.width / 2 + (Math.random() - 0.5) * 200) + 'px';
+                        particle.style.top = (rect.height / 2 + (Math.random() - 0.5) * 100) + 'px';
+                        battlefield.appendChild(particle);
+
+                        setTimeout(() => particle.remove(), 2000);
+                    }, i * 50);
+                }
+
+                // 技能圈
+                const circle = document.createElement('div');
+                circle.className = 'skill-circle fire';
+                circle.style.left = (rect.width / 2 - 25) + 'px';
+                circle.style.top = (rect.height / 2 - 25) + 'px';
+                battlefield.appendChild(circle);
+
+                setTimeout(() => circle.remove(), 1000);
+
+                addLog('🔥 火烧连营！对全体造成伤害！', 'skill');
+
+            } else if (type === 'lightning') {
+                // 闪电效果
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                        const bolt = document.createElement('div');
+                        bolt.className = 'lightning-bolt';
+                        bolt.style.left = (Math.random() * rect.width) + 'px';
+                        bolt.style.top = '0px';
+                        battlefield.appendChild(bolt);
+
+                        setTimeout(() => bolt.remove(), 300);
+                    }, i * 100);
+                }
+
+                const circle = document.createElement('div');
+                circle.className = 'skill-circle lightning';
+                circle.style.left = (rect.width / 2 - 25) + 'px';
+                circle.style.top = (rect.height / 2 - 25) + 'px';
+                battlefield.appendChild(circle);
+
+                setTimeout(() => circle.remove(), 1000);
+
+                addLog('⚡ 天雷降世！', 'skill');
+
+            } else if (type === 'slash') {
+                // 剑气斩击
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        const slash = document.createElement('div');
+                        slash.className = 'sword-slash';
+                        slash.style.top = (rect.height / 2 + (i - 1) * 50) + 'px';
+                        slash.style.left = '0px';
+                        battlefield.appendChild(slash);
+
+                        setTimeout(() => slash.remove(), 500);
+                    }, i * 200);
+                }
+
+                addLog('🗡️ 千军破！', 'skill');
+            }
+        }
+
+        function showUltimate() {
+            const overlay = document.getElementById('ultimateOverlay');
+            const nameEl = document.getElementById('ultimateName');
+
+            nameEl.textContent = '⚔️ 单刀赴会 ⚔️';
+
+            overlay.classList.add('active');
+            nameEl.classList.add('active');
+
+            // 屏幕震动效果
+            document.body.style.animation = 'shake 0.5s';
+
+            setTimeout(() => {
+                overlay.classList.remove('active');
+                nameEl.classList.remove('active');
+                document.body.style.animation = '';
+
+                // 全屏剑气
+                showSkillAnimation('slash');
+            }, 1000);
+
+            setTimeout(() => {
+                addLog('💥 关羽发动必杀技【单刀赴会】！', 'critical');
+            }, 1500);
+        }
+
+        function addLog(message, type = '') {
+            const log = document.getElementById('battleLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+
+            // 限制日志数量
+            if (log.children.length > 10) {
+                log.removeChild(log.firstChild);
+            }
+        }
+
+        function resetBattle() {
+            enemyData.forEach(c => c.hp = c.maxHp);
+            playerData.forEach(c => c.hp = c.maxHp);
+            selectedAttacker = null;
+            comboCount = 0;
+            document.getElementById('battleLog').innerHTML = '<div class="log-entry">⚔️ 战斗开始！</div>';
+            renderCards();
+        }
+
+        // 屏幕震动动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+                20%, 40%, 60%, 80% { transform: translateX(5px); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 初始化
+        renderCards();
+        console.log('战场动画系统已加载！');
+    </script>
+</body>
+</html>
