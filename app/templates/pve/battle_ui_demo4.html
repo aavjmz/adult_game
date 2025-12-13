@@ -63,11 +63,164 @@
         .weather-display {
             font-size: 32px;
             animation: float 3s ease-in-out infinite;
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+
+        .weather-display:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-5px) scale(1.1);
         }
 
         @keyframes float {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-5px); }
+        }
+
+        /* 天气粒子容器 */
+        .weather-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            overflow: hidden;
+        }
+
+        /* 雨滴 */
+        .rain-drop {
+            position: absolute;
+            width: 2px;
+            height: 20px;
+            background: linear-gradient(180deg, rgba(174, 194, 224, 0.8) 0%, rgba(174, 194, 224, 0.3) 100%);
+            border-radius: 50%;
+            animation: rainFall linear infinite;
+        }
+
+        @keyframes rainFall {
+            0% {
+                transform: translateY(-100px);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh);
+                opacity: 0.3;
+            }
+        }
+
+        /* 雪花 */
+        .snow-flake {
+            position: absolute;
+            color: white;
+            font-size: 14px;
+            animation: snowFall linear infinite;
+            opacity: 0.8;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+        }
+
+        @keyframes snowFall {
+            0% {
+                transform: translateY(-100px) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0.3;
+            }
+        }
+
+        /* 阳光光束 */
+        .sun-ray {
+            position: absolute;
+            width: 3px;
+            height: 150px;
+            background: linear-gradient(180deg, rgba(255, 223, 0, 0.6) 0%, rgba(255, 223, 0, 0) 100%);
+            transform-origin: top center;
+            animation: sunRayShine 3s ease-in-out infinite;
+        }
+
+        @keyframes sunRayShine {
+            0%, 100% {
+                opacity: 0.3;
+            }
+            50% {
+                opacity: 0.8;
+            }
+        }
+
+        /* 光点闪烁 */
+        .sun-sparkle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 223, 0, 0.9);
+            border-radius: 50%;
+            animation: sparkle 2s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(255, 223, 0, 0.8);
+        }
+
+        @keyframes sparkle {
+            0%, 100% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.5);
+            }
+        }
+
+        /* 雾气 */
+        .fog-particle {
+            position: absolute;
+            width: 200px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(200, 200, 200, 0.4) 0%, rgba(200, 200, 200, 0) 70%);
+            border-radius: 50%;
+            animation: fogDrift linear infinite;
+        }
+
+        @keyframes fogDrift {
+            0% {
+                transform: translateX(-100px);
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateX(100vw);
+                opacity: 0;
+            }
+        }
+
+        /* 风流线 */
+        .wind-line {
+            position: absolute;
+            width: 60px;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(200, 200, 200, 0) 0%, rgba(200, 200, 200, 0.6) 50%, rgba(200, 200, 200, 0) 100%);
+            animation: windBlow linear infinite;
+        }
+
+        @keyframes windBlow {
+            0% {
+                transform: translateX(-100px);
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateX(100vw);
+                opacity: 0;
+            }
         }
 
         .turn-display {
@@ -703,6 +856,9 @@
 </head>
 <body>
     <div class="battle-container">
+        <!-- 天气粒子效果 -->
+        <div class="weather-particles" id="weatherParticles"></div>
+
         <!-- 顶部信息栏 -->
         <div class="top-bar">
             <!-- 地形卡片 -->
@@ -712,7 +868,10 @@
             </div>
 
             <!-- 天气 -->
-            <div class="weather-display" title="晴天">☀️</div>
+            <div class="weather-display" id="weatherDisplay" onclick="cycleWeather()" title="点击切换天气">
+                <span id="weatherIcon">☀️</span>
+                <span id="weatherName" style="font-size: 12px; margin-left: 8px;">晴天</span>
+            </div>
 
             <!-- 回合数 -->
             <div class="turn-display">回合 <span id="turnCount">1</span></div>
@@ -853,6 +1012,20 @@
     </div>
 
     <script>
+        // 天气系统
+        const WeatherTypes = {
+            sunny: {icon: '☀️', name: '晴天', effect: '士气+10%'},
+            rain: {icon: '🌧️', name: '雨天', effect: '火攻-50%'},
+            snow: {icon: '❄️', name: '雪天', effect: '移动-1'},
+            fog: {icon: '🌫️', name: '雾天', effect: '命中-20%'},
+            wind: {icon: '💨', name: '风天', effect: '弓攻+30%'}
+        };
+
+        const weatherOrder = ['sunny', 'rain', 'snow', 'fog', 'wind'];
+        let currentWeatherIndex = 0;
+        let currentWeather = weatherOrder[0];
+        let weatherParticleInterval = null;
+
         // 兵种类型
         const UnitType = {
             CAVALRY: {icon: '🐎', name: '骑兵', counters: 'ARCHER', weakness: 'SHIELD'},
@@ -1298,9 +1471,184 @@
             renderCards();
         }
 
+        // ====== 天气粒子系统 ======
+        function cycleWeather() {
+            currentWeatherIndex = (currentWeatherIndex + 1) % weatherOrder.length;
+            currentWeather = weatherOrder[currentWeatherIndex];
+            updateWeather();
+        }
+
+        function updateWeather() {
+            const weather = WeatherTypes[currentWeather];
+            document.getElementById('weatherIcon').textContent = weather.icon;
+            document.getElementById('weatherName').textContent = weather.name;
+            document.getElementById('weatherDisplay').title = `${weather.name}\n效果: ${weather.effect}`;
+
+            // 清除旧粒子
+            clearWeatherParticles();
+
+            // 生成新粒子
+            startWeatherParticles();
+
+            addLog(`天气变化：${weather.name}（${weather.effect}）`, 'skill');
+        }
+
+        function clearWeatherParticles() {
+            const container = document.getElementById('weatherParticles');
+            container.innerHTML = '';
+
+            if (weatherParticleInterval) {
+                clearInterval(weatherParticleInterval);
+                weatherParticleInterval = null;
+            }
+        }
+
+        function startWeatherParticles() {
+            const container = document.getElementById('weatherParticles');
+
+            switch(currentWeather) {
+                case 'sunny':
+                    createSunnyParticles(container);
+                    break;
+                case 'rain':
+                    createRainParticles(container);
+                    break;
+                case 'snow':
+                    createSnowParticles(container);
+                    break;
+                case 'fog':
+                    createFogParticles(container);
+                    break;
+                case 'wind':
+                    createWindParticles(container);
+                    break;
+            }
+        }
+
+        function createSunnyParticles(container) {
+            // 创建阳光光束（静态）
+            for (let i = 0; i < 8; i++) {
+                const ray = document.createElement('div');
+                ray.className = 'sun-ray';
+                ray.style.left = (15 + i * 12) + '%';
+                ray.style.top = '60px';
+                ray.style.transform = `rotate(${(i - 4) * 5}deg)`;
+                ray.style.animationDelay = (i * 0.3) + 's';
+                container.appendChild(ray);
+            }
+
+            // 创建闪烁光点（动态生成）
+            weatherParticleInterval = setInterval(() => {
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sun-sparkle';
+                sparkle.style.left = Math.random() * 100 + '%';
+                sparkle.style.top = Math.random() * 40 + '%';
+                sparkle.style.animationDelay = Math.random() * 2 + 's';
+                container.appendChild(sparkle);
+
+                // 2秒后移除
+                setTimeout(() => sparkle.remove(), 2000);
+            }, 500);
+        }
+
+        function createRainParticles(container) {
+            // 创建持续的雨滴
+            weatherParticleInterval = setInterval(() => {
+                for (let i = 0; i < 3; i++) {
+                    const drop = document.createElement('div');
+                    drop.className = 'rain-drop';
+                    drop.style.left = Math.random() * 100 + '%';
+                    drop.style.top = '-50px';
+
+                    const duration = 0.8 + Math.random() * 0.4;
+                    drop.style.animationDuration = duration + 's';
+                    drop.style.animationDelay = (Math.random() * 0.3) + 's';
+
+                    container.appendChild(drop);
+
+                    // 动画结束后移除
+                    setTimeout(() => drop.remove(), (duration + 0.3) * 1000);
+                }
+            }, 100);
+        }
+
+        function createSnowParticles(container) {
+            // 创建飘落的雪花
+            const snowflakes = ['❄', '❅', '❆'];
+
+            weatherParticleInterval = setInterval(() => {
+                const flake = document.createElement('div');
+                flake.className = 'snow-flake';
+                flake.textContent = snowflakes[Math.floor(Math.random() * snowflakes.length)];
+                flake.style.left = Math.random() * 100 + '%';
+                flake.style.top = '-50px';
+                flake.style.fontSize = (10 + Math.random() * 10) + 'px';
+
+                const duration = 4 + Math.random() * 3;
+                flake.style.animationDuration = duration + 's';
+                flake.style.animationDelay = (Math.random() * 0.5) + 's';
+
+                container.appendChild(flake);
+
+                // 动画结束后移除
+                setTimeout(() => flake.remove(), (duration + 0.5) * 1000);
+            }, 300);
+        }
+
+        function createFogParticles(container) {
+            // 创建缓慢飘动的雾气
+            for (let i = 0; i < 5; i++) {
+                const fog = document.createElement('div');
+                fog.className = 'fog-particle';
+                fog.style.top = (Math.random() * 80) + '%';
+                fog.style.left = '-200px';
+
+                const duration = 15 + Math.random() * 10;
+                fog.style.animationDuration = duration + 's';
+                fog.style.animationDelay = (i * 3) + 's';
+
+                container.appendChild(fog);
+            }
+
+            // 定期补充雾气
+            weatherParticleInterval = setInterval(() => {
+                const fog = document.createElement('div');
+                fog.className = 'fog-particle';
+                fog.style.top = (Math.random() * 80) + '%';
+                fog.style.left = '-200px';
+                fog.style.animationDuration = (15 + Math.random() * 10) + 's';
+                container.appendChild(fog);
+
+                setTimeout(() => fog.remove(), 25000);
+            }, 8000);
+        }
+
+        function createWindParticles(container) {
+            // 创建快速移动的风流线
+            weatherParticleInterval = setInterval(() => {
+                for (let i = 0; i < 2; i++) {
+                    const wind = document.createElement('div');
+                    wind.className = 'wind-line';
+                    wind.style.top = (Math.random() * 90) + '%';
+                    wind.style.left = '-100px';
+
+                    const duration = 1.5 + Math.random() * 1;
+                    wind.style.animationDuration = duration + 's';
+                    wind.style.animationDelay = (Math.random() * 0.3) + 's';
+
+                    container.appendChild(wind);
+
+                    // 动画结束后移除
+                    setTimeout(() => wind.remove(), (duration + 0.3) * 1000);
+                }
+            }, 200);
+        }
+
         // 初始化
         renderCards();
+        startWeatherParticles(); // 启动初始天气效果
         console.log('方案4：完整新系统战斗UI已加载');
+        console.log('点击天气图标可以切换天气效果！');
     </script>
 </body>
 </html>
