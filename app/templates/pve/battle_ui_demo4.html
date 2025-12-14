@@ -13,8 +13,8 @@
 
         body {
             font-family: 'Arial', 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-            color: white;
+            background: linear-gradient(135deg, #1a1a24 0%, #2d2d3d 50%, #1f1f2e 100%);
+            color: #e8e8e8;
             overflow: hidden;
             height: 100vh;
             user-select: none;
@@ -31,8 +31,8 @@
         /* 顶部信息栏 */
         .top-bar {
             height: 60px;
-            background: rgba(0, 0, 0, 0.7);
-            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+            background: rgba(20, 20, 28, 0.85);
+            border-bottom: 2px solid rgba(184, 148, 77, 0.3);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -226,7 +226,7 @@
         .turn-display {
             font-size: 24px;
             font-weight: bold;
-            color: #FFD700;
+            color: #c9a961;
         }
 
         .morale-container {
@@ -288,11 +288,11 @@
         }
 
         .formation-badge {
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(20, 20, 28, 0.6);
             padding: 5px 12px;
             border-radius: 15px;
             font-size: 12px;
-            border: 1px solid rgba(255, 215, 0, 0.3);
+            border: 1px solid rgba(184, 148, 77, 0.3);
         }
 
         .cards-row {
@@ -307,14 +307,14 @@
         .battle-card {
             width: 130px;
             min-height: 185px;
-            background: linear-gradient(135deg, #2d3561 0%, #1f2347 100%);
-            border: 3px solid #4a5578;
+            background: linear-gradient(135deg, #3a3a52 0%, #2a2a3e 100%);
+            border: 3px solid #5a5a6f;
             border-radius: 12px;
             padding: 8px;
             position: relative;
             cursor: pointer;
             transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
 
         .battle-card:hover {
@@ -351,51 +351,51 @@
             cursor: not-allowed;
         }
 
-        /* 稀有度边框 - UR神话 */
+        /* 稀有度边框 - UR神话（古金色） */
         .battle-card.rarity-UR {
             border: 3px solid;
-            border-image: linear-gradient(45deg, #FFD700, #FF6B6B, #4ECDC4, #FFD700) 1;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6),
-                        0 0 40px rgba(255, 107, 107, 0.4),
-                        inset 0 0 20px rgba(255, 215, 0, 0.1);
-            animation: rarityGlowUR 2s ease-in-out infinite;
+            border-image: linear-gradient(45deg, #d4af37, #c9a961, #b8944d, #d4af37) 1;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.4),
+                        0 0 25px rgba(201, 169, 97, 0.3),
+                        inset 0 0 15px rgba(212, 175, 55, 0.08);
+            animation: rarityGlowUR 3s ease-in-out infinite;
         }
 
         @keyframes rarityGlowUR {
             0%, 100% {
-                box-shadow: 0 0 20px rgba(255, 215, 0, 0.6),
-                            0 0 40px rgba(255, 107, 107, 0.4);
+                box-shadow: 0 0 15px rgba(212, 175, 55, 0.4),
+                            0 0 25px rgba(201, 169, 97, 0.3);
             }
             50% {
-                box-shadow: 0 0 30px rgba(255, 215, 0, 0.9),
-                            0 0 60px rgba(255, 107, 107, 0.6);
+                box-shadow: 0 0 20px rgba(212, 175, 55, 0.5),
+                            0 0 35px rgba(201, 169, 97, 0.4);
             }
         }
 
-        /* 稀有度边框 - SSR超稀有 */
+        /* 稀有度边框 - SSR超稀有（古紫色） */
         .battle-card.rarity-SSR {
             border: 3px solid;
-            border-image: linear-gradient(135deg, #a78bfa 0%, #ec4899 50%, #f59e0b 100%) 1;
-            box-shadow: 0 0 15px rgba(167, 139, 250, 0.5),
-                        inset 0 0 15px rgba(167, 139, 250, 0.1);
+            border-image: linear-gradient(135deg, #7c5295 0%, #9b6eb8 50%, #b8944d 100%) 1;
+            box-shadow: 0 0 12px rgba(124, 82, 149, 0.35),
+                        inset 0 0 12px rgba(124, 82, 149, 0.08);
         }
 
-        /* 稀有度边框 - SR稀有 */
+        /* 稀有度边框 - SR稀有（靛蓝色） */
         .battle-card.rarity-SR {
             border: 3px solid;
-            border-image: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) 1;
-            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+            border-image: linear-gradient(135deg, #4a5f7f 0%, #5d7299 100%) 1;
+            box-shadow: 0 0 10px rgba(74, 95, 127, 0.3);
         }
 
         /* 稀有度边框 - R普通 */
         .battle-card.rarity-R {
             border: 3px solid #6b7280;
-            box-shadow: 0 0 5px rgba(107, 116, 128, 0.3);
+            box-shadow: 0 0 5px rgba(107, 116, 128, 0.25);
         }
 
-        /* 势力主题 - 魏国（深蓝龙纹） */
+        /* 势力主题 - 魏国（靛青龙纹） */
         .battle-card.faction-WEI {
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #0f172a 100%);
+            background: linear-gradient(135deg, #2c3e67 0%, #3d4f7a 50%, #1e2538 100%);
         }
 
         .battle-card.faction-WEI::before {
@@ -406,17 +406,17 @@
             right: 0;
             bottom: 0;
             background-image:
-                radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(96, 165, 250, 0.1) 0%, transparent 50%);
+                radial-gradient(circle at 20% 30%, rgba(74, 95, 127, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(93, 114, 153, 0.08) 0%, transparent 50%);
             background-size: 100% 100%;
             pointer-events: none;
             border-radius: 10px;
-            opacity: 0.8;
+            opacity: 0.7;
         }
 
-        /* 势力主题 - 蜀国（赤红虎纹） */
+        /* 势力主题 - 蜀国（朱红褐纹） */
         .battle-card.faction-SHU {
-            background: linear-gradient(135deg, #991b1b 0%, #dc2626 50%, #450a0a 100%);
+            background: linear-gradient(135deg, #6b3a2e 0%, #8b4513 50%, #3d1f17 100%);
         }
 
         .battle-card.faction-SHU::before {
@@ -427,16 +427,16 @@
             right: 0;
             bottom: 0;
             background-image:
-                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(248, 113, 113, 0.08) 10px, rgba(248, 113, 113, 0.08) 20px),
-                radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.12) 0%, transparent 50%);
+                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(139, 69, 19, 0.06) 10px, rgba(139, 69, 19, 0.06) 20px),
+                radial-gradient(circle at 50% 50%, rgba(160, 82, 45, 0.1) 0%, transparent 50%);
             background-size: 100% 100%;
             pointer-events: none;
             border-radius: 10px;
         }
 
-        /* 势力主题 - 吴国（翠绿凤纹） */
+        /* 势力主题 - 吴国（青绿墨纹） */
         .battle-card.faction-WU {
-            background: linear-gradient(135deg, #065f46 0%, #059669 50%, #022c22 100%);
+            background: linear-gradient(135deg, #2d4a3e 0%, #3a5a40 50%, #1a2b23 100%);
         }
 
         .battle-card.faction-WU::before {
@@ -447,16 +447,16 @@
             right: 0;
             bottom: 0;
             background-image:
-                radial-gradient(ellipse at 30% 20%, rgba(52, 211, 153, 0.15) 0%, transparent 40%),
-                radial-gradient(ellipse at 70% 80%, rgba(16, 185, 129, 0.12) 0%, transparent 40%);
+                radial-gradient(ellipse at 30% 20%, rgba(58, 90, 64, 0.12) 0%, transparent 40%),
+                radial-gradient(ellipse at 70% 80%, rgba(72, 108, 84, 0.1) 0%, transparent 40%);
             background-size: 100% 100%;
             pointer-events: none;
             border-radius: 10px;
         }
 
-        /* 势力主题 - 群雄（金黄云纹） */
+        /* 势力主题 - 群雄（古铜云纹） */
         .battle-card.faction-QUN {
-            background: linear-gradient(135deg, #92400e 0%, #d97706 50%, #451a03 100%);
+            background: linear-gradient(135deg, #6b5d47 0%, #8b7355 50%, #3d352a 100%);
         }
 
         .battle-card.faction-QUN::before {
@@ -467,9 +467,9 @@
             right: 0;
             bottom: 0;
             background-image:
-                radial-gradient(circle at 25% 25%, rgba(251, 191, 36, 0.1) 0%, transparent 30%),
-                radial-gradient(circle at 75% 75%, rgba(245, 158, 11, 0.1) 0%, transparent 30%),
-                radial-gradient(circle at 50% 50%, rgba(217, 119, 6, 0.08) 0%, transparent 40%);
+                radial-gradient(circle at 25% 25%, rgba(160, 130, 95, 0.08) 0%, transparent 30%),
+                radial-gradient(circle at 75% 75%, rgba(139, 115, 85, 0.08) 0%, transparent 30%),
+                radial-gradient(circle at 50% 50%, rgba(180, 150, 110, 0.06) 0%, transparent 40%);
             background-size: 100% 100%;
             pointer-events: none;
             border-radius: 10px;
@@ -493,19 +493,23 @@
         }
 
         .faction-badge.faction-WEI {
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            background: linear-gradient(135deg, #2c3e67 0%, #4a5f7f 100%);
+            border-color: rgba(74, 95, 127, 0.6);
         }
 
         .faction-badge.faction-SHU {
-            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            background: linear-gradient(135deg, #6b3a2e 0%, #8b4513 100%);
+            border-color: rgba(139, 69, 19, 0.6);
         }
 
         .faction-badge.faction-WU {
-            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            background: linear-gradient(135deg, #2d4a3e 0%, #3a5a40 100%);
+            border-color: rgba(58, 90, 64, 0.6);
         }
 
         .faction-badge.faction-QUN {
-            background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+            background: linear-gradient(135deg, #6b5d47 0%, #8b7355 100%);
+            border-color: rgba(139, 115, 85, 0.6);
         }
 
         /* 兵种标识 */
@@ -513,7 +517,7 @@
             position: absolute;
             top: -8px;
             left: -8px;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.85);
             border-radius: 50%;
             width: 32px;
             height: 32px;
@@ -521,7 +525,7 @@
             align-items: center;
             justify-content: center;
             font-size: 18px;
-            border: 2px solid #FFD700;
+            border: 2px solid #b8944d;
             z-index: 10;
         }
 
@@ -534,7 +538,20 @@
             font-weight: bold;
             padding: 2px 6px;
             border-radius: 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #5a5a6f 0%, #4a4a5e 100%);
+        }
+
+        .battle-card.rarity-UR .rarity {
+            background: linear-gradient(135deg, #d4af37 0%, #b8944d 100%);
+            color: #2a2520;
+        }
+
+        .battle-card.rarity-SSR .rarity {
+            background: linear-gradient(135deg, #7c5295 0%, #9b6eb8 100%);
+        }
+
+        .battle-card.rarity-SR .rarity {
+            background: linear-gradient(135deg, #4a5f7f 0%, #5d7299 100%);
         }
 
         /* 头像 */
@@ -712,24 +729,24 @@
             left: 15px;
             width: 400px;
             max-height: 200px;
-            background: rgba(0, 0, 0, 0.9);
-            border: 2px solid rgba(255, 215, 0, 0.4);
+            background: rgba(20, 20, 28, 0.95);
+            border: 2px solid rgba(184, 148, 77, 0.35);
             border-radius: 10px;
             padding: 0;
             overflow: hidden;
             font-size: 12px;
             z-index: 100;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.6);
         }
 
         .battle-log::before {
             content: '📜 战斗日志';
             display: block;
-            background: rgba(255, 215, 0, 0.15);
-            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            background: rgba(184, 148, 77, 0.12);
+            border-bottom: 1px solid rgba(184, 148, 77, 0.25);
             padding: 8px 12px;
             font-weight: bold;
-            color: #FFD700;
+            color: #c9a961;
             font-size: 13px;
         }
 
@@ -750,12 +767,12 @@
         }
 
         .battle-log-content::-webkit-scrollbar-thumb {
-            background: rgba(255, 215, 0, 0.3);
+            background: rgba(184, 148, 77, 0.3);
             border-radius: 3px;
         }
 
         .battle-log-content::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 215, 0, 0.5);
+            background: rgba(184, 148, 77, 0.5);
         }
 
         .log-entry {
@@ -783,15 +800,15 @@
             right: 15px;
             top: 15px;
             width: 200px;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(20, 20, 28, 0.9);
             padding: 12px;
             border-radius: 10px;
-            border: 2px solid rgba(255, 215, 0, 0.3);
+            border: 2px solid rgba(184, 148, 77, 0.3);
             font-size: 11px;
         }
 
         .counter-tips h4 {
-            color: #FFD700;
+            color: #c9a961;
             margin-bottom: 8px;
             font-size: 13px;
         }
@@ -826,10 +843,10 @@
             right: 15px;
             top: 50%;
             transform: translateY(-50%);
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(20, 20, 28, 0.9);
             padding: 10px;
             border-radius: 10px;
-            border: 2px solid rgba(102, 126, 234, 0.5);
+            border: 2px solid rgba(93, 114, 153, 0.4);
             min-width: 150px;
         }
 
@@ -863,8 +880,8 @@
         /* 底部操作栏 */
         .bottom-bar {
             height: 120px;
-            background: rgba(0, 0, 0, 0.7);
-            border-top: 2px solid rgba(255, 215, 0, 0.3);
+            background: rgba(20, 20, 28, 0.85);
+            border-top: 2px solid rgba(184, 148, 77, 0.3);
             padding: 10px 20px;
             display: flex;
             align-items: center;
@@ -881,8 +898,8 @@
         .strategy-card {
             width: 90px;
             height: 90px;
-            background: linear-gradient(135deg, #2d3561 0%, #1f2347 100%);
-            border: 2px solid #4a5578;
+            background: linear-gradient(135deg, #3a3a52 0%, #2a2a3e 100%);
+            border: 2px solid #5a5a6f;
             border-radius: 10px;
             padding: 8px;
             cursor: pointer;
@@ -892,8 +909,8 @@
 
         .strategy-card:hover {
             transform: translateY(-5px);
-            border-color: #FFD700;
-            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.5);
+            border-color: #b8944d;
+            box-shadow: 0 5px 15px rgba(184, 148, 77, 0.4);
         }
 
         .strategy-card.disabled {
@@ -1203,10 +1220,10 @@
 
         // 势力定义
         const Factions = {
-            WEI: {name: '魏', icon: '🐉', color: '#1e40af', pattern: 'dragon'},
-            SHU: {name: '蜀', icon: '🐯', color: '#dc2626', pattern: 'tiger'},
-            WU: {name: '吴', icon: '🦅', color: '#059669', pattern: 'phoenix'},
-            QUN: {name: '群', icon: '⭐', color: '#d97706', pattern: 'cloud'}
+            WEI: {name: '魏', icon: '🐉', color: '#2c3e67', pattern: 'dragon'},
+            SHU: {name: '蜀', icon: '🐯', color: '#8b4513', pattern: 'tiger'},
+            WU: {name: '吴', icon: '🦅', color: '#3a5a40', pattern: 'phoenix'},
+            QUN: {name: '群', icon: '⭐', color: '#8b7355', pattern: 'cloud'}
         };
 
         // 数据
