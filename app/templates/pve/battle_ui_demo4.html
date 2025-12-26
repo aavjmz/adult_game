@@ -303,7 +303,7 @@
             align-items: center;
         }
 
-        /* 战斗卡牌 */
+        /* 战斗卡牌 - 立体金属框架 */
         .battle-card {
             width: 130px;
             min-height: 185px;
@@ -314,7 +314,28 @@
             position: relative;
             cursor: pointer;
             transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            /* 多层阴影实现立体感 */
+            box-shadow:
+                inset 0 2px 4px rgba(255, 255, 255, 0.1),  /* 内部顶部高光 */
+                inset 0 -2px 4px rgba(0, 0, 0, 0.3),       /* 内部底部阴影 */
+                0 4px 8px rgba(0, 0, 0, 0.4),              /* 外部阴影 */
+                0 2px 16px rgba(0, 0, 0, 0.6);             /* 外部深阴影 */
+        }
+
+        /* 卡牌高光层 */
+        .battle-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40%;
+            background: linear-gradient(180deg,
+                rgba(255, 255, 255, 0.08) 0%,
+                transparent 100%);
+            border-radius: 12px 12px 0 0;
+            pointer-events: none;
+            z-index: 0;
         }
 
         .battle-card:hover {
@@ -412,6 +433,9 @@
             pointer-events: none;
             border-radius: 10px;
             opacity: 0.7;
+            /* 浮雕效果 */
+            filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.4))
+                    drop-shadow(-1px -1px 1px rgba(255, 255, 255, 0.05));
         }
 
         /* 势力主题 - 蜀国（朱红褐纹） */
@@ -432,6 +456,9 @@
             background-size: 100% 100%;
             pointer-events: none;
             border-radius: 10px;
+            /* 浮雕效果 */
+            filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.4))
+                    drop-shadow(-1px -1px 1px rgba(255, 255, 255, 0.05));
         }
 
         /* 势力主题 - 吴国（青绿墨纹） */
@@ -452,6 +479,9 @@
             background-size: 100% 100%;
             pointer-events: none;
             border-radius: 10px;
+            /* 浮雕效果 */
+            filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.4))
+                    drop-shadow(-1px -1px 1px rgba(255, 255, 255, 0.05));
         }
 
         /* 势力主题 - 群雄（古铜云纹） */
@@ -473,6 +503,9 @@
             background-size: 100% 100%;
             pointer-events: none;
             border-radius: 10px;
+            /* 浮雕效果 */
+            filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.4))
+                    drop-shadow(-1px -1px 1px rgba(255, 255, 255, 0.05));
         }
 
         /* 势力标识 */
@@ -512,55 +545,133 @@
             border-color: rgba(139, 115, 85, 0.6);
         }
 
-        /* 兵种标识 */
+        /* 兵种标识 - 宝石镶嵌效果 */
         .unit-type {
             position: absolute;
             top: -8px;
             left: -8px;
-            background: rgba(0, 0, 0, 0.85);
+            background: radial-gradient(circle at 30% 30%,
+                rgba(255, 255, 255, 0.3) 0%,
+                rgba(139, 115, 85, 0.9) 30%,
+                rgba(107, 93, 71, 1) 60%,
+                rgba(60, 50, 40, 1) 100%);
             border-radius: 50%;
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 18px;
-            border: 2px solid #b8944d;
+            border: 2px solid #d4af37;
             z-index: 10;
+            /* 宝石立体效果 */
+            box-shadow:
+                inset -2px -2px 4px rgba(0, 0, 0, 0.5),
+                inset 2px 2px 4px rgba(255, 255, 255, 0.2),
+                0 3px 6px rgba(0, 0, 0, 0.6);
         }
 
-        /* 稀有度标识 */
+        /* 兵种标识高光 */
+        .unit-type::before {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 5px;
+            width: 10px;
+            height: 10px;
+            background: radial-gradient(circle,
+                rgba(255, 255, 255, 0.6) 0%,
+                transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* 稀有度标识 - 宝石徽章 */
         .rarity {
             position: absolute;
             top: 3px;
             right: 3px;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: bold;
-            padding: 2px 6px;
-            border-radius: 8px;
+            padding: 3px 8px;
+            border-radius: 10px;
             background: linear-gradient(135deg, #5a5a6f 0%, #4a4a5e 100%);
+            border: 1.5px solid rgba(255, 255, 255, 0.3);
+            box-shadow:
+                inset -1px -1px 3px rgba(0, 0, 0, 0.4),
+                inset 1px 1px 3px rgba(255, 255, 255, 0.2),
+                0 2px 4px rgba(0, 0, 0, 0.5);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
         }
 
+        /* UR神话宝石 */
         .battle-card.rarity-UR .rarity {
-            background: linear-gradient(135deg, #d4af37 0%, #b8944d 100%);
-            color: #2a2520;
+            background: radial-gradient(ellipse at 30% 30%,
+                rgba(255, 255, 255, 0.4) 0%,
+                rgba(212, 175, 55, 0.95) 25%,
+                rgba(184, 148, 77, 1) 60%,
+                rgba(139, 115, 70, 1) 100%);
+            color: #1a1410;
+            border-color: rgba(255, 235, 150, 0.6);
+            box-shadow:
+                inset -2px -2px 4px rgba(0, 0, 0, 0.5),
+                inset 2px 2px 4px rgba(255, 255, 255, 0.3),
+                0 3px 6px rgba(212, 175, 55, 0.6);
         }
 
+        /* SSR超稀有宝石 */
         .battle-card.rarity-SSR .rarity {
-            background: linear-gradient(135deg, #7c5295 0%, #9b6eb8 100%);
+            background: radial-gradient(ellipse at 30% 30%,
+                rgba(255, 255, 255, 0.3) 0%,
+                rgba(155, 110, 184, 0.95) 25%,
+                rgba(124, 82, 149, 1) 60%,
+                rgba(90, 60, 110, 1) 100%);
+            border-color: rgba(200, 150, 220, 0.5);
+            box-shadow:
+                inset -2px -2px 4px rgba(0, 0, 0, 0.5),
+                inset 2px 2px 4px rgba(255, 255, 255, 0.2),
+                0 3px 6px rgba(124, 82, 149, 0.6);
         }
 
+        /* SR稀有宝石 */
         .battle-card.rarity-SR .rarity {
-            background: linear-gradient(135deg, #4a5f7f 0%, #5d7299 100%);
+            background: radial-gradient(ellipse at 30% 30%,
+                rgba(255, 255, 255, 0.3) 0%,
+                rgba(93, 114, 153, 0.95) 25%,
+                rgba(74, 95, 127, 1) 60%,
+                rgba(50, 65, 90, 1) 100%);
+            border-color: rgba(140, 170, 210, 0.5);
+            box-shadow:
+                inset -2px -2px 4px rgba(0, 0, 0, 0.5),
+                inset 2px 2px 4px rgba(255, 255, 255, 0.2),
+                0 3px 6px rgba(74, 95, 127, 0.6);
         }
 
-        /* 头像 */
+        /* 头像 - 画框镶嵌效果 */
         .card-portrait {
             font-size: 44px;
             text-align: center;
             margin: 8px 0 5px 0;
             position: relative;
             z-index: 1;
+            /* 立体突出效果 */
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+        }
+
+        /* 头像高光层 */
+        .card-portrait::after {
+            content: '';
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 120%;
+            height: 120%;
+            background: radial-gradient(ellipse at 25% 25%,
+                rgba(255, 255, 255, 0.2) 0%,
+                rgba(255, 255, 255, 0.05) 40%,
+                transparent 70%);
+            pointer-events: none;
+            z-index: 2;
         }
 
         /* 名字+职业 */
