@@ -42,7 +42,7 @@
 
         .comparison-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 20px;
             margin-bottom: 40px;
         }
@@ -232,7 +232,7 @@
     <div class="container">
         <div class="header">
             <h1>🎮 战斗UI方案对比</h1>
-            <p>四种设计方案，从简单到复杂，满足不同需求</p>
+            <p>五种设计方案，古朴典雅vs写实立体，满足不同需求</p>
         </div>
 
         <!-- 方案对比 -->
@@ -437,6 +437,60 @@
                     点击体验方案4 →
                 </button>
             </div>
+
+            <!-- 方案5 NEW! -->
+            <div class="scheme-card" onclick="window.open('/pve/battle-ui-demo5', '_blank')" style="border: 3px solid #C0C0C0;">
+                <div class="scheme-header" style="border-bottom-color: #C0C0C0;">
+                    <div class="scheme-title" style="color: #808890;">方案5：写实立体风格 ✨</div>
+                    <div class="scheme-subtitle">真实金属 · 物理质感</div>
+                </div>
+
+                <div class="scheme-preview">
+                    🛡️
+                </div>
+
+                <div class="features">
+                    <div class="feature-item">
+                        <span class="feature-icon">⚙️</span>
+                        <span>真实金属材质（钢/铜/银/铜）</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎨</span>
+                        <span>拉丝纹理+磨损效果</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">💡</span>
+                        <span>方向性光照阴影</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎯</span>
+                        <span>增强3D透视倾斜</span>
+                    </div>
+                </div>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>✅ 优势</h4>
+                        <ul>
+                            <li>质感极强</li>
+                            <li>立体逼真</li>
+                            <li>物理写实</li>
+                            <li>高端大气</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>⚠️ 劣势</h4>
+                        <ul>
+                            <li>性能要求高</li>
+                            <li>风格较硬朗</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button class="action-button" style="background: linear-gradient(135deg, #C0C0C0 0%, #808890 100%);">
+                    点击体验方案5 →
+                </button>
+            </div>
         </div>
 
         <!-- 详细对比表 -->
@@ -450,6 +504,7 @@
                         <th>方案2: 麻将风格</th>
                         <th>方案3: 高级交互</th>
                         <th>方案4: 完整新系统</th>
+                        <th>方案5: 写实立体</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -459,6 +514,7 @@
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 立体震撼</td>
                         <td><span class="rating">⭐⭐⭐⭐</span> 清晰专业</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 信息丰富</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 写实质感</td>
                     </tr>
                     <tr>
                         <td><strong>实现难度</strong></td>
@@ -466,12 +522,14 @@
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 较高（5-7天）</td>
                         <td><span class="rating">⭐⭐⭐⭐</span> 中高（3-4天）</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 很高（2-3周）</td>
+                        <td><span class="rating">⭐⭐⭐⭐</span> 中高（4-5天）</td>
                     </tr>
                     <tr>
                         <td><strong>信息展示</strong></td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 清晰完整</td>
                         <td><span class="rating">⭐⭐⭐</span> 远端较小</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 一目了然</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 超级详细</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 超级详细</td>
                     </tr>
                     <tr>
@@ -480,12 +538,14 @@
                         <td><span class="rating">⭐⭐⭐</span> 自动播放</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 手动策略</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 深度策略</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 深度策略</td>
                     </tr>
                     <tr>
                         <td><strong>策略深度</strong></td>
                         <td><span class="rating">⭐⭐</span> 简单</td>
                         <td><span class="rating">⭐⭐</span> 简单</td>
                         <td><span class="rating">⭐⭐⭐⭐</span> 中高</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 极高</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 极高</td>
                     </tr>
                     <tr>
@@ -494,6 +554,7 @@
                         <td><span class="rating">⭐⭐⭐</span> 较低</td>
                         <td><span class="rating">⭐⭐⭐⭐</span> 中高</td>
                         <td><span class="rating">⭐⭐⭐</span> 中等</td>
+                        <td><span class="rating">⭐⭐⭐</span> 中等</td>
                     </tr>
                     <tr>
                         <td><strong>三国特色</strong></td>
@@ -501,11 +562,13 @@
                         <td><span class="rating">⭐⭐</span> 较弱</td>
                         <td><span class="rating">⭐⭐⭐</span> 中等</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 非常强</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 非常强</td>
                     </tr>
                     <tr>
                         <td><strong>移动端适配</strong></td>
                         <td><span class="rating">⭐⭐⭐⭐</span> 良好</td>
                         <td><span class="rating">⭐⭐</span> 需优化</td>
+                        <td><span class="rating">⭐⭐⭐</span> 中等</td>
                         <td><span class="rating">⭐⭐⭐</span> 中等</td>
                         <td><span class="rating">⭐⭐⭐</span> 中等</td>
                     </tr>
@@ -515,6 +578,7 @@
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 很强</td>
                         <td><span class="rating">⭐⭐⭐⭐</span> 策略性强</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 沉浸式</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 物理写实</td>
                     </tr>
                     <tr>
                         <td><strong>核心特色</strong></td>
@@ -522,6 +586,7 @@
                         <td>视觉创新，3D透视</td>
                         <td>技能连击，策略对战</td>
                         <td>兵种克制、地形计谋、全战术</td>
+                        <td>真实金属、立体光影、物理质感</td>
                     </tr>
                     <tr>
                         <td><strong>推荐场景</strong></td>
@@ -529,6 +594,7 @@
                         <td>追求创新、PC端为主</td>
                         <td>策略玩法、桌面端为主</td>
                         <td>硬核策略、竞技玩家</td>
+                        <td>追求质感、高端玩家</td>
                     </tr>
                 </tbody>
             </table>
@@ -537,10 +603,14 @@
         <div style="text-align: center; margin: 40px 0;">
             <p style="color: white; font-size: 18px; margin-bottom: 20px;">
                 💡 <strong>建议</strong>：短期推荐方案1快速上线，策略玩法选方案3，<br>
-                完整系统选方案4，长期可迭代融合各方案优点
+                完整系统选方案4（古朴典雅）或方案5（写实立体），两种风格各有特色
             </p>
             <p style="color: rgba(255,255,255,0.8); font-size: 14px;">
-                四个方案均为可交互原型，点击卡片可在新窗口中体验完整功能
+                五个方案均为可交互原型，点击卡片可在新窗口中体验完整功能
+            </p>
+            <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin-top: 10px;">
+                🎨 <strong>方案4 vs 方案5</strong>：方案4采用古朴典雅宝石镶嵌风格，方案5采用写实金属物理质感，<br>
+                功能完全一致，可根据美术风格偏好选择
             </p>
         </div>
     </div>

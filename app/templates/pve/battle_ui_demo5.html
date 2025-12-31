@@ -1,0 +1,2128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方案5：写实立体风格战斗UI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a24 0%, #2d2d3d 50%, #1f1f2e 100%);
+            color: #e8e8e8;
+            overflow: hidden;
+            height: 100vh;
+            user-select: none;
+        }
+
+        /* 主容器 */
+        .battle-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 顶部信息栏 */
+        .top-bar {
+            height: 60px;
+            background: rgba(20, 20, 28, 0.85);
+            border-bottom: 2px solid rgba(184, 148, 77, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+        }
+
+        .terrain-card {
+            background: rgba(139, 69, 19, 0.3);
+            padding: 8px 15px;
+            border-radius: 10px;
+            border: 2px solid #8B4513;
+            cursor: pointer;
+        }
+
+        .terrain-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #FFD700;
+        }
+
+        .terrain-effect {
+            font-size: 11px;
+            color: #DDD;
+            margin-top: 2px;
+        }
+
+        .weather-display {
+            font-size: 32px;
+            animation: float 3s ease-in-out infinite;
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+
+        .weather-display:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-5px) scale(1.1);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* 天气粒子容器 */
+        .weather-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            overflow: hidden;
+        }
+
+        /* 雨滴 */
+        .rain-drop {
+            position: absolute;
+            width: 2px;
+            height: 20px;
+            background: linear-gradient(180deg, rgba(174, 194, 224, 0.8) 0%, rgba(174, 194, 224, 0.3) 100%);
+            border-radius: 50%;
+            animation: rainFall linear infinite;
+        }
+
+        @keyframes rainFall {
+            0% {
+                transform: translateY(-100px);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh);
+                opacity: 0.3;
+            }
+        }
+
+        /* 雪花 */
+        .snow-flake {
+            position: absolute;
+            color: white;
+            font-size: 14px;
+            animation: snowFall linear infinite;
+            opacity: 0.8;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+        }
+
+        @keyframes snowFall {
+            0% {
+                transform: translateY(-100px) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0.3;
+            }
+        }
+
+        /* 阳光光束 */
+        .sun-ray {
+            position: absolute;
+            width: 3px;
+            height: 150px;
+            background: linear-gradient(180deg, rgba(255, 223, 0, 0.6) 0%, rgba(255, 223, 0, 0) 100%);
+            transform-origin: top center;
+            animation: sunRayShine 3s ease-in-out infinite;
+        }
+
+        @keyframes sunRayShine {
+            0%, 100% {
+                opacity: 0.3;
+            }
+            50% {
+                opacity: 0.8;
+            }
+        }
+
+        /* 光点闪烁 */
+        .sun-sparkle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 223, 0, 0.9);
+            border-radius: 50%;
+            animation: sparkle 2s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(255, 223, 0, 0.8);
+        }
+
+        @keyframes sparkle {
+            0%, 100% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.5);
+            }
+        }
+
+        /* 雾气 */
+        .fog-particle {
+            position: absolute;
+            width: 200px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(200, 200, 200, 0.4) 0%, rgba(200, 200, 200, 0) 70%);
+            border-radius: 50%;
+            animation: fogDrift linear infinite;
+        }
+
+        @keyframes fogDrift {
+            0% {
+                transform: translateX(-100px);
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateX(100vw);
+                opacity: 0;
+            }
+        }
+
+        /* 风流线 */
+        .wind-line {
+            position: absolute;
+            width: 60px;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(200, 200, 200, 0) 0%, rgba(200, 200, 200, 0.6) 50%, rgba(200, 200, 200, 0) 100%);
+            animation: windBlow linear infinite;
+        }
+
+        @keyframes windBlow {
+            0% {
+                transform: translateX(-100px);
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateX(100vw);
+                opacity: 0;
+            }
+        }
+
+        .turn-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #c9a961;
+        }
+
+        .morale-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 150px;
+        }
+
+        .morale-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .morale-label {
+            font-size: 12px;
+            width: 40px;
+        }
+
+        .morale-track {
+            flex: 1;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .morale-fill {
+            height: 100%;
+            transition: width 0.5s, background 0.3s;
+        }
+
+        .morale-high { background: linear-gradient(90deg, #51cf66 0%, #37b24d 100%); }
+        .morale-medium { background: linear-gradient(90deg, #ffd43b 0%, #fab005 100%); }
+        .morale-low { background: linear-gradient(90deg, #ff8c42 0%, #ff6b35 100%); }
+        .morale-panic { background: linear-gradient(90deg, #ff6b6b 0%, #c92a2a 100%); }
+
+        /* 敌方区域 */
+        .enemy-zone {
+            flex: 0 0 30%;
+            background: linear-gradient(180deg, rgba(255, 107, 107, 0.15) 0%, transparent 100%);
+            border-bottom: 2px solid rgba(255, 107, 107, 0.4);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .zone-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .zone-label {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .formation-badge {
+            background: rgba(20, 20, 28, 0.6);
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            border: 1px solid rgba(184, 148, 77, 0.3);
+        }
+
+        .cards-row {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex: 1;
+            align-items: center;
+            /* 3D透视容器 */
+            perspective: 1200px;
+            perspective-origin: center center;
+        }
+
+        /* 战斗卡牌 - 写实金属框架 */
+        .battle-card {
+            width: 130px;
+            min-height: 185px;
+            /* 真实铁质金属渐变 */
+            background:
+                linear-gradient(135deg,
+                    rgba(255,255,255,0.05) 0%,
+                    transparent 20%,
+                    transparent 80%,
+                    rgba(0,0,0,0.2) 100%),
+                linear-gradient(135deg, #3a3a45 0%, #2a2a35 50%, #1a1a25 100%);
+            border: 3px solid #4a4a55;
+            border-radius: 10px;
+            padding: 8px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            /* 3D变换支持 */
+            transform-style: preserve-3d;
+            transform: rotateY(0deg) rotateX(0deg);
+            /* 真实深度阴影 */
+            box-shadow:
+                inset 1px 1px 0 rgba(255, 255, 255, 0.15),  /* 顶部内高光 */
+                inset -1px -1px 0 rgba(0, 0, 0, 0.5),       /* 底部内阴影 */
+                0 8px 16px rgba(0, 0, 0, 0.6),              /* 主阴影 */
+                0 4px 32px rgba(0, 0, 0, 0.4),              /* 扩散阴影 */
+                0 0 0 1px rgba(0, 0, 0, 0.3);               /* 边缘加强 */
+        }
+
+        /* 金属拉丝纹理 + 方向性光照 */
+        .battle-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                /* 方向性光照（左上角光源） */
+                radial-gradient(ellipse at 25% 20%,
+                    rgba(255, 255, 255, 0.18) 0%,
+                    rgba(255, 255, 255, 0.08) 30%,
+                    transparent 60%),
+                /* 右下角阴影 */
+                radial-gradient(ellipse at 80% 85%,
+                    rgba(0, 0, 0, 0.15) 0%,
+                    transparent 50%),
+                /* 金属拉丝纹理 */
+                repeating-linear-gradient(
+                    90deg,
+                    transparent 0px,
+                    rgba(255, 255, 255, 0.04) 1px,
+                    transparent 2px,
+                    transparent 3px
+                ),
+                /* 顶部到底部渐变 */
+                linear-gradient(180deg,
+                    rgba(255, 255, 255, 0.12) 0%,
+                    transparent 30%,
+                    transparent 70%,
+                    rgba(0, 0, 0, 0.18) 100%);
+            border-radius: 10px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* 卡牌边缘磨损效果 */
+        .battle-card::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border-radius: 10px;
+            background:
+                radial-gradient(circle at 10% 20%, rgba(100, 80, 60, 0.3) 0%, transparent 15%),
+                radial-gradient(circle at 90% 20%, rgba(100, 80, 60, 0.25) 0%, transparent 12%),
+                radial-gradient(circle at 10% 80%, rgba(100, 80, 60, 0.28) 0%, transparent 13%),
+                radial-gradient(circle at 90% 85%, rgba(100, 80, 60, 0.22) 0%, transparent 14%);
+            opacity: 0.6;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        /* 3D悬停倾斜效果 - 增强版 */
+        .battle-card:hover {
+            transform: translateY(-15px) translateZ(30px) rotateY(-8deg) rotateX(5deg) scale(1.08);
+            box-shadow:
+                /* 内部高光增强 */
+                inset 2px 2px 1px rgba(255, 255, 255, 0.25),
+                inset -2px -2px 1px rgba(0, 0, 0, 0.7),
+                /* 方向性阴影（左下方） */
+                -8px 15px 30px rgba(0, 0, 0, 0.75),
+                -15px 25px 50px rgba(0, 0, 0, 0.6),
+                /* 环境光阴影 */
+                0 5px 60px rgba(0, 0, 0, 0.4);
+            /* 边框高光增强 */
+            border-color: rgba(255, 255, 255, 0.3);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 卡牌轻微的默认3D角度 */
+        .battle-card:nth-child(1) {
+            transform: rotateY(2deg) rotateX(-1deg);
+        }
+
+        .battle-card:nth-child(2) {
+            transform: rotateY(1deg) rotateX(-0.5deg);
+        }
+
+        .battle-card:nth-child(3) {
+            transform: rotateY(0deg) rotateX(0deg);
+        }
+
+        .battle-card:nth-child(4) {
+            transform: rotateY(-1deg) rotateX(-0.5deg);
+        }
+
+        .battle-card:nth-child(5) {
+            transform: rotateY(-2deg) rotateX(-1deg);
+        }
+
+        .battle-card.can-attack {
+            border-color: #28a745;
+            box-shadow: 0 0 25px rgba(40, 167, 69, 0.6);
+            animation: glowPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(40, 167, 69, 0.6); }
+            50% { box-shadow: 0 0 35px rgba(40, 167, 69, 0.9); }
+        }
+
+        .battle-card.selected {
+            transform: translateY(-12px) scale(1.05);
+            border-color: #ffd43b;
+            box-shadow: 0 12px 35px rgba(255, 212, 59, 0.8);
+        }
+
+        .battle-card.targetable {
+            border-color: #ffd43b;
+            box-shadow: 0 0 20px rgba(255, 212, 59, 0.7);
+            cursor: crosshair;
+        }
+
+        .battle-card.dead {
+            opacity: 0.3;
+            filter: grayscale(100%);
+            cursor: not-allowed;
+        }
+
+        /* 稀有度边框 - UR神话（古金色） */
+        .battle-card.rarity-UR {
+            border: 3px solid;
+            border-image: linear-gradient(45deg, #d4af37, #c9a961, #b8944d, #d4af37) 1;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.4),
+                        0 0 25px rgba(201, 169, 97, 0.3),
+                        inset 0 0 15px rgba(212, 175, 55, 0.08);
+            animation: rarityGlowUR 3s ease-in-out infinite;
+        }
+
+        @keyframes rarityGlowUR {
+            0%, 100% {
+                box-shadow: 0 0 15px rgba(212, 175, 55, 0.4),
+                            0 0 25px rgba(201, 169, 97, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(212, 175, 55, 0.5),
+                            0 0 35px rgba(201, 169, 97, 0.4);
+            }
+        }
+
+        /* 稀有度边框 - SSR超稀有（古紫色） */
+        .battle-card.rarity-SSR {
+            border: 3px solid;
+            border-image: linear-gradient(135deg, #7c5295 0%, #9b6eb8 50%, #b8944d 100%) 1;
+            box-shadow: 0 0 12px rgba(124, 82, 149, 0.35),
+                        inset 0 0 12px rgba(124, 82, 149, 0.08);
+        }
+
+        /* 稀有度边框 - SR稀有（靛蓝色） */
+        .battle-card.rarity-SR {
+            border: 3px solid;
+            border-image: linear-gradient(135deg, #4a5f7f 0%, #5d7299 100%) 1;
+            box-shadow: 0 0 10px rgba(74, 95, 127, 0.3);
+        }
+
+        /* 稀有度边框 - R普通 */
+        .battle-card.rarity-R {
+            border: 3px solid #6b7280;
+            box-shadow: 0 0 5px rgba(107, 116, 128, 0.25);
+        }
+
+        /* 势力主题 - 魏国（冷峻钢铁） */
+        .battle-card.faction-WEI {
+            /* 钢铁质感：冷灰色金属 */
+            background:
+                linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.08) 0%,
+                    transparent 15%,
+                    transparent 85%,
+                    rgba(0, 0, 0, 0.25) 100%),
+                linear-gradient(135deg, #4a5563 0%, #3a4552 50%, #2a3442 100%);
+            border-color: #5a6573;
+        }
+
+        .battle-card.faction-WEI::before {
+            /* 钢铁划痕和磨损 */
+            background:
+                /* 边角磨损 */
+                radial-gradient(circle at 5% 10%, rgba(80, 90, 100, 0.4) 0%, transparent 10%),
+                radial-gradient(circle at 95% 10%, rgba(80, 90, 100, 0.35) 0%, transparent 8%),
+                radial-gradient(circle at 5% 90%, rgba(80, 90, 100, 0.38) 0%, transparent 9%),
+                radial-gradient(circle at 95% 90%, rgba(80, 90, 100, 0.36) 0%, transparent 11%),
+                /* 中部划痕 */
+                linear-gradient(95deg, transparent 45%, rgba(150, 160, 170, 0.15) 49%, transparent 50%),
+                linear-gradient(110deg, transparent 60%, rgba(140, 150, 160, 0.1) 62%, transparent 63%);
+        }
+
+        /* 势力主题 - 蜀国（赤铜材质） */
+        .battle-card.faction-SHU {
+            /* 赤铜质感：温暖的铜红色 */
+            background:
+                linear-gradient(135deg,
+                    rgba(255, 200, 150, 0.1) 0%,
+                    transparent 20%,
+                    transparent 80%,
+                    rgba(60, 30, 20, 0.3) 100%),
+                linear-gradient(135deg, #b87333 0%, #9a5c2a 50%, #6b3e1e 100%);
+            border-color: #c8844d;
+        }
+
+        .battle-card.faction-SHU::before {
+            /* 铜质氧化和划痕 */
+            background:
+                /* 氧化斑点 */
+                radial-gradient(circle at 15% 20%, rgba(80, 120, 100, 0.2) 0%, transparent 8%),
+                radial-gradient(circle at 85% 25%, rgba(70, 110, 90, 0.15) 0%, transparent 6%),
+                radial-gradient(circle at 20% 75%, rgba(90, 130, 110, 0.18) 0%, transparent 7%),
+                radial-gradient(circle at 90% 80%, rgba(75, 115, 95, 0.16) 0%, transparent 9%),
+                /* 铜面划痕 */
+                linear-gradient(88deg, transparent 30%, rgba(200, 150, 100, 0.12) 32%, transparent 33%),
+                linear-gradient(125deg, transparent 55%, rgba(180, 130, 80, 0.1) 56%, transparent 57%);
+        }
+
+        /* 势力主题 - 吴国（白银材质） */
+        .battle-card.faction-WU {
+            /* 银质感：明亮冷峻的银白色 */
+            background:
+                linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.15) 0%,
+                    transparent 18%,
+                    transparent 82%,
+                    rgba(0, 0, 0, 0.2) 100%),
+                linear-gradient(135deg, #c0c8d0 0%, #a0a8b0 50%, #808890 100%);
+            border-color: #d0d8e0;
+        }
+
+        .battle-card.faction-WU::before {
+            /* 银质抛光痕迹 */
+            background:
+                /* 抛光同心圆纹理 */
+                radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(255, 255, 255, 0.08) 35%, transparent 40%),
+                radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(255, 255, 255, 0.06) 54%, transparent 58%),
+                /* 边缘磨损 */
+                radial-gradient(circle at 8% 15%, rgba(120, 130, 140, 0.3) 0%, transparent 9%),
+                radial-gradient(circle at 92% 18%, rgba(110, 120, 130, 0.28) 0%, transparent 8%),
+                radial-gradient(circle at 10% 85%, rgba(115, 125, 135, 0.32) 0%, transparent 10%),
+                radial-gradient(circle at 88% 88%, rgba(125, 135, 145, 0.29) 0%, transparent 7%),
+                /* 银面划痕 */
+                linear-gradient(92deg, transparent 25%, rgba(255, 255, 255, 0.15) 26%, transparent 27%);
+        }
+
+        /* 势力主题 - 群雄（古铜材质） */
+        .battle-card.faction-QUN {
+            /* 古铜质感：斑驳的青铜色 */
+            background:
+                linear-gradient(135deg,
+                    rgba(180, 160, 120, 0.12) 0%,
+                    transparent 22%,
+                    transparent 78%,
+                    rgba(40, 35, 25, 0.3) 100%),
+                linear-gradient(135deg, #9d8b6a 0%, #7d6b4a 50%, #5d4b2a 100%);
+            border-color: #ad9b7a;
+        }
+
+        .battle-card.faction-QUN::before {
+            /* 古铜锈蚀和磨损 */
+            background:
+                /* 铜锈斑块（绿锈） */
+                radial-gradient(circle at 18% 22%, rgba(90, 140, 120, 0.25) 0%, transparent 12%),
+                radial-gradient(circle at 82% 28%, rgba(80, 130, 110, 0.22) 0%, transparent 10%),
+                radial-gradient(circle at 25% 70%, rgba(85, 135, 115, 0.24) 0%, transparent 11%),
+                radial-gradient(circle at 78% 82%, rgba(95, 145, 125, 0.23) 0%, transparent 13%),
+                /* 表面污渍 */
+                radial-gradient(ellipse at 40% 45%, rgba(60, 50, 35, 0.15) 0%, transparent 20%),
+                /* 青铜纹理 */
+                linear-gradient(100deg, transparent 40%, rgba(140, 120, 80, 0.1) 41%, transparent 42%),
+                linear-gradient(118deg, transparent 65%, rgba(130, 110, 70, 0.08) 66%, transparent 67%);
+        }
+
+        /* 势力标识 */
+        .faction-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            z-index: 11;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .faction-badge.faction-WEI {
+            background: linear-gradient(135deg, #2c3e67 0%, #4a5f7f 100%);
+            border-color: rgba(74, 95, 127, 0.6);
+        }
+
+        .faction-badge.faction-SHU {
+            background: linear-gradient(135deg, #6b3a2e 0%, #8b4513 100%);
+            border-color: rgba(139, 69, 19, 0.6);
+        }
+
+        .faction-badge.faction-WU {
+            background: linear-gradient(135deg, #2d4a3e 0%, #3a5a40 100%);
+            border-color: rgba(58, 90, 64, 0.6);
+        }
+
+        .faction-badge.faction-QUN {
+            background: linear-gradient(135deg, #6b5d47 0%, #8b7355 100%);
+            border-color: rgba(139, 115, 85, 0.6);
+        }
+
+        /* 兵种标识 - 铸铁徽章效果 */
+        .unit-type {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            /* 黑铁铸造质感 */
+            background:
+                linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.15) 0%,
+                    transparent 25%,
+                    transparent 75%,
+                    rgba(0, 0, 0, 0.4) 100%),
+                linear-gradient(135deg, #505860 0%, #404850 50%, #303840 100%);
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            border: 2px solid #606870;
+            z-index: 10;
+            /* 铸铁立体阴影 */
+            box-shadow:
+                inset 1px 1px 0 rgba(255, 255, 255, 0.2),
+                inset -1px -1px 0 rgba(0, 0, 0, 0.6),
+                0 3px 6px rgba(0, 0, 0, 0.7),
+                0 1px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        /* 兵种标识金属反光 */
+        .unit-type::before {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 6px;
+            width: 10px;
+            height: 10px;
+            background: radial-gradient(circle,
+                rgba(255, 255, 255, 0.35) 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* 稀有度标识 - 真实金属牌 */
+        .rarity {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 8px;
+            /* 基础铁质感 */
+            background:
+                linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.12) 0%,
+                    transparent 20%,
+                    transparent 80%,
+                    rgba(0, 0, 0, 0.3) 100%),
+                linear-gradient(135deg, #6a7178 0%, #5a6168 100%);
+            border: 1.5px solid #7a8188;
+            box-shadow:
+                inset 1px 1px 0 rgba(255, 255, 255, 0.15),
+                inset -1px -1px 0 rgba(0, 0, 0, 0.5),
+                0 2px 4px rgba(0, 0, 0, 0.6);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+        }
+
+        /* UR神话 - 抛光黄金牌 */
+        .battle-card.rarity-UR .rarity {
+            background:
+                /* 高光反射 */
+                linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.25) 0%,
+                    transparent 15%,
+                    transparent 85%,
+                    rgba(139, 100, 0, 0.3) 100%),
+                /* 金属底色 */
+                linear-gradient(135deg, #ffd700 0%, #daa520 50%, #b8860b 100%);
+            color: #2a1a00;
+            border-color: #ffe55c;
+            box-shadow:
+                /* 内部立体感 */
+                inset 1px 1px 0 rgba(255, 255, 255, 0.3),
+                inset -1px -1px 0 rgba(139, 100, 0, 0.6),
+                /* 外部金色光晕 */
+                0 0 8px rgba(255, 215, 0, 0.5),
+                0 2px 5px rgba(0, 0, 0, 0.7);
+            /* 金属拉丝纹理 */
+            position: relative;
+        }
+
+        .battle-card.rarity-UR .rarity::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent 0px,
+                rgba(255, 255, 255, 0.1) 0.5px,
+                transparent 1px,
+                transparent 2px
+            );
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        /* SSR超稀有 - 拉丝银牌 */
+        .battle-card.rarity-SSR .rarity {
+            background:
+                linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.22) 0%,
+                    transparent 18%,
+                    transparent 82%,
+                    rgba(80, 80, 100, 0.25) 100%),
+                linear-gradient(135deg, #d0d8e0 0%, #b0b8c0 50%, #9098a0 100%);
+            color: #1a1a2a;
+            border-color: #e8f0f8;
+            box-shadow:
+                inset 1px 1px 0 rgba(255, 255, 255, 0.25),
+                inset -1px -1px 0 rgba(80, 80, 100, 0.5),
+                0 0 6px rgba(192, 216, 232, 0.4),
+                0 2px 5px rgba(0, 0, 0, 0.6);
+        }
+
+        .battle-card.rarity-SSR .rarity::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent 0px,
+                rgba(255, 255, 255, 0.08) 0.5px,
+                transparent 1px,
+                transparent 2px
+            );
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        /* SR稀有 - 铜质牌 */
+        .battle-card.rarity-SR .rarity {
+            background:
+                linear-gradient(135deg,
+                    rgba(255, 200, 150, 0.15) 0%,
+                    transparent 20%,
+                    transparent 80%,
+                    rgba(100, 60, 30, 0.25) 100%),
+                linear-gradient(135deg, #cd7f32 0%, #b8722d 50%, #a36528 100%);
+            color: #2a1805;
+            border-color: #dd9857;
+            box-shadow:
+                inset 1px 1px 0 rgba(255, 200, 150, 0.2),
+                inset -1px -1px 0 rgba(100, 60, 30, 0.5),
+                0 0 5px rgba(205, 127, 50, 0.35),
+                0 2px 5px rgba(0, 0, 0, 0.6);
+        }
+
+        /* 头像 - 画框镶嵌效果 */
+        .card-portrait {
+            font-size: 44px;
+            text-align: center;
+            margin: 8px 0 5px 0;
+            position: relative;
+            z-index: 1;
+            /* 立体突出效果 */
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+        }
+
+        /* 头像高光层 */
+        .card-portrait::after {
+            content: '';
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 120%;
+            height: 120%;
+            background: radial-gradient(ellipse at 25% 25%,
+                rgba(255, 255, 255, 0.2) 0%,
+                rgba(255, 255, 255, 0.05) 40%,
+                transparent 70%);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* 名字+职业 */
+        .card-name {
+            text-align: center;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .job-icon {
+            font-size: 10px;
+            opacity: 0.8;
+        }
+
+        /* 血条 */
+        .hp-bar {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            height: 14px;
+            margin-bottom: 5px;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hp-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #51cf66 0%, #37b24d 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hp-bar-fill.medium {
+            background: linear-gradient(90deg, #ffd43b 0%, #fab005 100%);
+        }
+
+        .hp-bar-fill.low {
+            background: linear-gradient(90deg, #ff6b6b 0%, #fa5252 100%);
+        }
+
+        .hp-text {
+            font-size: 9px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        /* 属性 */
+        .card-stats {
+            display: flex;
+            justify-content: space-around;
+            font-size: 11px;
+            margin-bottom: 4px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 技能按钮 */
+        .skill-btn {
+            width: 100%;
+            padding: 3px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 1px solid #ffd43b;
+            border-radius: 5px;
+            font-size: 10px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 3px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .skill-btn.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* 状态效果 */
+        .status-effects {
+            display: flex;
+            gap: 3px;
+            flex-wrap: wrap;
+            font-size: 14px;
+            justify-content: center;
+        }
+
+        .status-icon {
+            position: relative;
+        }
+
+        .status-count {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            width: 10px;
+            height: 10px;
+            font-size: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 怒气条 */
+        .rage-bar {
+            position: absolute;
+            right: 3px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #666;
+        }
+
+        .rage-fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(0deg, #ff6b6b 0%, #ffd43b 50%, #51cf66 100%);
+            transition: height 0.3s;
+        }
+
+        .rage-ready {
+            animation: ragePulse 1s ease-in-out infinite;
+        }
+
+        @keyframes ragePulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        /* 羁绊提示 */
+        .bond-indicator {
+            position: absolute;
+            bottom: 3px;
+            left: 3px;
+            font-size: 12px;
+            background: rgba(255, 215, 0, 0.2);
+            padding: 2px 5px;
+            border-radius: 5px;
+            border: 1px solid #FFD700;
+        }
+
+        /* 中央信息区 */
+        .center-zone {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            position: relative;
+        }
+
+        /* 战斗日志 */
+        .battle-log {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            width: 400px;
+            max-height: 200px;
+            background: rgba(20, 20, 28, 0.95);
+            border: 2px solid rgba(184, 148, 77, 0.35);
+            border-radius: 10px;
+            padding: 0;
+            overflow: hidden;
+            font-size: 12px;
+            z-index: 100;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        .battle-log::before {
+            content: '📜 战斗日志';
+            display: block;
+            background: rgba(184, 148, 77, 0.12);
+            border-bottom: 1px solid rgba(184, 148, 77, 0.25);
+            padding: 8px 12px;
+            font-weight: bold;
+            color: #c9a961;
+            font-size: 13px;
+        }
+
+        .battle-log-content {
+            max-height: 160px;
+            overflow-y: auto;
+            padding: 10px 12px;
+        }
+
+        /* 自定义滚动条 */
+        .battle-log-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .battle-log-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .battle-log-content::-webkit-scrollbar-thumb {
+            background: rgba(184, 148, 77, 0.3);
+            border-radius: 3px;
+        }
+
+        .battle-log-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(184, 148, 77, 0.5);
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 4px 8px;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease;
+            line-height: 1.4;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .log-entry.critical { color: #ff6b6b; font-weight: bold; }
+        .log-entry.skill { color: #a78bfa; }
+        .log-entry.bond { color: #FFD700; }
+        .log-entry.attack { color: #ffd43b; }
+
+        /* 兵种克制提示器 */
+        .counter-tips {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            width: 200px;
+            background: rgba(20, 20, 28, 0.9);
+            padding: 12px;
+            border-radius: 10px;
+            border: 2px solid rgba(184, 148, 77, 0.3);
+            font-size: 11px;
+        }
+
+        .counter-tips h4 {
+            color: #c9a961;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .counter-chain {
+            text-align: center;
+            margin: 8px 0;
+            line-height: 1.8;
+        }
+
+        .advantage-tip {
+            background: rgba(40, 167, 69, 0.2);
+            padding: 5px;
+            border-radius: 5px;
+            margin-top: 8px;
+            border-left: 3px solid #28a745;
+        }
+
+        /* 玩家区域 */
+        .player-zone {
+            flex: 0 0 30%;
+            background: linear-gradient(0deg, rgba(102, 126, 234, 0.15) 0%, transparent 100%);
+            border-top: 2px solid rgba(102, 126, 234, 0.4);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 阵型切换器 */
+        .formation-selector {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(20, 20, 28, 0.9);
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid rgba(93, 114, 153, 0.4);
+            min-width: 150px;
+        }
+
+        .formation-current {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .formation-diagram {
+            font-size: 9px;
+            line-height: 1.3;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 5px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-family: monospace;
+        }
+
+        .formation-btn {
+            width: 100%;
+            padding: 6px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-size: 11px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        /* 底部操作栏 */
+        .bottom-bar {
+            height: 120px;
+            background: rgba(20, 20, 28, 0.85);
+            border-top: 2px solid rgba(184, 148, 77, 0.3);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* 计谋手牌 */
+        .strategy-hand {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .strategy-card {
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, #3a3a52 0%, #2a2a3e 100%);
+            border: 2px solid #5a5a6f;
+            border-radius: 10px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .strategy-card:hover {
+            transform: translateY(-5px);
+            border-color: #b8944d;
+            box-shadow: 0 5px 15px rgba(184, 148, 77, 0.4);
+        }
+
+        .strategy-card.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .strategy-icon {
+            font-size: 32px;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .strategy-name {
+            font-size: 11px;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .strategy-cost {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2px 5px;
+            border-radius: 8px;
+            font-size: 10px;
+            color: #4facfe;
+        }
+
+        /* 能量显示 */
+        .energy-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .energy-crystals {
+            display: flex;
+            gap: 5px;
+        }
+
+        .crystal {
+            width: 25px;
+            height: 25px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(79, 172, 254, 0.8);
+            animation: crystalGlow 2s ease-in-out infinite;
+        }
+
+        .crystal.empty {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: none;
+        }
+
+        @keyframes crystalGlow {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* 控制按钮 */
+        .control-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+            border: none;
+            border-radius: 20px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(55, 178, 77, 0.4);
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(55, 178, 77, 0.6);
+        }
+
+        .action-btn.secondary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .action-btn.reset {
+            background: linear-gradient(135deg, #868e96 0%, #495057 100%);
+            box-shadow: 0 4px 12px rgba(73, 80, 87, 0.4);
+        }
+
+        /* 伤害数字 */
+        .damage-number {
+            position: fixed;
+            font-size: 32px;
+            font-weight: bold;
+            color: #ff6b6b;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 3000;
+            animation: damageRise 1.2s ease-out forwards;
+        }
+
+        .damage-number.critical {
+            font-size: 48px;
+            color: #ffd43b;
+        }
+
+        .damage-number.counter {
+            color: #51cf66;
+        }
+
+        @keyframes damageRise {
+            0% { transform: translateY(0) scale(0.5); opacity: 1; }
+            50% { transform: translateY(-40px) scale(1.3); opacity: 1; }
+            100% { transform: translateY(-100px) scale(1); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="battle-container">
+        <!-- 天气粒子效果 -->
+        <div class="weather-particles" id="weatherParticles"></div>
+
+        <!-- 顶部信息栏 -->
+        <div class="top-bar">
+            <!-- 地形卡片 -->
+            <div class="terrain-card" title="点击查看详情">
+                <div class="terrain-name">🏔️ 官渡</div>
+                <div class="terrain-effect">骑+1 弓+1 火+20%</div>
+            </div>
+
+            <!-- 天气 -->
+            <div class="weather-display" id="weatherDisplay" onclick="cycleWeather()" title="点击切换天气">
+                <span id="weatherIcon">☀️</span>
+                <span id="weatherName" style="font-size: 12px; margin-left: 8px;">晴天</span>
+            </div>
+
+            <!-- 回合数 -->
+            <div class="turn-display">回合 <span id="turnCount">1</span></div>
+
+            <!-- 士气条 -->
+            <div class="morale-container">
+                <div class="morale-bar">
+                    <div class="morale-label">敌军</div>
+                    <div class="morale-track">
+                        <div class="morale-fill morale-medium" id="enemyMorale" style="width: 70%"></div>
+                    </div>
+                    <div style="font-size: 16px;">😐</div>
+                </div>
+                <div class="morale-bar">
+                    <div class="morale-label">我军</div>
+                    <div class="morale-track">
+                        <div class="morale-fill morale-high" id="playerMorale" style="width: 100%"></div>
+                    </div>
+                    <div style="font-size: 16px;">😄</div>
+                </div>
+            </div>
+
+            <!-- 设置 -->
+            <button class="action-btn secondary" style="padding: 8px 15px; font-size: 12px;">⚙️</button>
+        </div>
+
+        <!-- 敌方区域 -->
+        <div class="enemy-zone">
+            <div class="zone-header">
+                <div class="zone-label">🔴 敌方阵营</div>
+                <div class="formation-badge">阵型：锋矢阵</div>
+                <div class="bond-indicator" title="五虎上将" style="position: static;">🐯 2/5</div>
+            </div>
+            <div class="cards-row" id="enemyCards"></div>
+        </div>
+
+        <!-- 中央信息区 -->
+        <div class="center-zone">
+            <!-- 战斗日志 -->
+            <div class="battle-log">
+                <div class="battle-log-content" id="battleLog">
+                    <div class="log-entry">⚔️ 战斗开始！官渡之战！</div>
+                    <div class="log-entry bond">✨ 羁绊激活：桃园三结义 (3/3)</div>
+                    <div class="log-entry">💡 提示：点击我方卡牌，再点击敌方目标发起攻击</div>
+                </div>
+            </div>
+
+            <!-- 兵种克制提示器 -->
+            <div class="counter-tips">
+                <h4>⚔️ 兵种克制</h4>
+                <div class="counter-chain">
+                    🐎 骑兵 → 🏹 弓兵<br>
+                    🏹 弓兵 → 🛡️ 盾兵<br>
+                    🛡️ 盾兵 → 🐎 骑兵<br>
+                    ⚔️ 步兵 → 📜 谋士<br>
+                    📜 谋士 → 🏹 弓兵
+                </div>
+                <div class="advantage-tip" id="counterTip">
+                    选择武将查看克制关系
+                </div>
+            </div>
+        </div>
+
+        <!-- 玩家区域 -->
+        <div class="player-zone">
+            <div class="zone-header">
+                <div class="zone-label">🔵 我方阵营</div>
+                <div class="formation-badge">阵型：八卦阵</div>
+                <div class="bond-indicator" title="桃园三结义" style="position: static;">🍑 3/3</div>
+            </div>
+            <div class="cards-row" id="playerCards"></div>
+
+            <!-- 阵型选择器 -->
+            <div class="formation-selector">
+                <div class="formation-current">
+                    <div style="font-size: 12px; color: #FFD700; margin-bottom: 5px;">当前阵型</div>
+                    <div style="font-weight: bold;">八卦阵 🔮</div>
+                </div>
+                <div class="formation-diagram">
+                    谋<br>
+                  坦 战 坦<br>
+                    射
+                </div>
+                <div style="font-size: 10px; color: #DDD; margin: 5px 0;">
+                    效果：谋士防+50%<br>
+                    计谋消耗-1⚡
+                </div>
+                <button class="formation-btn" onclick="showFormations()">切换阵型 ▼</button>
+            </div>
+        </div>
+
+        <!-- 底部操作栏 -->
+        <div class="bottom-bar">
+            <!-- 计谋手牌 -->
+            <div class="strategy-hand">
+                <div class="strategy-card" onclick="useStrategy('fire')" title="火烧连营：对全体造成200伤害">
+                    <div class="strategy-icon">🔥</div>
+                    <div class="strategy-name">火攻</div>
+                    <div class="strategy-cost">3⚡</div>
+                </div>
+                <div class="strategy-card" onclick="useStrategy('betray')" title="反间计：使敌方2人互殴">
+                    <div class="strategy-icon">🎭</div>
+                    <div class="strategy-name">离间</div>
+                    <div class="strategy-cost">2⚡</div>
+                </div>
+                <div class="strategy-card" onclick="useStrategy('empty')" title="空城计：本回合免疫攻击">
+                    <div class="strategy-icon">🏰</div>
+                    <div class="strategy-name">空城</div>
+                    <div class="strategy-cost">1⚡</div>
+                </div>
+                <div class="strategy-card" onclick="useStrategy('arrow')" title="草船借箭：抵挡远程攻击并反伤">
+                    <div class="strategy-icon">🏹</div>
+                    <div class="strategy-name">借箭</div>
+                    <div class="strategy-cost">2⚡</div>
+                </div>
+            </div>
+
+            <!-- 能量显示 -->
+            <div class="energy-display">
+                <div style="font-size: 12px; color: #4facfe;">能量</div>
+                <div class="energy-crystals" id="energyCrystals">
+                    <div class="crystal"></div>
+                    <div class="crystal"></div>
+                    <div class="crystal"></div>
+                </div>
+            </div>
+
+            <!-- 控制按钮 -->
+            <div class="control-buttons">
+                <button class="action-btn" id="endTurnBtn" onclick="endTurn()">
+                    结束回合 ▶️
+                </button>
+                <button class="action-btn reset" onclick="resetBattle()">
+                    🔄 重置
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 天气系统
+        const WeatherTypes = {
+            sunny: {icon: '☀️', name: '晴天', effect: '士气+10%'},
+            rain: {icon: '🌧️', name: '雨天', effect: '火攻-50%'},
+            snow: {icon: '❄️', name: '雪天', effect: '移动-1'},
+            fog: {icon: '🌫️', name: '雾天', effect: '命中-20%'},
+            wind: {icon: '💨', name: '风天', effect: '弓攻+30%'}
+        };
+
+        const weatherOrder = ['sunny', 'rain', 'snow', 'fog', 'wind'];
+        let currentWeatherIndex = 0;
+        let currentWeather = weatherOrder[0];
+        let weatherParticleInterval = null;
+
+        // 兵种类型
+        const UnitType = {
+            CAVALRY: {icon: '🐎', name: '骑兵', counters: 'ARCHER', weakness: 'SHIELD'},
+            ARCHER: {icon: '🏹', name: '弓兵', counters: 'SHIELD', weakness: 'CAVALRY'},
+            INFANTRY: {icon: '⚔️', name: '步兵', counters: 'MAGE', weakness: 'CAVALRY'},
+            SHIELD: {icon: '🛡️', name: '盾兵', counters: 'CAVALRY', weakness: 'ARCHER'},
+            MAGE: {icon: '📜', name: '谋士', counters: 'ARCHER', weakness: 'INFANTRY'}
+        };
+
+        // 势力定义
+        const Factions = {
+            WEI: {name: '魏', icon: '🐉', color: '#2c3e67', pattern: 'dragon'},
+            SHU: {name: '蜀', icon: '🐯', color: '#8b4513', pattern: 'tiger'},
+            WU: {name: '吴', icon: '🦅', color: '#3a5a40', pattern: 'phoenix'},
+            QUN: {name: '群', icon: '⭐', color: '#8b7355', pattern: 'cloud'}
+        };
+
+        // 数据
+        const enemyData = [
+            {id: 1, name: '周瑜', emoji: '🎭', type: 'MAGE', job: '法师',
+             hp: 4000, maxHp: 4000, attack: 500, defense: 300, rarity: 'SSR',
+             skill: {name: '反计', cost: 2}, rage: 0, faction: 'WU'},
+            {id: 2, name: '吕布', emoji: '⚡', type: 'CAVALRY', job: '刺客',
+             hp: 4800, maxHp: 4800, attack: 650, defense: 280, rarity: 'UR',
+             skill: {name: '无双', cost: 3}, rage: 0, faction: 'QUN'},
+            {id: 3, name: '张辽', emoji: '⚔️', type: 'INFANTRY', job: '战士',
+             hp: 5000, maxHp: 5000, attack: 500, defense: 380, rarity: 'SR',
+             skill: {name: '突袭', cost: 1}, rage: 0, faction: 'WEI'},
+            {id: 4, name: '许褚', emoji: '🛡️', type: 'SHIELD', job: '坦克',
+             hp: 6500, maxHp: 6500, attack: 350, defense: 550, rarity: 'SR',
+             skill: {name: '裸衣', cost: 2}, rage: 0, faction: 'WEI'},
+            {id: 5, name: '郭嘉', emoji: '🧙', type: 'MAGE', job: '法师',
+             hp: 3800, maxHp: 3800, attack: 420, defense: 250, rarity: 'SSR',
+             skill: {name: '遗计', cost: 2}, rage: 0, faction: 'WEI'}
+        ];
+
+        const playerData = [
+            {id: 1, name: '关羽', emoji: '🐉', type: 'INFANTRY', job: '战士',
+             hp: 5200, maxHp: 5200, attack: 530, defense: 400, rarity: 'SSR',
+             skill: {name: '武圣', cost: 2}, rage: 0, bond: '桃园三结义', faction: 'SHU'},
+            {id: 2, name: '张飞', emoji: '🦁', type: 'INFANTRY', job: '战士',
+             hp: 5300, maxHp: 5300, attack: 540, defense: 410, rarity: 'SSR',
+             skill: {name: '咆哮', cost: 1}, rage: 0, bond: '桃园三结义', faction: 'SHU'},
+            {id: 3, name: '赵云', emoji: '🐯', type: 'CAVALRY', job: '刺客',
+             hp: 5100, maxHp: 5100, attack: 525, defense: 395, rarity: 'SSR',
+             skill: {name: '龙胆', cost: 2}, rage: 0, bond: '桃园三结义', faction: 'SHU'},
+            {id: 4, name: '诸葛亮', emoji: '🔮', type: 'MAGE', job: '法师',
+             hp: 4000, maxHp: 4000, attack: 450, defense: 280, rarity: 'UR',
+             skill: {name: '东风', cost: 3}, rage: 0, faction: 'SHU'},
+            {id: 5, name: '黄月英', emoji: '💝', type: 'MAGE', job: '辅助',
+             hp: 3900, maxHp: 3900, attack: 320, defense: 350, rarity: 'SR',
+             skill: {name: '奇谋', cost: 1}, rage: 0, faction: 'SHU'}
+        ];
+
+        let currentTurn = 1;
+        let isPlayerTurn = true;
+        let selectedAttacker = null;
+        let playerEnergy = 3;
+        let playerMorale = 100;
+        let enemyMorale = 70;
+
+        function renderCards() {
+            renderEnemyCards();
+            renderPlayerCards();
+            updateUI();
+        }
+
+        function createCardHTML(card, type) {
+            const hpPercent = (card.hp / card.maxHp) * 100;
+            let hpClass = hpPercent < 30 ? 'low' : hpPercent < 60 ? 'medium' : '';
+            const canAttack = type === 'player' && isPlayerTurn && card.hp > 0;
+            const unitType = UnitType[card.type];
+            const ragePercent = (card.rage / 100) * 100;
+
+            // 获取势力信息
+            const faction = card.faction ? Factions[card.faction] : null;
+            const factionClass = card.faction ? `faction-${card.faction}` : '';
+            const rarityClass = card.rarity ? `rarity-${card.rarity}` : '';
+
+            return `
+                <div class="battle-card ${type} ${factionClass} ${rarityClass} ${card.hp <= 0 ? 'dead' : ''} ${canAttack ? 'can-attack' : ''}"
+                     data-id="${card.id}"
+                     data-type="${type}">
+                    <div class="unit-type" title="${unitType.name}">${unitType.icon}</div>
+                    ${faction ? `<div class="faction-badge faction-${card.faction}" title="${faction.name}国">${faction.icon}</div>` : ''}
+                    <div class="rarity">${card.rarity}</div>
+
+                    <div class="rage-bar">
+                        <div class="rage-fill ${card.rage >= 100 ? 'rage-ready' : ''}"
+                             style="height: ${ragePercent}%"></div>
+                    </div>
+
+                    <div class="card-portrait">${card.emoji}</div>
+                    <div class="card-name">${card.name} <span class="job-icon">${getJobIcon(card.job)}</span></div>
+
+                    <div class="hp-bar">
+                        <div class="hp-bar-fill ${hpClass}" style="width: ${hpPercent}%">
+                            <div class="hp-text">${Math.floor(card.hp)}/${card.maxHp}</div>
+                        </div>
+                    </div>
+
+                    <div class="card-stats">
+                        <div>⚔️ ${card.attack}</div>
+                        <div>🛡️ ${card.defense}</div>
+                    </div>
+
+                    ${card.skill ? `
+                    <button class="skill-btn ${playerEnergy < card.skill.cost || !isPlayerTurn ? 'disabled' : ''}"
+                            onclick="event.stopPropagation(); useSkill(${card.id}, '${type}')">
+                        ${card.skill.name} (${card.skill.cost}⚡)
+                    </button>
+                    ` : ''}
+
+                    <div class="status-effects">
+                        ${card.effects ? card.effects.map(e => `
+                            <span class="status-icon">${getEffectIcon(e.type)}
+                                <span class="status-count">${e.duration}</span>
+                            </span>
+                        `).join('') : ''}
+                    </div>
+
+                    ${card.bond ? `<div class="bond-indicator">${getBondIcon(card.bond)}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function getJobIcon(job) {
+            const icons = {
+                '战士': '🗡️', '射手': '🏹', '坦克': '🛡️',
+                '法师': '🧙', '辅助': '💚', '刺客': '⚡'
+            };
+            return icons[job] || '';
+        }
+
+        function getEffectIcon(type) {
+            const icons = {
+                shield: '🛡️', stun: '💫', fire: '🔥',
+                weak: '⬇️', buff: '💪'
+            };
+            return icons[type] || '✨';
+        }
+
+        function getBondIcon(bond) {
+            const icons = {
+                '桃园三结义': '🍑',
+                '五虎上将': '🐯'
+            };
+            return icons[bond] || '🤝';
+        }
+
+        function renderEnemyCards() {
+            const container = document.getElementById('enemyCards');
+            container.innerHTML = enemyData.map(card => createCardHTML(card, 'enemy')).join('');
+
+            enemyData.forEach(card => {
+                const element = container.querySelector(`[data-id="${card.id}"][data-type="enemy"]`);
+                if (element) {
+                    element.onclick = () => onCardClick(card, 'enemy');
+                }
+            });
+        }
+
+        function renderPlayerCards() {
+            const container = document.getElementById('playerCards');
+            container.innerHTML = playerData.map(card => createCardHTML(card, 'player')).join('');
+
+            playerData.forEach(card => {
+                const element = container.querySelector(`[data-id="${card.id}"][data-type="player"]`);
+                if (element) {
+                    element.onclick = () => onCardClick(card, 'player');
+                }
+            });
+        }
+
+        function onCardClick(card, type) {
+            if (card.hp <= 0) return;
+
+            if (type === 'player' && isPlayerTurn) {
+                if (selectedAttacker && selectedAttacker.id === card.id) {
+                    selectedAttacker = null;
+                    addLog('取消选择');
+                    updateCounterTip(null);
+                } else {
+                    selectedAttacker = card;
+                    addLog(`选择 ${card.name} 准备攻击`);
+                    updateCounterTip(card);
+                }
+                renderCards();
+            } else if (type === 'enemy' && selectedAttacker) {
+                performAttack(selectedAttacker, card);
+                selectedAttacker = null;
+                updateCounterTip(null);
+            }
+        }
+
+        function updateCounterTip(attacker) {
+            const tip = document.getElementById('counterTip');
+            if (!attacker) {
+                tip.innerHTML = '选择武将查看克制关系';
+                tip.style.borderColor = '#666';
+                return;
+            }
+
+            const attackerType = UnitType[attacker.type];
+            const counters = UnitType[attackerType.counters];
+            const weakness = UnitType[attackerType.weakness];
+
+            tip.innerHTML = `
+                ${attacker.name}（${attackerType.name}）<br>
+                ✅ 克制：${counters.name} +30%<br>
+                ❌ 被克：${weakness.name} -20%
+            `;
+            tip.style.borderColor = '#28a745';
+        }
+
+        function performAttack(attacker, target) {
+            // 计算克制关系
+            const attackerType = UnitType[attacker.type];
+            const targetType = UnitType[target.type];
+            let multiplier = 1.0;
+            let isCritical = Math.random() < 0.2;
+            let isCounter = false;
+
+            if (attackerType.counters === target.type) {
+                multiplier = 1.3;
+                isCounter = true;
+                addLog(`${attacker.name}（${attackerType.name}）克制 ${target.name}（${targetType.name}）！`, 'skill');
+            } else if (attackerType.weakness === target.type) {
+                multiplier = 0.8;
+                addLog(`${target.name}（${targetType.name}）克制 ${attacker.name}（${attackerType.name}）！`);
+            }
+
+            // 计算伤害
+            let damage = Math.max(10, attacker.attack - target.defense / 2);
+            damage *= multiplier;
+
+            if (isCritical) {
+                damage *= 2;
+                addLog(`💥 暴击！`, 'critical');
+            }
+
+            target.hp = Math.max(0, target.hp - damage);
+
+            // 怒气增加
+            attacker.rage = Math.min(100, attacker.rage + 15);
+            target.rage = Math.min(100, target.rage + 20);
+
+            // 显示伤害
+            const targetEl = document.querySelector(`[data-id="${target.id}"][data-type="enemy"]`);
+            if (targetEl) {
+                showDamage(targetEl, Math.floor(damage), isCritical, isCounter);
+            }
+
+            addLog(`${attacker.name} 攻击 ${target.name}，造成 ${Math.floor(damage)} 点伤害`, isCritical ? 'critical' : 'attack');
+
+            // 士气变化
+            if (target.hp <= 0) {
+                playerMorale = Math.min(100, playerMorale + 10);
+                enemyMorale = Math.max(0, enemyMorale - 15);
+                addLog(`${target.name} 阵亡！`);
+            }
+
+            renderCards();
+            checkBattleEnd();
+        }
+
+        function useSkill(cardId, type) {
+            if (type !== 'player' || !isPlayerTurn) return;
+
+            const card = playerData.find(c => c.id === cardId);
+            if (!card || playerEnergy < card.skill.cost) return;
+
+            playerEnergy -= card.skill.cost;
+            addLog(`${card.name} 使用技能：${card.skill.name}！`, 'skill');
+
+            // 这里简化处理，实际应该根据不同技能有不同效果
+            selectedAttacker = card;
+            renderCards();
+        }
+
+        function useStrategy(type) {
+            const costs = {fire: 3, betray: 2, empty: 1, arrow: 2};
+            const cost = costs[type];
+
+            if (playerEnergy < cost) {
+                addLog('⚡能量不足！');
+                return;
+            }
+
+            playerEnergy -= cost;
+
+            switch(type) {
+                case 'fire':
+                    enemyData.forEach(e => {
+                        if (e.hp > 0) {
+                            e.hp = Math.max(0, e.hp - 200);
+                        }
+                    });
+                    addLog('🔥 火烧连营！对全体敌人造成200点伤害！', 'skill');
+                    break;
+                case 'betray':
+                    addLog('🎭 反间计发动！敌方内讧！', 'skill');
+                    break;
+                case 'empty':
+                    addLog('🏰 空城计！本回合免疫攻击！', 'skill');
+                    break;
+                case 'arrow':
+                    addLog('🏹 草船借箭！抵挡远程攻击！', 'skill');
+                    break;
+            }
+
+            renderCards();
+        }
+
+        function showFormations() {
+            alert('阵型切换系统（演示版）\n\n可选阵型：\n• 八卦阵（当前）\n• 锋矢阵\n• 鱼鳞阵\n• 鹤翼阵\n• 长蛇阵');
+        }
+
+        function endTurn() {
+            if (!isPlayerTurn) return;
+            isPlayerTurn = false;
+            addLog('敌方回合...');
+
+            setTimeout(() => {
+                // 简单AI：随机攻击
+                const aliveEnemies = enemyData.filter(e => e.hp > 0);
+                const alivePlayers = playerData.filter(p => p.hp > 0);
+
+                if (aliveEnemies.length > 0 && alivePlayers.length > 0) {
+                    const attacker = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+                    const target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+
+                    let damage = Math.max(10, attacker.attack - target.defense / 2);
+                    target.hp = Math.max(0, target.hp - damage);
+
+                    addLog(`${attacker.name} 攻击 ${target.name}，造成 ${Math.floor(damage)} 点伤害`);
+
+                    if (target.hp <= 0) {
+                        playerMorale = Math.max(0, playerMorale - 15);
+                        enemyMorale = Math.min(100, enemyMorale + 10);
+                    }
+                }
+
+                startPlayerTurn();
+            }, 1500);
+        }
+
+        function startPlayerTurn() {
+            currentTurn++;
+            isPlayerTurn = true;
+            playerEnergy = 3;
+
+            document.getElementById('turnCount').textContent = currentTurn;
+            addLog('我的回合');
+            renderCards();
+        }
+
+        function showDamage(element, damage, isCritical, isCounter) {
+            const rect = element.getBoundingClientRect();
+            const dmg = document.createElement('div');
+            dmg.className = `damage-number ${isCritical ? 'critical' : ''} ${isCounter ? 'counter' : ''}`;
+            dmg.textContent = `-${damage}`;
+            dmg.style.left = rect.left + rect.width / 2 - 30 + 'px';
+            dmg.style.top = rect.top + rect.height / 2 - 30 + 'px';
+            document.body.appendChild(dmg);
+            setTimeout(() => dmg.remove(), 1200);
+        }
+
+        function addLog(message, type = '') {
+            const log = document.getElementById('battleLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updateUI() {
+            // 更新能量水晶
+            const crystals = document.getElementById('energyCrystals');
+            crystals.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const crystal = document.createElement('div');
+                crystal.className = `crystal ${i >= playerEnergy ? 'empty' : ''}`;
+                crystals.appendChild(crystal);
+            }
+
+            // 更新士气
+            const playerMoraleEl = document.getElementById('playerMorale');
+            const enemyMoraleEl = document.getElementById('enemyMorale');
+
+            playerMoraleEl.style.width = playerMorale + '%';
+            enemyMoraleEl.style.width = enemyMorale + '%';
+
+            playerMoraleEl.className = 'morale-fill ' + getMoraleClass(playerMorale);
+            enemyMoraleEl.className = 'morale-fill ' + getMoraleClass(enemyMorale);
+
+            // 更新选中状态
+            document.querySelectorAll('.battle-card').forEach(el => {
+                el.classList.remove('selected', 'targetable');
+            });
+
+            if (selectedAttacker) {
+                const attackerEl = document.querySelector(`[data-id="${selectedAttacker.id}"][data-type="player"]`);
+                if (attackerEl) attackerEl.classList.add('selected');
+
+                enemyData.forEach(e => {
+                    if (e.hp > 0) {
+                        const el = document.querySelector(`[data-id="${e.id}"][data-type="enemy"]`);
+                        if (el) el.classList.add('targetable');
+                    }
+                });
+            }
+        }
+
+        function getMoraleClass(morale) {
+            if (morale >= 80) return 'morale-high';
+            if (morale >= 50) return 'morale-medium';
+            if (morale >= 20) return 'morale-low';
+            return 'morale-panic';
+        }
+
+        function checkBattleEnd() {
+            const aliveEnemies = enemyData.filter(e => e.hp > 0);
+            const alivePlayers = playerData.filter(p => p.hp > 0);
+
+            if (aliveEnemies.length === 0) {
+                setTimeout(() => {
+                    alert('🎉 胜利！官渡之战大获全胜！');
+                    addLog('========== 胜利! ==========');
+                }, 500);
+            } else if (alivePlayers.length === 0) {
+                setTimeout(() => {
+                    alert('😢 战败...');
+                    addLog('========== 战败... ==========');
+                }, 500);
+            }
+        }
+
+        function resetBattle() {
+            enemyData.forEach(c => { c.hp = c.maxHp; c.rage = 0; });
+            playerData.forEach(c => { c.hp = c.maxHp; c.rage = 0; });
+            currentTurn = 1;
+            isPlayerTurn = true;
+            selectedAttacker = null;
+            playerEnergy = 3;
+            playerMorale = 100;
+            enemyMorale = 70;
+
+            document.getElementById('turnCount').textContent = currentTurn;
+            document.getElementById('battleLog').innerHTML = `
+                <div class="log-entry">⚔️ 战斗开始！官渡之战！</div>
+                <div class="log-entry bond">✨ 羁绊激活：桃园三结义 (3/3)</div>
+                <div class="log-entry">💡 提示：点击我方卡牌，再点击敌方目标发起攻击</div>
+            `;
+
+            renderCards();
+        }
+
+        // ====== 天气粒子系统 ======
+        function cycleWeather() {
+            currentWeatherIndex = (currentWeatherIndex + 1) % weatherOrder.length;
+            currentWeather = weatherOrder[currentWeatherIndex];
+            updateWeather();
+        }
+
+        function updateWeather() {
+            const weather = WeatherTypes[currentWeather];
+            document.getElementById('weatherIcon').textContent = weather.icon;
+            document.getElementById('weatherName').textContent = weather.name;
+            document.getElementById('weatherDisplay').title = `${weather.name}\n效果: ${weather.effect}`;
+
+            // 清除旧粒子
+            clearWeatherParticles();
+
+            // 生成新粒子
+            startWeatherParticles();
+
+            addLog(`天气变化：${weather.name}（${weather.effect}）`, 'skill');
+        }
+
+        function clearWeatherParticles() {
+            const container = document.getElementById('weatherParticles');
+            container.innerHTML = '';
+
+            if (weatherParticleInterval) {
+                clearInterval(weatherParticleInterval);
+                weatherParticleInterval = null;
+            }
+        }
+
+        function startWeatherParticles() {
+            const container = document.getElementById('weatherParticles');
+
+            switch(currentWeather) {
+                case 'sunny':
+                    createSunnyParticles(container);
+                    break;
+                case 'rain':
+                    createRainParticles(container);
+                    break;
+                case 'snow':
+                    createSnowParticles(container);
+                    break;
+                case 'fog':
+                    createFogParticles(container);
+                    break;
+                case 'wind':
+                    createWindParticles(container);
+                    break;
+            }
+        }
+
+        function createSunnyParticles(container) {
+            // 创建阳光光束（静态）
+            for (let i = 0; i < 8; i++) {
+                const ray = document.createElement('div');
+                ray.className = 'sun-ray';
+                ray.style.left = (15 + i * 12) + '%';
+                ray.style.top = '60px';
+                ray.style.transform = `rotate(${(i - 4) * 5}deg)`;
+                ray.style.animationDelay = (i * 0.3) + 's';
+                container.appendChild(ray);
+            }
+
+            // 创建闪烁光点（动态生成）
+            weatherParticleInterval = setInterval(() => {
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sun-sparkle';
+                sparkle.style.left = Math.random() * 100 + '%';
+                sparkle.style.top = Math.random() * 40 + '%';
+                sparkle.style.animationDelay = Math.random() * 2 + 's';
+                container.appendChild(sparkle);
+
+                // 2秒后移除
+                setTimeout(() => sparkle.remove(), 2000);
+            }, 500);
+        }
+
+        function createRainParticles(container) {
+            // 创建持续的雨滴
+            weatherParticleInterval = setInterval(() => {
+                for (let i = 0; i < 3; i++) {
+                    const drop = document.createElement('div');
+                    drop.className = 'rain-drop';
+                    drop.style.left = Math.random() * 100 + '%';
+                    drop.style.top = '-50px';
+
+                    const duration = 0.8 + Math.random() * 0.4;
+                    drop.style.animationDuration = duration + 's';
+                    drop.style.animationDelay = (Math.random() * 0.3) + 's';
+
+                    container.appendChild(drop);
+
+                    // 动画结束后移除
+                    setTimeout(() => drop.remove(), (duration + 0.3) * 1000);
+                }
+            }, 100);
+        }
+
+        function createSnowParticles(container) {
+            // 创建飘落的雪花
+            const snowflakes = ['❄', '❅', '❆'];
+
+            weatherParticleInterval = setInterval(() => {
+                const flake = document.createElement('div');
+                flake.className = 'snow-flake';
+                flake.textContent = snowflakes[Math.floor(Math.random() * snowflakes.length)];
+                flake.style.left = Math.random() * 100 + '%';
+                flake.style.top = '-50px';
+                flake.style.fontSize = (10 + Math.random() * 10) + 'px';
+
+                const duration = 4 + Math.random() * 3;
+                flake.style.animationDuration = duration + 's';
+                flake.style.animationDelay = (Math.random() * 0.5) + 's';
+
+                container.appendChild(flake);
+
+                // 动画结束后移除
+                setTimeout(() => flake.remove(), (duration + 0.5) * 1000);
+            }, 300);
+        }
+
+        function createFogParticles(container) {
+            // 创建缓慢飘动的雾气
+            for (let i = 0; i < 5; i++) {
+                const fog = document.createElement('div');
+                fog.className = 'fog-particle';
+                fog.style.top = (Math.random() * 80) + '%';
+                fog.style.left = '-200px';
+
+                const duration = 15 + Math.random() * 10;
+                fog.style.animationDuration = duration + 's';
+                fog.style.animationDelay = (i * 3) + 's';
+
+                container.appendChild(fog);
+            }
+
+            // 定期补充雾气
+            weatherParticleInterval = setInterval(() => {
+                const fog = document.createElement('div');
+                fog.className = 'fog-particle';
+                fog.style.top = (Math.random() * 80) + '%';
+                fog.style.left = '-200px';
+                fog.style.animationDuration = (15 + Math.random() * 10) + 's';
+                container.appendChild(fog);
+
+                setTimeout(() => fog.remove(), 25000);
+            }, 8000);
+        }
+
+        function createWindParticles(container) {
+            // 创建快速移动的风流线
+            weatherParticleInterval = setInterval(() => {
+                for (let i = 0; i < 2; i++) {
+                    const wind = document.createElement('div');
+                    wind.className = 'wind-line';
+                    wind.style.top = (Math.random() * 90) + '%';
+                    wind.style.left = '-100px';
+
+                    const duration = 1.5 + Math.random() * 1;
+                    wind.style.animationDuration = duration + 's';
+                    wind.style.animationDelay = (Math.random() * 0.3) + 's';
+
+                    container.appendChild(wind);
+
+                    // 动画结束后移除
+                    setTimeout(() => wind.remove(), (duration + 0.3) * 1000);
+                }
+            }, 200);
+        }
+
+        // 初始化
+        renderCards();
+        startWeatherParticles(); // 启动初始天气效果
+        console.log('方案5：写实立体风格战斗UI已加载');
+        console.log('点击天气图标可以切换天气效果！');
+    </script>
+</body>
+</html>
