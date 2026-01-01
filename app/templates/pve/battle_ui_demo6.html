@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>方案6：PixiJS炉石风格</title>
     <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@pixi/filter-glow@5.1.1/dist/filter-glow.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -140,8 +140,13 @@
     <div class="loading" id="loading">加载中</div>
 
     <script>
-        // PixiJS应用初始化
-        const app = new PIXI.Application({
+        // 等待所有资源加载完成
+        window.addEventListener('load', function() {
+            console.log('开始初始化PixiJS...');
+
+            try {
+                // PixiJS应用初始化
+                const app = new PIXI.Application({
             width: window.innerWidth,
             height: window.innerHeight,
             backgroundColor: 0x1a1a24,
@@ -241,35 +246,21 @@
             rarityText.position.set(50, -80);
             cardGroup.addChild(rarityText);
 
-            // 根据稀有度添加发光滤镜
-            if (rarity === 'UR') {
-                const glowFilter = new PIXI.filters.GlowFilter({
-                    distance: 15,
-                    outerStrength: 2,
-                    innerStrength: 0.5,
-                    color: 0xFFD700,
-                    quality: 0.5
-                });
-                cardGroup.filters = [glowFilter];
-                cardGroup.glowFilter = glowFilter;
-            } else if (rarity === 'SSR') {
-                const glowFilter = new PIXI.filters.GlowFilter({
-                    distance: 12,
-                    outerStrength: 1.5,
-                    color: 0x9b6eb8,
-                    quality: 0.5
-                });
-                cardGroup.filters = [glowFilter];
-                cardGroup.glowFilter = glowFilter;
-            } else if (rarity === 'SR') {
-                const glowFilter = new PIXI.filters.GlowFilter({
-                    distance: 10,
-                    outerStrength: 1,
-                    color: 0x5d7299,
-                    quality: 0.5
-                });
-                cardGroup.filters = [glowFilter];
-                cardGroup.glowFilter = glowFilter;
+            // 根据稀有度添加发光效果（用Graphics模拟）
+            if (rarity === 'UR' || rarity === 'SSR' || rarity === 'SR') {
+                const glowColors = {
+                    'UR': 0xFFD700,
+                    'SSR': 0x9b6eb8,
+                    'SR': 0x5d7299
+                };
+                const glowSize = { 'UR': 8, 'SSR': 6, 'SR': 4 };
+
+                const glow = new PIXI.Graphics();
+                glow.lineStyle(glowSize[rarity], glowColors[rarity], 0.5);
+                glow.drawRoundedRect(-68, -95, 136, 190, 14);
+                glow.filters = [new PIXI.filters.BlurFilter(4)];
+                cardGroup.addChildAt(glow, 0);
+                cardGroup.glowGraphics = glow;
             }
 
             // 添加交互
@@ -293,9 +284,9 @@
                 });
 
                 // 增强发光
-                if (cardGroup.glowFilter) {
-                    gsap.to(cardGroup.glowFilter, {
-                        outerStrength: cardGroup.glowFilter.outerStrength * 1.5,
+                if (cardGroup.glowGraphics) {
+                    gsap.to(cardGroup.glowGraphics, {
+                        alpha: 1,
                         duration: 0.3
                     });
                 }
@@ -316,19 +307,9 @@
                 });
 
                 // 恢复发光
-                if (cardGroup.glowFilter && rarity === 'UR') {
-                    gsap.to(cardGroup.glowFilter, {
-                        outerStrength: 2,
-                        duration: 0.3
-                    });
-                } else if (cardGroup.glowFilter && rarity === 'SSR') {
-                    gsap.to(cardGroup.glowFilter, {
-                        outerStrength: 1.5,
-                        duration: 0.3
-                    });
-                } else if (cardGroup.glowFilter && rarity === 'SR') {
-                    gsap.to(cardGroup.glowFilter, {
-                        outerStrength: 1,
+                if (cardGroup.glowGraphics) {
+                    gsap.to(cardGroup.glowGraphics, {
+                        alpha: 0.5,
                         duration: 0.3
                     });
                 }
@@ -468,23 +449,23 @@
         });
 
         // 控制函数
-        function toggleGlow() {
+        window.toggleGlow = function() {
             glowEnabled = !glowEnabled;
             cards.forEach(card => {
-                if (card.glowFilter) {
-                    card.glowFilter.enabled = glowEnabled;
+                if (card.glowGraphics) {
+                    card.glowGraphics.visible = glowEnabled;
                 }
             });
         }
 
-        function toggleParticles() {
+        window.toggleParticles = function() {
             particlesEnabled = !particlesEnabled;
             particleGroups.forEach(group => {
                 group.visible = particlesEnabled;
             });
         }
 
-        function resetCards() {
+        window.resetCards = function() {
             cards.forEach((card, i) => {
                 gsap.to(card, {
                     x: -300 + i * 150,
@@ -495,19 +476,21 @@
             });
         }
 
-        // 隐藏加载提示
-        setTimeout(() => {
-            document.getElementById('loading').style.display = 'none';
-        }, 500);
-
         // 响应式
         window.addEventListener('resize', () => {
             app.renderer.resize(window.innerWidth, window.innerHeight);
             cardContainer.position.set(app.screen.width / 2, app.screen.height / 2);
         });
-    </script>
 
-    <!-- GSAP用于补间动画 -->
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+        // 隐藏加载提示
+        console.log('PixiJS初始化完成！');
+        document.getElementById('loading').style.display = 'none';
+
+            } catch (error) {
+                console.error('PixiJS初始化错误:', error);
+                document.getElementById('loading').innerHTML = '加载失败：' + error.message;
+            }
+        });
+    </script>
 </body>
 </html>
