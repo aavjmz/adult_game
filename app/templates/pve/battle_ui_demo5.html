@@ -310,15 +310,67 @@
         .battle-card {
             width: 130px;
             min-height: 185px;
-            /* 深色卡牌内容区 */
-            background: #2a2a35;
-            border: none; /* 移除简单边框，用伪元素做3D边框 */
+            /* 深色羊皮纸/皮革质感纹理背景 */
+            background:
+                /* 细密噪点纹理 */
+                repeating-linear-gradient(
+                    45deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.04) 2px,
+                    rgba(0, 0, 0, 0.04) 4px
+                ),
+                repeating-linear-gradient(
+                    -45deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.03) 2px,
+                    rgba(0, 0, 0, 0.03) 4px
+                ),
+                /* 随机斑点模拟纸张纤维 */
+                radial-gradient(circle at 12% 18%, rgba(0, 0, 0, 0.12) 0%, transparent 2%),
+                radial-gradient(circle at 88% 22%, rgba(0, 0, 0, 0.08) 0%, transparent 1.5%),
+                radial-gradient(circle at 35% 45%, rgba(0, 0, 0, 0.10) 0%, transparent 2.2%),
+                radial-gradient(circle at 68% 55%, rgba(0, 0, 0, 0.09) 0%, transparent 1.8%),
+                radial-gradient(circle at 22% 72%, rgba(0, 0, 0, 0.11) 0%, transparent 2%),
+                radial-gradient(circle at 85% 78%, rgba(0, 0, 0, 0.07) 0%, transparent 1.6%),
+                radial-gradient(circle at 50% 30%, rgba(0, 0, 0, 0.08) 0%, transparent 2.5%),
+                radial-gradient(circle at 78% 88%, rgba(0, 0, 0, 0.09) 0%, transparent 1.9%),
+                radial-gradient(circle at 28% 92%, rgba(0, 0, 0, 0.10) 0%, transparent 2.1%),
+                /* 皮革纹理线条 */
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(255, 255, 255, 0.025) 0px,
+                    transparent 1px,
+                    transparent 3px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    rgba(255, 255, 255, 0.02) 0px,
+                    transparent 1px,
+                    transparent 3px
+                ),
+                /* 光影渐变 - 模拟光照 */
+                radial-gradient(ellipse at 25% 15%,
+                    rgba(255, 255, 255, 0.10) 0%,
+                    rgba(255, 255, 255, 0.04) 40%,
+                    transparent 65%),
+                radial-gradient(ellipse at 75% 85%,
+                    rgba(0, 0, 0, 0.20) 0%,
+                    rgba(0, 0, 0, 0.08) 40%,
+                    transparent 65%),
+                /* 基础底色 - 深色皮革 */
+                linear-gradient(145deg,
+                    #2f2f3c 0%,
+                    #28283a 40%,
+                    #252532 60%,
+                    #22222e 100%);
+            border: none;
             border-radius: 12px;
             padding: 10px;
             position: relative;
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            /* 3D变换支持 */
             transform-style: preserve-3d;
             transform: rotateY(0deg) rotateX(0deg);
             /* 卡牌厚度效果 + 深度阴影 */
@@ -562,8 +614,22 @@
 
         /* 势力主题 - 魏国（冷峻钢铁） */
         .battle-card.faction-WEI {
-            /* 深色钢铁底色 */
-            background: #3a4552;
+            /* 钢铁质感纹理背景 */
+            background:
+                /* 细密噪点 */
+                repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0, 0, 0, 0.05) 2px, rgba(0, 0, 0, 0.05) 4px),
+                repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(0, 0, 0, 0.04) 2px, rgba(0, 0, 0, 0.04) 4px),
+                /* 钢铁斑点 */
+                radial-gradient(circle at 15% 20%, rgba(100, 110, 120, 0.15) 0%, transparent 2%),
+                radial-gradient(circle at 82% 30%, rgba(90, 100, 110, 0.12) 0%, transparent 1.8%),
+                radial-gradient(circle at 40% 55%, rgba(95, 105, 115, 0.14) 0%, transparent 2.2%),
+                radial-gradient(circle at 70% 70%, rgba(85, 95, 105, 0.13) 0%, transparent 1.9%),
+                radial-gradient(circle at 25% 85%, rgba(90, 100, 110, 0.11) 0%, transparent 2.1%),
+                /* 光影 */
+                radial-gradient(ellipse at 20% 10%, rgba(160, 170, 180, 0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 90%, rgba(20, 30, 40, 0.18) 0%, transparent 60%),
+                /* 钢铁底色 */
+                linear-gradient(145deg, #3f4f5f 0%, #35424f 40%, #2d3a47 60%, #28353f 100%);
         }
 
         /* 魏国金属边框 - 冷峻钢铁 */
@@ -595,8 +661,22 @@
 
         /* 势力主题 - 蜀国（赤铜材质） */
         .battle-card.faction-SHU {
-            /* 深色赤铜底色 */
-            background: #6b3e1e;
+            /* 赤铜质感纹理背景 */
+            background:
+                /* 细密噪点 */
+                repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0, 0, 0, 0.06) 2px, rgba(0, 0, 0, 0.06) 4px),
+                repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(0, 0, 0, 0.05) 2px, rgba(0, 0, 0, 0.05) 4px),
+                /* 铜锈斑点 */
+                radial-gradient(circle at 18% 25%, rgba(80, 120, 100, 0.18) 0%, transparent 2.5%),
+                radial-gradient(circle at 85% 18%, rgba(70, 110, 90, 0.15) 0%, transparent 2%),
+                radial-gradient(circle at 38% 60%, rgba(85, 125, 105, 0.17) 0%, transparent 2.3%),
+                radial-gradient(circle at 65% 75%, rgba(75, 115, 95, 0.16) 0%, transparent 2.1%),
+                radial-gradient(circle at 22% 88%, rgba(80, 120, 100, 0.14) 0%, transparent 1.9%),
+                /* 铜质光影 */
+                radial-gradient(ellipse at 25% 15%, rgba(255, 180, 120, 0.14) 0%, transparent 60%),
+                radial-gradient(ellipse at 75% 85%, rgba(60, 30, 15, 0.22) 0%, transparent 60%),
+                /* 赤铜底色 */
+                linear-gradient(145deg, #804520 0%, #6b3e1e 40%, #5a3318 60%, #4d2c14 100%);
         }
 
         /* 蜀国金属边框 - 赤铜 */
@@ -624,8 +704,22 @@
 
         /* 势力主题 - 吴国（白银材质） */
         .battle-card.faction-WU {
-            /* 深色银质底色 */
-            background: #808890;
+            /* 白银质感纹理背景 */
+            background:
+                /* 细密噪点 */
+                repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0, 0, 0, 0.04) 2px, rgba(0, 0, 0, 0.04) 4px),
+                repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px),
+                /* 银质抛光痕迹 */
+                radial-gradient(circle at 16% 22%, rgba(200, 210, 220, 0.16) 0%, transparent 2%),
+                radial-gradient(circle at 80% 28%, rgba(190, 200, 210, 0.14) 0%, transparent 1.8%),
+                radial-gradient(circle at 42% 58%, rgba(195, 205, 215, 0.15) 0%, transparent 2.2%),
+                radial-gradient(circle at 68% 72%, rgba(185, 195, 205, 0.13) 0%, transparent 2%),
+                radial-gradient(circle at 28% 82%, rgba(190, 200, 210, 0.12) 0%, transparent 1.9%),
+                /* 银质光影 */
+                radial-gradient(ellipse at 22% 12%, rgba(255, 255, 255, 0.16) 0%, transparent 60%),
+                radial-gradient(ellipse at 78% 88%, rgba(60, 70, 80, 0.16) 0%, transparent 60%),
+                /* 白银底色 */
+                linear-gradient(145deg, #9098a0 0%, #858d95 40%, #78808a 60%, #6d757f 100%);
         }
 
         /* 吴国金属边框 - 白银 */
@@ -653,8 +747,22 @@
 
         /* 势力主题 - 群雄（古铜材质） */
         .battle-card.faction-QUN {
-            /* 深色古铜底色 */
-            background: #5d4b2a;
+            /* 古铜质感纹理背景 */
+            background:
+                /* 细密噪点 */
+                repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0, 0, 0, 0.06) 2px, rgba(0, 0, 0, 0.06) 4px),
+                repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(0, 0, 0, 0.05) 2px, rgba(0, 0, 0, 0.05) 4px),
+                /* 古铜锈蚀斑点 */
+                radial-gradient(circle at 20% 28%, rgba(90, 140, 120, 0.22) 0%, transparent 2.8%),
+                radial-gradient(circle at 78% 22%, rgba(85, 135, 115, 0.19) 0%, transparent 2.4%),
+                radial-gradient(circle at 36% 62%, rgba(95, 145, 125, 0.21) 0%, transparent 2.6%),
+                radial-gradient(circle at 72% 68%, rgba(80, 130, 110, 0.18) 0%, transparent 2.2%),
+                radial-gradient(circle at 18% 78%, rgba(88, 138, 118, 0.20) 0%, transparent 2.5%),
+                /* 古铜光影 */
+                radial-gradient(ellipse at 28% 18%, rgba(200, 170, 120, 0.14) 0%, transparent 60%),
+                radial-gradient(ellipse at 72% 82%, rgba(40, 30, 15, 0.22) 0%, transparent 60%),
+                /* 古铜底色 */
+                linear-gradient(145deg, #6d5b3a 0%, #5d4b2a 40%, #4d3b1a 60%, #42321a 100%);
         }
 
         /* 群雄金属边框 - 古铜 */
