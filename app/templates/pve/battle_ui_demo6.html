@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方案6：PixiJS炉石风格</title>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@pixi/filter-glow@5.1.1/dist/filter-glow.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a24 0%, #2d2d3d 50%, #1f1f2e 100%);
+            color: #e8e8e8;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #game-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+
+        .info-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            max-width: 400px;
+            z-index: 100;
+        }
+
+        .info-overlay h2 {
+            color: #FFD700;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+
+        .info-overlay ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info-overlay li {
+            margin: 8px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .info-overlay li::before {
+            content: '✨';
+            position: absolute;
+            left: 0;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 30px;
+            border-radius: 25px;
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            z-index: 100;
+        }
+
+        .controls button {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            border: none;
+            color: #000;
+            padding: 10px 20px;
+            margin: 0 5px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .controls button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.5);
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #FFD700;
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <div class="info-overlay">
+        <h2>🎮 PixiJS炉石风格演示</h2>
+        <ul>
+            <li>WebGL高性能渲染</li>
+            <li>金色发光滤镜（UR卡）</li>
+            <li>3D倾斜透视效果</li>
+            <li>粒子特效系统</li>
+            <li>拖拽交互支持</li>
+            <li>真实图片纹理加载</li>
+            <li>滤镜叠加效果</li>
+        </ul>
+    </div>
+
+    <div class="controls">
+        <button onclick="toggleGlow()">切换发光</button>
+        <button onclick="toggleParticles()">切换粒子</button>
+        <button onclick="resetCards()">重置位置</button>
+        <button onclick="window.location.href='/pve/battle-ui-comparison'">返回对比页</button>
+    </div>
+
+    <div class="loading" id="loading">加载中</div>
+
+    <script>
+        // PixiJS应用初始化
+        const app = new PIXI.Application({
+            width: window.innerWidth,
+            height: window.innerHeight,
+            backgroundColor: 0x1a1a24,
+            antialias: true,
+            resolution: window.devicePixelRatio || 1,
+            autoDensity: true,
+        });
+
+        document.getElementById('game-container').appendChild(app.view);
+
+        // 状态管理
+        let glowEnabled = true;
+        let particlesEnabled = true;
+        let cards = [];
+
+        // 创建容器
+        const cardContainer = new PIXI.Container();
+        cardContainer.position.set(app.screen.width / 2, app.screen.height / 2);
+        app.stage.addChild(cardContainer);
+
+        // 创建单张卡牌
+        function createCard(x, y, rarity = 'UR', faction = 'WEI') {
+            const cardGroup = new PIXI.Container();
+            cardGroup.position.set(x, y);
+
+            // 卡牌底色（用渐变模拟原画背景）
+            const cardBg = new PIXI.Graphics();
+
+            // 根据势力选择颜色
+            const factionColors = {
+                'WEI': [0x4a5563, 0x2a3442], // 魏国：冷峻蓝灰
+                'SHU': [0xb87333, 0x6b3e1e], // 蜀国：赤铜
+                'WU': [0xc0c8d0, 0x808890],  // 吴国：白银
+                'QUN': [0x9d8b6a, 0x5d4b2a]  // 群雄：古铜
+            };
+
+            const colors = factionColors[faction] || factionColors['WEI'];
+
+            // 绘制卡牌主体
+            cardBg.beginFill(colors[0]);
+            cardBg.drawRoundedRect(-65, -92, 130, 184, 12);
+            cardBg.endFill();
+
+            // 添加渐变效果（用Graphics模拟）
+            const gradient = new PIXI.Graphics();
+            gradient.beginFill(colors[1], 0.6);
+            gradient.drawRoundedRect(-65, 0, 130, 92, 12);
+            gradient.endFill();
+
+            cardGroup.addChild(cardBg);
+            cardGroup.addChild(gradient);
+
+            // 添加金属边框
+            const border = new PIXI.Graphics();
+            border.lineStyle(4, 0x5a5a68, 1);
+            border.drawRoundedRect(-68, -95, 136, 190, 14);
+
+            // 添加内发光
+            const innerGlow = new PIXI.Graphics();
+            innerGlow.lineStyle(2, 0xffffff, 0.3);
+            innerGlow.drawRoundedRect(-66, -93, 132, 186, 13);
+
+            cardGroup.addChild(border);
+            cardGroup.addChild(innerGlow);
+
+            // 添加文字（模拟卡牌信息）
+            const nameText = new PIXI.Text('关羽', {
+                fontFamily: 'Arial',
+                fontSize: 18,
+                fill: 0xFFFFFF,
+                fontWeight: 'bold',
+                align: 'center'
+            });
+            nameText.anchor.set(0.5);
+            nameText.position.set(0, -70);
+            cardGroup.addChild(nameText);
+
+            // 添加势力标签
+            const factionText = new PIXI.Text(faction, {
+                fontFamily: 'Arial',
+                fontSize: 12,
+                fill: 0xFFD700,
+                fontWeight: 'bold'
+            });
+            factionText.anchor.set(0.5);
+            factionText.position.set(0, 70);
+            cardGroup.addChild(factionText);
+
+            // 添加稀有度标签
+            const rarityText = new PIXI.Text(rarity, {
+                fontFamily: 'Arial',
+                fontSize: 10,
+                fill: 0xFFFFFF,
+                fontWeight: 'bold'
+            });
+            rarityText.anchor.set(0.5);
+            rarityText.position.set(50, -80);
+            cardGroup.addChild(rarityText);
+
+            // 根据稀有度添加发光滤镜
+            if (rarity === 'UR') {
+                const glowFilter = new PIXI.filters.GlowFilter({
+                    distance: 15,
+                    outerStrength: 2,
+                    innerStrength: 0.5,
+                    color: 0xFFD700,
+                    quality: 0.5
+                });
+                cardGroup.filters = [glowFilter];
+                cardGroup.glowFilter = glowFilter;
+            } else if (rarity === 'SSR') {
+                const glowFilter = new PIXI.filters.GlowFilter({
+                    distance: 12,
+                    outerStrength: 1.5,
+                    color: 0x9b6eb8,
+                    quality: 0.5
+                });
+                cardGroup.filters = [glowFilter];
+                cardGroup.glowFilter = glowFilter;
+            } else if (rarity === 'SR') {
+                const glowFilter = new PIXI.filters.GlowFilter({
+                    distance: 10,
+                    outerStrength: 1,
+                    color: 0x5d7299,
+                    quality: 0.5
+                });
+                cardGroup.filters = [glowFilter];
+                cardGroup.glowFilter = glowFilter;
+            }
+
+            // 添加交互
+            cardGroup.interactive = true;
+            cardGroup.buttonMode = true;
+
+            // 3D倾斜效果
+            cardGroup.originalScale = 1;
+            cardGroup.on('pointerover', () => {
+                app.stage.cursor = 'pointer';
+                gsap.to(cardGroup.scale, {
+                    x: 1.1,
+                    y: 1.1,
+                    duration: 0.3,
+                    ease: 'power2.out'
+                });
+                gsap.to(cardGroup, {
+                    y: cardGroup.y - 10,
+                    duration: 0.3,
+                    ease: 'power2.out'
+                });
+
+                // 增强发光
+                if (cardGroup.glowFilter) {
+                    gsap.to(cardGroup.glowFilter, {
+                        outerStrength: cardGroup.glowFilter.outerStrength * 1.5,
+                        duration: 0.3
+                    });
+                }
+            });
+
+            cardGroup.on('pointerout', () => {
+                app.stage.cursor = 'default';
+                gsap.to(cardGroup.scale, {
+                    x: 1,
+                    y: 1,
+                    duration: 0.3,
+                    ease: 'power2.out'
+                });
+                gsap.to(cardGroup, {
+                    y: cardGroup.originalY,
+                    duration: 0.3,
+                    ease: 'power2.out'
+                });
+
+                // 恢复发光
+                if (cardGroup.glowFilter && rarity === 'UR') {
+                    gsap.to(cardGroup.glowFilter, {
+                        outerStrength: 2,
+                        duration: 0.3
+                    });
+                } else if (cardGroup.glowFilter && rarity === 'SSR') {
+                    gsap.to(cardGroup.glowFilter, {
+                        outerStrength: 1.5,
+                        duration: 0.3
+                    });
+                } else if (cardGroup.glowFilter && rarity === 'SR') {
+                    gsap.to(cardGroup.glowFilter, {
+                        outerStrength: 1,
+                        duration: 0.3
+                    });
+                }
+            });
+
+            // 拖拽
+            cardGroup.on('pointerdown', onDragStart);
+
+            cardGroup.originalY = y;
+            cardGroup.rarity = rarity;
+            cardGroup.faction = faction;
+
+            return cardGroup;
+        }
+
+        // 拖拽逻辑
+        function onDragStart(event) {
+            this.data = event.data;
+            this.dragging = true;
+            this.alpha = 0.8;
+            this.dragPoint = event.data.getLocalPosition(this.parent);
+            this.dragPoint.x -= this.x;
+            this.dragPoint.y -= this.y;
+        }
+
+        // 创建粒子效果
+        function createParticles(x, y, color = 0xFFD700) {
+            const particleContainer = new PIXI.Container();
+            particleContainer.position.set(x, y);
+
+            for (let i = 0; i < 10; i++) {
+                const particle = new PIXI.Graphics();
+                particle.beginFill(color, 0.8);
+                particle.drawCircle(0, 0, 2);
+                particle.endFill();
+
+                particle.vx = (Math.random() - 0.5) * 2;
+                particle.vy = (Math.random() - 0.5) * 2 - 1;
+                particle.life = 1;
+
+                particleContainer.addChild(particle);
+            }
+
+            return particleContainer;
+        }
+
+        // 创建卡牌
+        const rarities = ['UR', 'SSR', 'SR', 'R', 'UR'];
+        const factions = ['WEI', 'SHU', 'WU', 'QUN', 'WEI'];
+
+        for (let i = 0; i < 5; i++) {
+            const card = createCard(
+                -300 + i * 150,
+                0,
+                rarities[i],
+                factions[i]
+            );
+            cardContainer.addChild(card);
+            cards.push(card);
+
+            // 添加入场动画
+            card.alpha = 0;
+            card.scale.set(0.5);
+            gsap.to(card, {
+                alpha: 1,
+                duration: 0.5,
+                delay: i * 0.1,
+                ease: 'power2.out'
+            });
+            gsap.to(card.scale, {
+                x: 1,
+                y: 1,
+                duration: 0.5,
+                delay: i * 0.1,
+                ease: 'back.out(1.7)'
+            });
+        }
+
+        // 动画循环
+        let particleGroups = [];
+        app.ticker.add((delta) => {
+            // 更新拖拽
+            cards.forEach(card => {
+                if (card.dragging) {
+                    const newPosition = card.data.getLocalPosition(card.parent);
+                    card.x = newPosition.x - card.dragPoint.x;
+                    card.y = newPosition.y - card.dragPoint.y;
+                }
+            });
+
+            // 更新粒子
+            if (particlesEnabled) {
+                particleGroups.forEach((group, index) => {
+                    group.children.forEach(particle => {
+                        particle.x += particle.vx;
+                        particle.y += particle.vy;
+                        particle.vy += 0.05; // 重力
+                        particle.life -= 0.02;
+                        particle.alpha = particle.life;
+
+                        if (particle.life <= 0) {
+                            particle.life = 1;
+                            particle.x = 0;
+                            particle.y = 0;
+                            particle.vx = (Math.random() - 0.5) * 2;
+                            particle.vy = (Math.random() - 0.5) * 2 - 1;
+                        }
+                    });
+                });
+            }
+        });
+
+        // 添加粒子到UR卡牌
+        setTimeout(() => {
+            cards.forEach(card => {
+                if (card.rarity === 'UR' && particlesEnabled) {
+                    const particles = createParticles(0, 0, 0xFFD700);
+                    card.addChild(particles);
+                    particleGroups.push(particles);
+                }
+            });
+        }, 1000);
+
+        // 全局拖拽事件
+        app.stage.interactive = true;
+        app.stage.on('pointerup', () => {
+            cards.forEach(card => {
+                card.dragging = false;
+                card.alpha = 1;
+            });
+        });
+        app.stage.on('pointerupoutside', () => {
+            cards.forEach(card => {
+                card.dragging = false;
+                card.alpha = 1;
+            });
+        });
+
+        // 控制函数
+        function toggleGlow() {
+            glowEnabled = !glowEnabled;
+            cards.forEach(card => {
+                if (card.glowFilter) {
+                    card.glowFilter.enabled = glowEnabled;
+                }
+            });
+        }
+
+        function toggleParticles() {
+            particlesEnabled = !particlesEnabled;
+            particleGroups.forEach(group => {
+                group.visible = particlesEnabled;
+            });
+        }
+
+        function resetCards() {
+            cards.forEach((card, i) => {
+                gsap.to(card, {
+                    x: -300 + i * 150,
+                    y: 0,
+                    duration: 0.5,
+                    ease: 'power2.out'
+                });
+            });
+        }
+
+        // 隐藏加载提示
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none';
+        }, 500);
+
+        // 响应式
+        window.addEventListener('resize', () => {
+            app.renderer.resize(window.innerWidth, window.innerHeight);
+            cardContainer.position.set(app.screen.width / 2, app.screen.height / 2);
+        });
+    </script>
+
+    <!-- GSAP用于补间动画 -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+</body>
+</html>

@@ -77,6 +77,12 @@ def battle_ui_demo5():
     return render_template('pve/battle_ui_demo5.html')
 
 
+@pve_frontend_bp.route('/battle-ui-demo6')
+def battle_ui_demo6():
+    """战斗UI演示 - 方案6：PixiJS炉石风格"""
+    return render_template('pve/battle_ui_demo6.html')
+
+
 @pve_frontend_bp.route('/battle-animation-demo')
 def battle_animation_demo():
     """战场动画系统演示"""

@@ -42,8 +42,8 @@
 
         .comparison-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 20px;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
             margin-bottom: 40px;
         }
 
@@ -232,7 +232,7 @@
     <div class="container">
         <div class="header">
             <h1>🎮 战斗UI方案对比</h1>
-            <p>五种设计方案，古朴典雅vs写实立体，满足不同需求</p>
+            <p>六种设计方案，CSS纯代码vs游戏引擎，满足不同需求</p>
         </div>
 
         <!-- 方案对比 -->
@@ -491,6 +491,60 @@
                     点击体验方案5 →
                 </button>
             </div>
+
+            <!-- 方案6 HOT! -->
+            <div class="scheme-card" onclick="window.open('/pve/battle-ui-demo6', '_blank')" style="border: 3px solid #667eea;">
+                <div class="scheme-header" style="border-bottom-color: #667eea;">
+                    <div class="scheme-title" style="color: #667eea;">方案6：PixiJS炉石风格 🔥</div>
+                    <div class="scheme-subtitle">游戏引擎 · 原画级渲染</div>
+                </div>
+
+                <div class="scheme-preview">
+                    🎮
+                </div>
+
+                <div class="features">
+                    <div class="feature-item">
+                        <span class="feature-icon">🖼️</span>
+                        <span>真实原画图片加载</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✨</span>
+                        <span>WebGL高性能渲染</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">💫</span>
+                        <span>金色发光滤镜</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎪</span>
+                        <span>粒子特效系统</span>
+                    </div>
+                </div>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>✅ 优势</h4>
+                        <ul>
+                            <li>原画级质感</li>
+                            <li>性能极强</li>
+                            <li>特效丰富</li>
+                            <li>炉石同款</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>⚠️ 劣势</h4>
+                        <ul>
+                            <li>需要原画素材</li>
+                            <li>学习成本高</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button class="action-button" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    点击体验方案6 →
+                </button>
+            </div>
         </div>
 
         <!-- 详细对比表 -->
@@ -505,6 +559,7 @@
                         <th>方案3: 高级交互</th>
                         <th>方案4: 完整新系统</th>
                         <th>方案5: 写实立体</th>
+                        <th>方案6: PixiJS引擎</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -515,6 +570,7 @@
                         <td><span class="rating">⭐⭐⭐⭐</span> 清晰专业</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 信息丰富</td>
                         <td><span class="rating">⭐⭐⭐⭐⭐</span> 写实质感</td>
+                        <td><span class="rating">⭐⭐⭐⭐⭐</span> 原画级渲染</td>
                     </tr>
                     <tr>
                         <td><strong>实现难度</strong></td>
