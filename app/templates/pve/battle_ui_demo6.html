@@ -112,10 +112,87 @@
             40% { content: '..'; }
             60%, 100% { content: '...'; }
         }
+
+        /* 性能监控面板 */
+        .performance-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid rgba(0, 255, 100, 0.5);
+            min-width: 200px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            z-index: 100;
+        }
+
+        .performance-panel h3 {
+            color: #00ff64;
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 255, 100, 0.3);
+            padding-bottom: 5px;
+        }
+
+        .perf-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            color: #fff;
+        }
+
+        .perf-label {
+            color: #aaa;
+        }
+
+        .perf-value {
+            color: #00ff64;
+            font-weight: bold;
+        }
+
+        .perf-value.warning {
+            color: #ffa500;
+        }
+
+        .perf-value.critical {
+            color: #ff4444;
+        }
     </style>
 </head>
 <body>
     <div id="game-container"></div>
+
+    <!-- 性能监控面板 -->
+    <div class="performance-panel" id="performancePanel">
+        <h3>⚡ 性能监控</h3>
+        <div class="perf-item">
+            <span class="perf-label">FPS:</span>
+            <span class="perf-value" id="fps">60</span>
+        </div>
+        <div class="perf-item">
+            <span class="perf-label">渲染对象:</span>
+            <span class="perf-value" id="objects">0</span>
+        </div>
+        <div class="perf-item">
+            <span class="perf-label">粒子数:</span>
+            <span class="perf-value" id="particles">0</span>
+        </div>
+        <div class="perf-item">
+            <span class="perf-label">Draw Calls:</span>
+            <span class="perf-value" id="drawCalls">0</span>
+        </div>
+        <div class="perf-item">
+            <span class="perf-label">纹理内存:</span>
+            <span class="perf-value" id="textures">0 KB</span>
+        </div>
+        <div class="perf-item">
+            <span class="perf-label">渲染时间:</span>
+            <span class="perf-value" id="renderTime">0 ms</span>
+        </div>
+    </div>
 
     <div class="info-overlay">
         <h2>🎮 PixiJS炉石风格演示</h2>
@@ -133,6 +210,7 @@
     <div class="controls">
         <button onclick="toggleGlow()">切换发光</button>
         <button onclick="toggleParticles()">切换粒子</button>
+        <button onclick="togglePerformance()">性能监控</button>
         <button onclick="resetCards()">重置位置</button>
         <button onclick="window.location.href='/pve/battle-ui-comparison'">返回对比页</button>
     </div>
@@ -161,6 +239,12 @@
         let glowEnabled = true;
         let particlesEnabled = true;
         let cards = [];
+
+        // 性能监控变量
+        let fpsFrames = 0;
+        let fpsLastTime = performance.now();
+        let currentFPS = 60;
+        let renderTimeStart = 0;
 
         // 创建容器
         const cardContainer = new PIXI.Container();
@@ -391,6 +475,8 @@
         // 动画循环
         let particleGroups = [];
         app.ticker.add((delta) => {
+            renderTimeStart = performance.now();
+
             // 更新拖拽
             cards.forEach(card => {
                 if (card.dragging) {
@@ -420,7 +506,72 @@
                     });
                 });
             }
+
+            // 更新性能指标
+            updatePerformanceStats(performance.now() - renderTimeStart);
         });
+
+        // 性能监控更新函数
+        function updatePerformanceStats(renderTime) {
+            // 计算FPS
+            fpsFrames++;
+            const currentTime = performance.now();
+            if (currentTime >= fpsLastTime + 1000) {
+                currentFPS = Math.round((fpsFrames * 1000) / (currentTime - fpsLastTime));
+                fpsFrames = 0;
+                fpsLastTime = currentTime;
+
+                // 更新FPS显示
+                const fpsElement = document.getElementById('fps');
+                fpsElement.textContent = currentFPS;
+                fpsElement.className = 'perf-value';
+                if (currentFPS < 30) {
+                    fpsElement.className = 'perf-value critical';
+                } else if (currentFPS < 50) {
+                    fpsElement.className = 'perf-value warning';
+                }
+
+                // 计算渲染对象数量
+                let objectCount = 0;
+                function countObjects(container) {
+                    objectCount++;
+                    if (container.children) {
+                        container.children.forEach(child => countObjects(child));
+                    }
+                }
+                countObjects(app.stage);
+                document.getElementById('objects').textContent = objectCount;
+
+                // 计算粒子总数
+                let particleCount = 0;
+                particleGroups.forEach(group => {
+                    particleCount += group.children.length;
+                });
+                document.getElementById('particles').textContent = particleCount;
+
+                // 获取渲染器统计信息
+                if (app.renderer && app.renderer.gl) {
+                    const info = app.renderer.gl.getParameter(app.renderer.gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL);
+                    // Draw calls 估算
+                    document.getElementById('drawCalls').textContent = Math.max(5, objectCount / 10).toFixed(0);
+                }
+
+                // 纹理内存估算 (粗略)
+                const textureMemory = (app.renderer.texture ? app.renderer.texture.managedTextures.length : 0) * 256; // KB
+                document.getElementById('textures').textContent = textureMemory + ' KB';
+
+                // 渲染时间
+                const renderTimeElement = document.getElementById('renderTime');
+                renderTimeElement.textContent = renderTime.toFixed(2) + ' ms';
+                renderTimeElement.className = 'perf-value';
+                if (renderTime > 16) {
+                    renderTimeElement.className = 'perf-value warning';
+                }
+                if (renderTime > 33) {
+                    renderTimeElement.className = 'perf-value critical';
+                }
+            }
+        }
 
         // 添加粒子到UR卡牌
         setTimeout(() => {
@@ -474,6 +625,15 @@
                     ease: 'power2.out'
                 });
             });
+        }
+
+        window.togglePerformance = function() {
+            const panel = document.getElementById('performancePanel');
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+            } else {
+                panel.style.display = 'none';
+            }
         }
 
         // 响应式
