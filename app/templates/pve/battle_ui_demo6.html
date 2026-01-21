@@ -276,13 +276,14 @@
         cardContainer.position.set(app.screen.width / 2, app.screen.height / 2);
         app.stage.addChild(cardContainer);
 
-        // 卡牌原画URL映射（使用公开的三国人物图片）
+        // 卡牌原画URL映射
+        // 优先使用本地图片，如果本地图片不存在则使用占位图
         const cardArtworks = {
-            'guanyu': 'https://images.unsplash.com/photo-1534307671554-9a6d81f4d629?w=400&h=600&fit=crop',
-            'zhangliao': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=600&fit=crop',
-            'zhugeliang': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop',
-            'sunce': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=600&fit=crop',
-            'lvbu': 'https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?w=400&h=600&fit=crop'
+            'guanyu': '/static/images/cards/guanyu.png',
+            'zhangliao': '/static/images/cards/zhangliao.png',
+            'zhugeliang': '/static/images/cards/zhugeliang.png',
+            'sunce': '/static/images/cards/sunce.png',
+            'lvbu': '/static/images/cards/lvbu.png'
         };
 
         // 创建单张卡牌
