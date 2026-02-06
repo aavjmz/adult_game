@@ -42,7 +42,7 @@
 
         .comparison-grid {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 15px;
             margin-bottom: 40px;
         }
@@ -543,6 +543,60 @@
 
                 <button class="action-button" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                     点击体验方案6 →
+                </button>
+            </div>
+
+            <!-- 方案7 NEW! -->
+            <div class="scheme-card" onclick="window.open('/pve/battle-ui-demo7', '_blank')" style="border: 3px solid #00c853;">
+                <div class="scheme-header" style="border-bottom-color: #00c853;">
+                    <div class="scheme-title" style="color: #00c853;">方案7：移动端优化 📱</div>
+                    <div class="scheme-subtitle">响应式 · 触摸友好</div>
+                </div>
+
+                <div class="scheme-preview" style="background: linear-gradient(135deg, #e0f7fa 0%, #c8e6c9 100%);">
+                    📱
+                </div>
+
+                <div class="features">
+                    <div class="feature-item">
+                        <span class="feature-icon">📱</span>
+                        <span>手机端完美适配</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">👆</span>
+                        <span>触摸手势操作</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎨</span>
+                        <span>简洁清爽UI</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">⚡</span>
+                        <span>性能优化</span>
+                    </div>
+                </div>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>✅ 优势</h4>
+                        <ul>
+                            <li>移动优先</li>
+                            <li>流畅体验</li>
+                            <li>简洁美观</li>
+                            <li>低端友好</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>⚠️ 劣势</h4>
+                        <ul>
+                            <li>桌面端较小</li>
+                            <li>功能精简</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button class="action-button" style="background: linear-gradient(135deg, #00c853 0%, #00e676 100%);">
+                    📱 用手机体验方案7 →
                 </button>
             </div>
         </div>

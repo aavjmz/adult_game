@@ -83,6 +83,12 @@ def battle_ui_demo6():
     return render_template('pve/battle_ui_demo6.html')
 
 
+@pve_frontend_bp.route('/battle-ui-demo7')
+def battle_ui_demo7():
+    """战斗UI演示 - 方案7：移动端优化版"""
+    return render_template('pve/battle_ui_demo7.html')
+
+
 @pve_frontend_bp.route('/battle-animation-demo')
 def battle_animation_demo():
     """战场动画系统演示"""

@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>三国卡牌 - 移动端</title>
+
+    <!-- PixiJS库 -->
+    <script src="https://unpkg.com/pixi.js@7.3.2/dist/pixi.min.js"
+            onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js'"></script>
+    <!-- GSAP动画库 -->
+    <script src="https://unpkg.com/gsap@3.12.2/dist/gsap.min.js"
+            onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js'"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            font-family: -apple-system, BlinkMacSystemFont, 'Arial', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a24 0%, #2d2d3d 50%, #1f1f2e 100%);
+            color: #fff;
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 顶部信息栏 */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .top-bar .title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .top-bar .stats {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .stat-icon.fps { background: #00ff64; color: #000; }
+        .stat-icon.cards { background: #FFD700; color: #000; }
+
+        /* 底部控制栏 */
+        .bottom-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 100%);
+            padding: 15px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            min-width: 80px;
+            touch-action: manipulation;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ff9800 0%, #ffc107 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336 0%, #e91e63 100%);
+            color: white;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        /* 加载动画 */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 215, 0, 0.3);
+            border-top-color: #FFD700;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 16px;
+            color: #FFD700;
+        }
+
+        /* 卡牌提示信息 */
+        .card-info-popup {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.95);
+            padding: 15px 20px;
+            border-radius: 15px;
+            border: 2px solid #FFD700;
+            z-index: 200;
+            display: none;
+            min-width: 200px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-info-popup.show {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .card-info-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFD700;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .card-info-stats {
+            display: flex;
+            justify-content: space-around;
+            gap: 15px;
+        }
+
+        .card-stat {
+            text-align: center;
+        }
+
+        .card-stat-label {
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 3px;
+        }
+
+        .card-stat-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .card-stat-value.attack { color: #ff4444; }
+        .card-stat-value.health { color: #44ff44; }
+        .card-stat-value.cost { color: #FFD700; }
+
+        /* 手势提示 */
+        .gesture-hint {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #fff;
+            z-index: 50;
+            animation: fadeInOut 3s ease-in-out;
+            pointer-events: none;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        /* 横屏提示 */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .landscape-hint {
+                display: none;
+            }
+        }
+
+        /* 性能指示器（简化版） */
+        .perf-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 90;
+        }
+
+        .perf-indicator.good { color: #00ff64; border: 2px solid #00ff64; }
+        .perf-indicator.medium { color: #ffa500; border: 2px solid #ffa500; }
+        .perf-indicator.poor { color: #ff4444; border: 2px solid #ff4444; }
+
+        /* 菜单按钮 */
+        .menu-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 8px;
+            border: 2px solid #FFD700;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            z-index: 101;
+            cursor: pointer;
+        }
+
+        .menu-btn span {
+            width: 20px;
+            height: 2px;
+            background: #FFD700;
+            border-radius: 1px;
+        }
+
+        /* 侧边菜单 */
+        .side-menu {
+            position: absolute;
+            top: 0;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 150;
+            transition: left 0.3s ease;
+            backdrop-filter: blur(15px);
+            padding: 60px 20px 20px;
+        }
+
+        .side-menu.open {
+            left: 0;
+        }
+
+        .menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 149;
+            display: none;
+        }
+
+        .menu-overlay.show {
+            display: block;
+        }
+
+        .menu-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            border-left: 3px solid #FFD700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .menu-item:active {
+            background: rgba(255,255,255,0.2);
+            transform: translateX(5px);
+        }
+
+        .menu-item-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #FFD700;
+            margin-bottom: 3px;
+        }
+
+        .menu-item-desc {
+            font-size: 11px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <!-- 顶部信息栏 -->
+    <div class="top-bar">
+        <div class="title">🎮 三国卡牌</div>
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-icon fps" id="fpsDisplay">60</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-icon cards">5</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 性能指示器 -->
+    <div class="perf-indicator good" id="perfIndicator">
+        60
+    </div>
+
+    <!-- 菜单按钮 -->
+    <div class="menu-btn" id="menuBtn">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+
+    <!-- 侧边菜单 -->
+    <div class="menu-overlay" id="menuOverlay"></div>
+    <div class="side-menu" id="sideMenu">
+        <div class="menu-item" onclick="toggleEffects()">
+            <div class="menu-item-title">✨ 特效开关</div>
+            <div class="menu-item-desc">切换发光和粒子效果</div>
+        </div>
+        <div class="menu-item" onclick="resetCards()">
+            <div class="menu-item-title">🔄 重置位置</div>
+            <div class="menu-item-desc">将卡牌复位到初始位置</div>
+        </div>
+        <div class="menu-item" onclick="changeLayout()">
+            <div class="menu-item-title">📐 切换布局</div>
+            <div class="menu-item-desc">横向/纵向卡牌排列</div>
+        </div>
+        <div class="menu-item" onclick="window.location.href='/pve/battle-ui-comparison'">
+            <div class="menu-item-title">◀️ 返回</div>
+            <div class="menu-item-desc">返回Demo对比页面</div>
+        </div>
+    </div>
+
+    <!-- 卡牌信息弹窗 -->
+    <div class="card-info-popup" id="cardInfoPopup">
+        <div class="card-info-title" id="cardInfoTitle">关羽</div>
+        <div class="card-info-stats">
+            <div class="card-stat">
+                <div class="card-stat-label">攻击</div>
+                <div class="card-stat-value attack" id="cardInfoAttack">5</div>
+            </div>
+            <div class="card-stat">
+                <div class="card-stat-label">生命</div>
+                <div class="card-stat-value health" id="cardInfoHealth">6</div>
+            </div>
+            <div class="card-stat">
+                <div class="card-stat-label">费用</div>
+                <div class="card-stat-value cost" id="cardInfoCost">3</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部控制栏 -->
+    <div class="bottom-controls">
+        <div class="control-buttons">
+            <button class="btn btn-primary" onclick="addCard()">➕ 抽卡</button>
+            <button class="btn btn-success" onclick="playRandomCard()">▶️ 出牌</button>
+            <button class="btn btn-warning" onclick="resetCards()">🔄 重置</button>
+        </div>
+    </div>
+
+    <!-- 手势提示 -->
+    <div class="gesture-hint">👆 点击卡牌查看详情 · 滑动浏览</div>
+
+    <!-- 加载动画 -->
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">加载中...</div>
+    </div>
+
+    <script>
+        // 等待资源加载
+        window.addEventListener('load', function() {
+            // 检查依赖
+            if (typeof PIXI === 'undefined' || typeof gsap === 'undefined') {
+                document.getElementById('loading').innerHTML =
+                    '<div class="loading-text" style="color:#ff4444">❌ 加载失败<br><small>请检查网络连接</small></div>';
+                return;
+            }
+
+            try {
+                initGame();
+            } catch (error) {
+                console.error('初始化错误:', error);
+                document.getElementById('loading').innerHTML =
+                    '<div class="loading-text" style="color:#ff4444">❌ 初始化失败</div>';
+            }
+        });
+
+        let app, cardContainer, cards = [];
+        let currentLayout = 'horizontal'; // horizontal or vertical
+        let effectsEnabled = true;
+        let currentFPS = 60;
+
+        function initGame() {
+            // 创建PixiJS应用
+            app = new PIXI.Application({
+                width: window.innerWidth,
+                height: window.innerHeight,
+                backgroundColor: 0x1a1a24,
+                antialias: true,
+                resolution: window.devicePixelRatio || 1,
+                autoDensity: true,
+            });
+
+            document.getElementById('game-container').appendChild(app.view);
+
+            // 创建卡牌容器
+            cardContainer = new PIXI.Container();
+            cardContainer.position.set(app.screen.width / 2, app.screen.height / 2);
+            app.stage.addChild(cardContainer);
+
+            // 卡牌数据
+            const cardData = [
+                { rarity: 'UR', faction: 'WEI', artwork: 'zhangliao', name: '张辽', attack: 7, health: 6, cost: 4 },
+                { rarity: 'SSR', faction: 'SHU', artwork: 'guanyu', name: '关羽', attack: 6, health: 7, cost: 4 },
+                { rarity: 'SR', faction: 'WU', artwork: 'sunce', name: '孙策', attack: 5, health: 5, cost: 3 },
+                { rarity: 'R', faction: 'QUN', artwork: 'lvbu', name: '吕布', attack: 8, health: 5, cost: 5 },
+                { rarity: 'UR', faction: 'SHU', artwork: 'zhugeliang', name: '诸葛亮', attack: 3, health: 8, cost: 4 }
+            ];
+
+            // 创建卡牌
+            cardData.forEach((data, i) => {
+                createCard(data, i);
+            });
+
+            // 性能监控
+            let fpsFrames = 0;
+            let fpsLastTime = performance.now();
+
+            app.ticker.add(() => {
+                fpsFrames++;
+                const now = performance.now();
+                if (now >= fpsLastTime + 1000) {
+                    currentFPS = Math.round((fpsFrames * 1000) / (now - fpsLastTime));
+                    fpsFrames = 0;
+                    fpsLastTime = now;
+
+                    document.getElementById('fpsDisplay').textContent = currentFPS;
+                    const perfInd = document.getElementById('perfIndicator');
+                    perfInd.textContent = currentFPS;
+                    perfInd.className = 'perf-indicator ' +
+                        (currentFPS >= 50 ? 'good' : currentFPS >= 30 ? 'medium' : 'poor');
+                }
+            });
+
+            // 响应式处理
+            window.addEventListener('resize', handleResize);
+
+            // 菜单控制
+            document.getElementById('menuBtn').addEventListener('click', toggleMenu);
+            document.getElementById('menuOverlay').addEventListener('click', toggleMenu);
+
+            // 隐藏加载动画
+            document.getElementById('loading').style.display = 'none';
+
+            // 3秒后隐藏手势提示
+            setTimeout(() => {
+                const hint = document.querySelector('.gesture-hint');
+                if (hint) hint.style.display = 'none';
+            }, 3000);
+        }
+
+        function createCard(data, index) {
+            const cardScale = Math.min(window.innerWidth / 500, 1); // 根据屏幕缩放
+            const cardWidth = 110 * cardScale;
+            const cardHeight = 155 * cardScale;
+
+            const cardGroup = new PIXI.Container();
+            cardGroup.scale.set(cardScale);
+
+            // 存储卡牌数据
+            cardGroup.cardData = data;
+
+            // 卡牌背景
+            const cardBg = new PIXI.Graphics();
+            const factionColors = {
+                'WEI': 0x4a5563,
+                'SHU': 0xb87333,
+                'WU': 0xc0c8d0,
+                'QUN': 0x9d8b6a
+            };
+            cardBg.beginFill(factionColors[data.faction] || 0x4a5563);
+            cardBg.drawRoundedRect(-55, -77, 110, 155, 10);
+            cardBg.endFill();
+            cardGroup.addChild(cardBg);
+
+            // 加载原画
+            const artworkPath = `/static/images/cards/${data.artwork}.png`;
+            const texture = PIXI.Texture.from(artworkPath);
+            const sprite = new PIXI.Sprite(texture);
+            sprite.width = 110;
+            sprite.height = 130;
+            sprite.anchor.set(0.5, 0);
+            sprite.position.set(0, -77);
+
+            const mask = new PIXI.Graphics();
+            mask.beginFill(0xffffff);
+            mask.drawRoundedRect(-55, -77, 110, 130, 10);
+            mask.endFill();
+            cardGroup.addChild(sprite);
+            cardGroup.addChild(mask);
+            sprite.mask = mask;
+
+            // 边框
+            const border = new PIXI.Graphics();
+            border.lineStyle(3, 0x5a5a68, 1);
+            border.drawRoundedRect(-57, -79, 114, 159, 11);
+            cardGroup.addChild(border);
+
+            // 角色名
+            const nameText = new PIXI.Text(data.name, {
+                fontFamily: 'Arial, Microsoft YaHei',
+                fontSize: 14,
+                fill: 0xFFFFFF,
+                fontWeight: 'bold',
+                stroke: 0x000000,
+                strokeThickness: 3
+            });
+            nameText.anchor.set(0.5);
+            nameText.position.set(0, -60);
+            cardGroup.addChild(nameText);
+
+            // 底部信息栏
+            const infoBar = new PIXI.Graphics();
+            infoBar.beginFill(0x1a1a1a, 0.9);
+            infoBar.drawRoundedRect(-55, 53, 110, 25, 8);
+            infoBar.endFill();
+            cardGroup.addChild(infoBar);
+
+            // 攻击力
+            const attackBg = new PIXI.Graphics();
+            attackBg.beginFill(0xff4444);
+            attackBg.drawCircle(-42, 65, 8);
+            attackBg.endFill();
+            cardGroup.addChild(attackBg);
+
+            const attackText = new PIXI.Text(data.attack.toString(), {
+                fontSize: 12,
+                fill: 0xFFFFFF,
+                fontWeight: 'bold'
+            });
+            attackText.anchor.set(0.5);
+            attackText.position.set(-42, 65);
+            cardGroup.addChild(attackText);
+
+            // 生命值
+            const healthBg = new PIXI.Graphics();
+            healthBg.beginFill(0x44ff44);
+            healthBg.drawCircle(42, 65, 8);
+            healthBg.endFill();
+            cardGroup.addChild(healthBg);
+
+            const healthText = new PIXI.Text(data.health.toString(), {
+                fontSize: 12,
+                fill: 0xFFFFFF,
+                fontWeight: 'bold'
+            });
+            healthText.anchor.set(0.5);
+            healthText.position.set(42, 65);
+            cardGroup.addChild(healthText);
+
+            // 费用
+            const costText = new PIXI.Text('★' + data.cost, {
+                fontSize: 11,
+                fill: 0xFFD700,
+                fontWeight: 'bold'
+            });
+            costText.anchor.set(0.5);
+            costText.position.set(0, 65);
+            cardGroup.addChild(costText);
+
+            // 发光效果
+            if (effectsEnabled && (data.rarity === 'UR' || data.rarity === 'SSR')) {
+                const glowColors = { 'UR': 0xFFD700, 'SSR': 0x9b6eb8 };
+                const glow = new PIXI.Graphics();
+                glow.lineStyle(6, glowColors[data.rarity], 0.5);
+                glow.drawRoundedRect(-57, -79, 114, 159, 11);
+                glow.filters = [new PIXI.filters.BlurFilter(3)];
+                cardGroup.addChildAt(glow, 0);
+                cardGroup.glowGraphics = glow;
+            }
+
+            // 触摸交互
+            cardGroup.interactive = true;
+            cardGroup.on('pointerdown', (e) => onCardTouchStart(cardGroup, e));
+            cardGroup.on('pointerup', () => onCardTouchEnd(cardGroup));
+            cardGroup.on('pointerupoutside', () => onCardTouchEnd(cardGroup));
+            cardGroup.on('pointermove', (e) => onCardTouchMove(cardGroup, e));
+
+            // 位置布局
+            positionCard(cardGroup, index);
+
+            cardContainer.addChild(cardGroup);
+            cards.push(cardGroup);
+
+            // 入场动画
+            cardGroup.alpha = 0;
+            cardGroup.scale.set(0);
+            gsap.to(cardGroup, {
+                alpha: 1,
+                duration: 0.4,
+                delay: index * 0.1,
+                ease: 'power2.out'
+            });
+            gsap.to(cardGroup.scale, {
+                x: cardScale,
+                y: cardScale,
+                duration: 0.4,
+                delay: index * 0.1,
+                ease: 'back.out(1.5)'
+            });
+        }
+
+        function positionCard(card, index) {
+            const cardScale = Math.min(window.innerWidth / 500, 1);
+            const spacing = 120 * cardScale;
+
+            if (currentLayout === 'horizontal') {
+                const totalWidth = (cards.length || 5) * spacing;
+                card.x = -totalWidth / 2 + index * spacing + spacing / 2;
+                card.y = 0;
+            } else {
+                const totalHeight = (cards.length || 5) * spacing;
+                card.x = 0;
+                card.y = -totalHeight / 2 + index * spacing + spacing / 2;
+            }
+            card.originalX = card.x;
+            card.originalY = card.y;
+        }
+
+        let touchedCard = null;
+        let touchStartPos = { x: 0, y: 0 };
+        let cardStartPos = { x: 0, y: 0 };
+        let isSwiping = false;
+
+        function onCardTouchStart(card, event) {
+            touchedCard = card;
+            const pos = event.data.global;
+            touchStartPos = { x: pos.x, y: pos.y };
+            cardStartPos = { x: card.x, y: card.y };
+            isSwiping = false;
+
+            gsap.to(card.scale, { x: card.scale.x * 1.1, y: card.scale.y * 1.1, duration: 0.2 });
+            gsap.to(card, { y: card.y - 10, duration: 0.2 });
+        }
+
+        function onCardTouchMove(card, event) {
+            if (!touchedCard || touchedCard !== card) return;
+
+            const pos = event.data.global;
+            const dx = pos.x - touchStartPos.x;
+            const dy = pos.y - touchStartPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > 10) {
+                isSwiping = true;
+                card.x = cardStartPos.x + dx / cardContainer.scale.x;
+                card.y = cardStartPos.y + dy / cardContainer.scale.y;
+            }
+        }
+
+        function onCardTouchEnd(card) {
+            if (!touchedCard) return;
+
+            const wasSwiping = isSwiping;
+
+            gsap.to(card.scale, {
+                x: Math.min(window.innerWidth / 500, 1),
+                y: Math.min(window.innerWidth / 500, 1),
+                duration: 0.2
+            });
+
+            if (!wasSwiping) {
+                // 点击 - 显示卡牌信息
+                showCardInfo(card.cardData);
+            } else {
+                // 拖动后回弹
+                gsap.to(card, {
+                    x: card.originalX,
+                    y: card.originalY,
+                    duration: 0.3,
+                    ease: 'back.out(1.5)'
+                });
+            }
+
+            touchedCard = null;
+            isSwiping = false;
+        }
+
+        function showCardInfo(cardData) {
+            const popup = document.getElementById('cardInfoPopup');
+            document.getElementById('cardInfoTitle').textContent = cardData.name;
+            document.getElementById('cardInfoAttack').textContent = cardData.attack;
+            document.getElementById('cardInfoHealth').textContent = cardData.health;
+            document.getElementById('cardInfoCost').textContent = cardData.cost;
+
+            popup.classList.add('show');
+            setTimeout(() => {
+                popup.classList.remove('show');
+            }, 2000);
+        }
+
+        function resetCards() {
+            cards.forEach((card, i) => {
+                gsap.to(card, {
+                    x: card.originalX,
+                    y: card.originalY,
+                    duration: 0.4,
+                    ease: 'back.out(1.5)',
+                    delay: i * 0.05
+                });
+            });
+            closeMenu();
+        }
+
+        function changeLayout() {
+            currentLayout = currentLayout === 'horizontal' ? 'vertical' : 'horizontal';
+            cards.forEach((card, i) => {
+                positionCard(card, i);
+                gsap.to(card, {
+                    x: card.originalX,
+                    y: card.originalY,
+                    duration: 0.5,
+                    ease: 'power2.out'
+                });
+            });
+            closeMenu();
+        }
+
+        function toggleEffects() {
+            effectsEnabled = !effectsEnabled;
+            cards.forEach(card => {
+                if (card.glowGraphics) {
+                    card.glowGraphics.visible = effectsEnabled;
+                }
+            });
+            closeMenu();
+        }
+
+        function addCard() {
+            // TODO: 添加新卡牌逻辑
+            showCardInfo({ name: '功能开发中', attack: 0, health: 0, cost: 0 });
+        }
+
+        function playRandomCard() {
+            if (cards.length === 0) return;
+            const randomCard = cards[Math.floor(Math.random() * cards.length)];
+
+            gsap.to(randomCard, {
+                alpha: 0,
+                scale: 0.5,
+                duration: 0.3,
+                onComplete: () => {
+                    randomCard.alpha = 1;
+                    randomCard.scale.set(Math.min(window.innerWidth / 500, 1));
+                }
+            });
+        }
+
+        function toggleMenu() {
+            const menu = document.getElementById('sideMenu');
+            const overlay = document.getElementById('menuOverlay');
+            const isOpen = menu.classList.contains('open');
+
+            if (isOpen) {
+                closeMenu();
+            } else {
+                menu.classList.add('open');
+                overlay.classList.add('show');
+            }
+        }
+
+        function closeMenu() {
+            document.getElementById('sideMenu').classList.remove('open');
+            document.getElementById('menuOverlay').classList.remove('show');
+        }
+
+        function handleResize() {
+            if (!app) return;
+            app.renderer.resize(window.innerWidth, window.innerHeight);
+            cardContainer.position.set(app.screen.width / 2, app.screen.height / 2);
+
+            cards.forEach((card, i) => {
+                const cardScale = Math.min(window.innerWidth / 500, 1);
+                positionCard(card, i);
+                card.scale.set(cardScale);
+            });
+        }
+    </script>
+</body>
+</html>
