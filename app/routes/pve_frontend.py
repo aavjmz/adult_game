@@ -95,6 +95,20 @@ def battle_animation_demo():
     return render_template('pve/battle_animation_demo.html')
 
 
+@pve_frontend_bp.route('/battle-unified')
+def battle_unified():
+    """统一战斗UI - Demo模式"""
+    return render_template('pve/battle_ui_unified.html', stage_id=None)
+
+
+@pve_frontend_bp.route('/battle-unified/<int:stage_id>')
+@login_required
+def battle_unified_stage(stage_id):
+    """统一战斗UI - 关卡模式"""
+    stage = Stage.query.get_or_404(stage_id)
+    return render_template('pve/battle_ui_unified.html', stage_id=stage_id)
+
+
 @pve_frontend_bp.route('/battle-ui-comparison')
 def battle_ui_comparison():
     """战斗UI方案对比页面"""

@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>三国战斗 - 炉石风格</title>
+    <!-- PixiJS with fallback -->
+    <script src="https://unpkg.com/pixi.js@7.3.2/dist/pixi.min.js"
+            onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js'"></script>
+    <!-- GSAP with fallback -->
+    <script src="https://unpkg.com/gsap@3.12.2/dist/gsap.min.js"
+            onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js'"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a14; font-family: 'Arial','Microsoft YaHei',sans-serif; color: #fff; touch-action: none; user-select: none; -webkit-user-select: none; }
+        #game-container { width: 100%; height: 100%; position: relative; }
+        #game-container canvas { display: block; }
+
+        /* Loading */
+        .loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; z-index: 1000; }
+        .loading-spinner { width: 50px; height: 50px; border: 4px solid rgba(255,215,0,0.3); border-top-color: #FFD700; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 16px; color: #FFD700; }
+
+        /* Top Bar */
+        .top-bar { position: absolute; top: 0; left: 0; right: 0; height: 50px; background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 100%); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; z-index: 100; backdrop-filter: blur(5px); }
+        .top-bar-left, .top-bar-center, .top-bar-right { display: flex; align-items: center; gap: 8px; }
+        .top-bar-center { position: absolute; left: 50%; transform: translateX(-50%); }
+        .turn-badge { background: linear-gradient(135deg, #b8944d, #d4af37); padding: 3px 12px; border-radius: 12px; font-size: 13px; font-weight: bold; }
+        .weather-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 2px 8px; font-size: 16px; cursor: pointer; color: #fff; }
+        .weather-btn:active { background: rgba(255,255,255,0.25); }
+        .fps-badge { font-size: 11px; opacity: 0.6; }
+        .hero-hp-badge { font-size: 12px; font-weight: bold; padding: 2px 8px; border-radius: 8px; }
+        .hero-hp-badge.enemy { background: rgba(200,50,50,0.4); color: #ff6b6b; }
+        .hero-hp-badge.player { background: rgba(50,150,50,0.4); color: #69db7c; }
+        .mana-badge { font-size: 12px; color: #4facfe; padding: 2px 6px; background: rgba(79,172,254,0.15); border-radius: 6px; }
+        .deck-badge { font-size: 11px; color: #aaa; padding: 2px 6px; background: rgba(255,255,255,0.08); border-radius: 6px; }
+
+        /* Enemy Hand (card backs) */
+        .enemy-hand-area { position: absolute; top: 50px; left: 0; right: 0; height: 45px; display: flex; align-items: center; justify-content: center; gap: 4px; z-index: 90; pointer-events: none; }
+        .enemy-card-back { width: 30px; height: 40px; background: linear-gradient(135deg, #3a2a1a, #5a3a2a); border: 1px solid #8b6914; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+
+        /* Bottom Panel */
+        .bottom-panel { position: absolute; bottom: 0; left: 0; right: 0; height: 130px; background: linear-gradient(0deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 80%, transparent 100%); z-index: 100; display: flex; flex-direction: column; padding: 0; backdrop-filter: blur(5px); }
+        .hand-row { display: flex; align-items: flex-end; justify-content: center; flex: 1; padding: 0 60px; gap: 4px; position: relative; overflow: visible; }
+        .info-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 12px 6px; }
+        .info-row-left { display: flex; align-items: center; gap: 8px; }
+        .info-row-right { display: flex; align-items: center; gap: 8px; }
+
+        /* Hand Cards (DOM) */
+        .hand-card { width: 76px; height: 105px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 2px solid #5a5a6f; border-radius: 8px; cursor: pointer; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; position: relative; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+        .hand-card:hover { transform: translateY(-30px) scale(1.3); z-index: 200; box-shadow: 0 8px 25px rgba(0,0,0,0.6); }
+        .hand-card.playable { border-color: #28a745; box-shadow: 0 0 8px rgba(40,167,69,0.5); }
+        .hand-card.unplayable { border-color: #555; opacity: 0.6; }
+        .hand-card .card-cost { position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 1; }
+        .hand-card .card-art { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-top: 8px; }
+        .hand-card .card-name { font-size: 9px; font-weight: bold; margin-top: 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; }
+        .hand-card .card-stats { display: flex; justify-content: space-between; width: 100%; padding: 0 6px; margin-top: auto; margin-bottom: 4px; }
+        .hand-card .card-atk { font-size: 11px; font-weight: bold; color: #ff6b6b; }
+        .hand-card .card-hp { font-size: 11px; font-weight: bold; color: #69db7c; }
+        .hand-card .card-keywords { font-size: 7px; color: #ffd43b; text-align: center; margin-top: 1px; }
+        .hand-card .card-desc { display: none; position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.95); border: 1px solid #b8944d; border-radius: 8px; padding: 8px 10px; font-size: 11px; width: 160px; text-align: center; z-index: 300; pointer-events: none; white-space: normal; }
+        .hand-card:hover .card-desc { display: block; }
+
+        /* Deck icon */
+        .deck-icon { width: 40px; height: 55px; background: linear-gradient(135deg, #3a2a1a, #5a3a2a); border: 2px solid #8b6914; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #d4af37; position: absolute; left: 10px; bottom: 5px; cursor: default; }
+
+        /* End Turn Button */
+        .btn-end-turn { position: absolute; right: 10px; bottom: 20px; padding: 10px 18px; border: none; border-radius: 10px; font-size: 13px; font-weight: bold; cursor: pointer; color: #fff; background: linear-gradient(135deg, #d4af37, #b8944d); z-index: 101; transition: all 0.2s; }
+        .btn-end-turn:active { transform: scale(0.95); }
+        .btn-end-turn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Mana crystals */
+        .mana-crystals { display: flex; gap: 2px; align-items: center; }
+        .mana-gem { width: 14px; height: 14px; border-radius: 50%; transition: all 0.3s; }
+        .mana-gem.filled { background: linear-gradient(135deg, #4facfe, #00f2fe); box-shadow: 0 0 6px rgba(79,172,254,0.6); }
+        .mana-gem.empty { background: rgba(79,172,254,0.15); border: 1px solid rgba(79,172,254,0.3); }
+
+        /* Battle Log */
+        .battle-log { position: absolute; bottom: 135px; left: 8px; width: 300px; max-height: 160px; background: rgba(20,20,28,0.92); border: 1px solid rgba(184,148,77,0.3); border-radius: 10px; z-index: 100; overflow: hidden; transition: max-height 0.3s; }
+        .battle-log.collapsed { max-height: 30px; }
+        .battle-log-header { background: rgba(184,148,77,0.12); border-bottom: 1px solid rgba(184,148,77,0.2); padding: 5px 10px; font-size: 11px; font-weight: bold; color: #c9a961; cursor: pointer; display: flex; justify-content: space-between; }
+        .battle-log-body { max-height: 120px; overflow-y: auto; padding: 5px 8px; font-size: 11px; }
+        .battle-log-body::-webkit-scrollbar { width: 3px; }
+        .battle-log-body::-webkit-scrollbar-thumb { background: rgba(184,148,77,0.3); border-radius: 3px; }
+        .log-entry { margin-bottom: 3px; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.25); animation: logSlide 0.3s ease; line-height: 1.4; }
+        @keyframes logSlide { from { transform: translateX(-15px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .log-entry.system { color: #aaa; }
+        .log-entry.attack { color: #ffd43b; }
+        .log-entry.critical { color: #ff6b6b; font-weight: bold; }
+        .log-entry.skill { color: #a78bfa; }
+        .log-entry.info { color: #69db7c; }
+
+        /* Side Menu */
+        .menu-btn { position: absolute; top: 8px; left: 8px; z-index: 200; width: 36px; height: 36px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; cursor: pointer; background: rgba(0,0,0,0.5); border-radius: 8px; }
+        .menu-btn span { display: block; width: 20px; height: 2px; background: #FFD700; border-radius: 1px; transition: all 0.3s; }
+        .side-menu { position: absolute; top: 0; left: -250px; width: 250px; height: 100%; background: rgba(0,0,0,0.95); z-index: 300; transition: left 0.3s ease; backdrop-filter: blur(15px); padding: 60px 15px 15px; overflow-y: auto; }
+        .side-menu.open { left: 0; }
+        .menu-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 299; display: none; }
+        .menu-overlay.show { display: block; }
+        .menu-item { padding: 12px; margin: 8px 0; background: rgba(255,255,255,0.08); border-radius: 8px; border-left: 3px solid #FFD700; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .menu-item:active { background: rgba(255,255,255,0.15); transform: translateX(5px); }
+        .menu-title { font-size: 18px; font-weight: bold; color: #FFD700; margin-bottom: 15px; }
+
+        /* Battle Result Overlay */
+        .battle-result-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 500; display: none; align-items: center; justify-content: center; }
+        .battle-result-overlay.show { display: flex; }
+        .result-panel { background: rgba(10,10,20,0.95); border: 2px solid rgba(184,148,77,0.5); border-radius: 20px; padding: 30px; text-align: center; max-width: 360px; width: 90%; backdrop-filter: blur(15px); }
+        .result-title { font-size: 36px; font-weight: bold; margin-bottom: 10px; }
+        .result-title.win { color: #FFD700; }
+        .result-title.lose { color: #ff6b6b; }
+        .result-stars { font-size: 32px; margin: 10px 0; }
+        .result-rewards { text-align: left; margin: 15px 0; font-size: 13px; }
+        .result-reward-item { padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .result-buttons { display: flex; gap: 10px; margin-top: 20px; justify-content: center; }
+        .result-btn { padding: 10px 24px; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; color: #fff; }
+        .result-btn.primary { background: linear-gradient(135deg, #d4af37, #b8944d); }
+        .result-btn.secondary { background: rgba(255,255,255,0.15); }
+
+        /* Fatigue / Burn toast */
+        .toast-msg { position: absolute; top: 100px; left: 50%; transform: translateX(-50%); background: rgba(200,50,50,0.9); padding: 6px 16px; border-radius: 8px; font-size: 13px; font-weight: bold; z-index: 400; animation: toastFade 2s forwards; pointer-events: none; }
+        @keyframes toastFade { 0%{opacity:1;transform:translateX(-50%) translateY(0);} 70%{opacity:1;} 100%{opacity:0;transform:translateX(-50%) translateY(-30px);} }
+
+        /* Mobile Responsive */
+        @media (max-width: 600px) {
+            .battle-log { width: calc(100% - 16px); bottom: 135px; }
+            .battle-log.collapsed { max-height: 28px; }
+            .hand-card { width: 64px; height: 90px; }
+            .hand-card .card-art { font-size: 22px; height: 40px; }
+            .hand-card .card-cost { width: 18px; height: 18px; font-size: 10px; top: -4px; left: -4px; }
+            .bottom-panel { height: 115px; }
+            .top-bar { height: 44px; }
+            .enemy-hand-area { top: 44px; height: 38px; }
+            .enemy-card-back { width: 24px; height: 32px; font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+<div id="game-container">
+    <!-- Loading -->
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">加载战场中...</div>
+    </div>
+
+    <!-- Menu Button -->
+    <div class="menu-btn" id="menuBtn" onclick="toggleMenu()">
+        <span></span><span></span><span></span>
+    </div>
+
+    <!-- Side Menu -->
+    <div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
+    <div class="side-menu" id="sideMenu">
+        <div class="menu-title">战斗菜单</div>
+        <div class="menu-item" onclick="toggleEffects(); closeMenu();">特效开关</div>
+        <div class="menu-item" onclick="toggleBattleLog(); closeMenu();">日志开关</div>
+        <div class="menu-item" onclick="resetBattle(); closeMenu();">重置战斗</div>
+        <div class="menu-item" onclick="window.location.href='/pve/battle-ui-comparison'">返回对比页</div>
+    </div>
+
+    <!-- Top Bar -->
+    <div class="top-bar" id="topBar">
+        <div class="top-bar-left">
+            <span class="hero-hp-badge enemy" id="enemyHpBadge">敌主公 30</span>
+            <span class="mana-badge" id="enemyManaBadge">令旗 0/0</span>
+            <span class="deck-badge" id="enemyDeckBadge">牌库 30</span>
+        </div>
+        <div class="top-bar-center">
+            <span class="turn-badge" id="turnBadge">回合 1</span>
+            <button class="weather-btn" id="weatherBtn" onclick="cycleWeather()" title="切换天气"></button>
+        </div>
+        <div class="top-bar-right">
+            <span class="fps-badge" id="fpsBadge">60 FPS</span>
+        </div>
+    </div>
+
+    <!-- Enemy Hand (card backs) -->
+    <div class="enemy-hand-area" id="enemyHandArea"></div>
+
+    <!-- Battle Log -->
+    <div class="battle-log collapsed" id="battleLog">
+        <div class="battle-log-header" onclick="toggleBattleLog()">
+            <span>战斗日志</span>
+            <span id="logToggle">展开</span>
+        </div>
+        <div class="battle-log-body" id="battleLogBody"></div>
+    </div>
+
+    <!-- Bottom Panel -->
+    <div class="bottom-panel" id="bottomPanel">
+        <div class="hand-row" id="handRow">
+            <div class="deck-icon" id="playerDeckIcon">30</div>
+            <!-- Hand cards rendered here -->
+        </div>
+        <div class="info-row">
+            <div class="info-row-left">
+                <span class="hero-hp-badge player" id="playerHpBadge">我方主公 30</span>
+                <div class="mana-crystals" id="manaCrystals"></div>
+                <span class="mana-badge" id="playerManaBadge">0/0</span>
+            </div>
+            <div class="info-row-right">
+            </div>
+        </div>
+    </div>
+    <button class="btn-end-turn" id="btnEndTurn" onclick="endTurn()">结束回合</button>
+
+    <!-- Battle Result Overlay -->
+    <div class="battle-result-overlay" id="battleResult">
+        <div class="result-panel">
+            <div class="result-title" id="resultTitle"></div>
+            <div class="result-stars" id="resultStars"></div>
+            <div class="result-rewards" id="resultRewards"></div>
+            <div class="result-buttons">
+                <button class="result-btn secondary" onclick="resetBattle()">再战一次</button>
+                <button class="result-btn primary" onclick="window.location.href='/pve/battle-ui-comparison'">返回</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ====== Constants & Config ======
+const STAGE_ID = {{ stage_id if stage_id is not none else 'null' }};
+const IS_DEMO = STAGE_ID === null;
+
+const FACTION_COLORS = {
+    WEI: { primary: 0x2c3e67, label: '魏', css: '#4a6fa5' },
+    SHU: { primary: 0x8b2500, label: '蜀', css: '#c0392b' },
+    WU:  { primary: 0x2d6a4f, label: '吴', css: '#27ae60' },
+    QUN: { primary: 0x6b5d47, label: '群', css: '#8b7355' }
+};
+
+const RARITY_GLOW = {
+    UR:  { color: 0xFFD700, alpha: 0.7, blur: 6 },
+    SSR: { color: 0x9b6eb8, alpha: 0.6, blur: 5 },
+    SR:  { color: 0x4a8fe7, alpha: 0.5, blur: 4 }
+};
+
+const UnitType = {
+    CAVALRY:  { icon: '🐎', name: '骑兵', counters: 'ARCHER',   weakness: 'SHIELD' },
+    ARCHER:   { icon: '🏹', name: '弓兵', counters: 'SHIELD',   weakness: 'CAVALRY' },
+    INFANTRY: { icon: '⚔️', name: '步兵', counters: 'MAGE',     weakness: 'CAVALRY' },
+    SHIELD:   { icon: '🛡️', name: '盾兵', counters: 'CAVALRY',  weakness: 'ARCHER' },
+    MAGE:     { icon: '📜', name: '谋士', counters: 'ARCHER',   weakness: 'INFANTRY' }
+};
+
+const WeatherTypes = {
+    sunny: { icon: '☀️', name: '晴天', effect: '无特殊效果' },
+    rain:  { icon: '🌧️', name: '雨天', effect: '火攻-50%' },
+    snow:  { icon: '❄️', name: '雪天', effect: '突击无效' },
+    fog:   { icon: '🌫️', name: '雾天', effect: '护卫无效' },
+    wind:  { icon: '💨', name: '风天', effect: '弓攻+30%' }
+};
+const weatherOrder = ['sunny','rain','snow','fog','wind'];
+
+const JOB_CLASS_MAP = {
+    '武将': 'INFANTRY', '谋士': 'MAGE', '弓将': 'ARCHER', '骑将': 'CAVALRY', '步将': 'SHIELD'
+};
+const FACTION_MAP = { '魏': 'WEI', '蜀': 'SHU', '吴': 'WU', '群': 'QUN' };
+
+// ====== Card Definitions ======
+// keywords: charge=突击, taunt=护卫, battlecry=登场, deathrattle=遗计
+function makeShuDeck() {
+    return [
+        // 1费 x4
+        { name:'竹矛兵', faction:'SHU', rarity:'N', unitType:'SHIELD', cost:1, attack:1, hp:3, keywords:['taunt'], desc:'护卫' },
+        { name:'征粮官', faction:'SHU', rarity:'N', unitType:'INFANTRY', cost:1, attack:2, hp:1, keywords:[], desc:'' },
+        { name:'蜀中民兵', faction:'SHU', rarity:'N', unitType:'INFANTRY', cost:1, attack:1, hp:2, keywords:[], desc:'' },
+        { name:'传令兵', faction:'SHU', rarity:'N', unitType:'ARCHER', cost:1, attack:1, hp:1, keywords:['battlecry'], desc:'登场:抓1张牌', battlecryFn:'draw1' },
+        // 2费 x6
+        { name:'糜竺', faction:'SHU', rarity:'R', unitType:'MAGE', cost:2, attack:1, hp:4, keywords:['battlecry'], desc:'登场:抓1张牌', battlecryFn:'draw1' },
+        { name:'关平', faction:'SHU', rarity:'R', unitType:'CAVALRY', cost:2, attack:3, hp:2, keywords:[], desc:'' },
+        { name:'蜀中弓手', faction:'SHU', rarity:'N', unitType:'ARCHER', cost:2, attack:2, hp:3, keywords:[], desc:'' },
+        { name:'廖化', faction:'SHU', rarity:'R', unitType:'INFANTRY', cost:2, attack:2, hp:3, keywords:['taunt'], desc:'护卫' },
+        { name:'简雍', faction:'SHU', rarity:'N', unitType:'MAGE', cost:2, attack:2, hp:2, keywords:['battlecry'], desc:'登场:治疗主公2点', battlecryFn:'healHero2' },
+        { name:'孙尚香', faction:'SHU', rarity:'R', unitType:'ARCHER', cost:2, attack:3, hp:2, keywords:[], desc:'' },
+        // 3费 x6
+        { name:'黄月英', faction:'SHU', rarity:'SR', unitType:'MAGE', cost:3, attack:4, hp:3, keywords:['battlecry'], desc:'登场:抓1张牌', battlecryFn:'draw1' },
+        { name:'魏延', faction:'SHU', rarity:'SR', unitType:'INFANTRY', cost:3, attack:4, hp:3, keywords:[], desc:'' },
+        { name:'法正', faction:'SHU', rarity:'SR', unitType:'MAGE', cost:3, attack:2, hp:4, keywords:['battlecry'], desc:'登场:造成2点伤害', battlecryFn:'damage2' },
+        { name:'刘封', faction:'SHU', rarity:'R', unitType:'CAVALRY', cost:3, attack:3, hp:4, keywords:[], desc:'' },
+        { name:'严颜', faction:'SHU', rarity:'R', unitType:'SHIELD', cost:3, attack:2, hp:5, keywords:['taunt'], desc:'护卫' },
+        { name:'姜维', faction:'SHU', rarity:'SR', unitType:'INFANTRY', cost:3, attack:3, hp:3, keywords:['charge'], desc:'突击' },
+        // 4费 x4
+        { name:'马超', faction:'SHU', rarity:'SSR', unitType:'CAVALRY', cost:4, attack:4, hp:3, keywords:['charge'], desc:'突击' },
+        { name:'庞统', faction:'SHU', rarity:'SSR', unitType:'MAGE', cost:4, attack:3, hp:5, keywords:['battlecry'], desc:'登场:造成2点伤害', battlecryFn:'damage2' },
+        { name:'黄忠', faction:'SHU', rarity:'SSR', unitType:'ARCHER', cost:4, attack:5, hp:3, keywords:[], desc:'' },
+        { name:'马岱', faction:'SHU', rarity:'R', unitType:'CAVALRY', cost:4, attack:4, hp:4, keywords:[], desc:'' },
+        // 5费 x4
+        { name:'张飞', faction:'SHU', rarity:'SSR', unitType:'INFANTRY', cost:5, attack:5, hp:5, keywords:['taunt'], desc:'护卫' },
+        { name:'徐庶', faction:'SHU', rarity:'SR', unitType:'MAGE', cost:5, attack:3, hp:5, keywords:['battlecry'], desc:'登场:抓2张牌', battlecryFn:'draw2' },
+        { name:'刘备', faction:'SHU', rarity:'SSR', unitType:'INFANTRY', cost:5, attack:4, hp:6, keywords:['battlecry'], desc:'登场:治疗主公4点', battlecryFn:'healHero4' },
+        { name:'蜀中精骑', faction:'SHU', rarity:'R', unitType:'CAVALRY', cost:5, attack:5, hp:4, keywords:['charge'], desc:'突击' },
+        // 6费 x3
+        { name:'赵云', faction:'SHU', rarity:'UR', unitType:'CAVALRY', cost:6, attack:6, hp:5, keywords:['charge'], desc:'突击' },
+        { name:'诸葛亮', faction:'SHU', rarity:'UR', unitType:'MAGE', cost:6, attack:4, hp:6, keywords:['battlecry'], desc:'登场:对全体敌随从3点伤害', battlecryFn:'aoe3' },
+        { name:'关银屏', faction:'SHU', rarity:'SR', unitType:'ARCHER', cost:6, attack:5, hp:5, keywords:['deathrattle'], desc:'遗计:抓2张牌', deathrattleFn:'draw2' },
+        // 7费 x2
+        { name:'五虎上将', faction:'SHU', rarity:'UR', unitType:'CAVALRY', cost:7, attack:7, hp:7, keywords:['taunt','charge'], desc:'护卫 突击' },
+        { name:'卧龙凤雏', faction:'SHU', rarity:'UR', unitType:'MAGE', cost:7, attack:5, hp:7, keywords:['battlecry','deathrattle'], desc:'登场:抓3牌 遗计:造成3伤害', battlecryFn:'draw3', deathrattleFn:'aoe3enemy' },
+        // 8费 x1
+        { name:'关羽', faction:'SHU', rarity:'UR', unitType:'CAVALRY', cost:8, attack:8, hp:8, keywords:['taunt','deathrattle'], desc:'护卫 遗计:对全体造成3伤害', deathrattleFn:'aoe3all' },
+    ];
+}
+
+function makeWeiDeck() {
+    return [
+        // 1费 x4
+        { name:'魏卒', faction:'WEI', rarity:'N', unitType:'INFANTRY', cost:1, attack:2, hp:1, keywords:[], desc:'' },
+        { name:'哨骑', faction:'WEI', rarity:'N', unitType:'CAVALRY', cost:1, attack:1, hp:2, keywords:[], desc:'' },
+        { name:'虎豹骑卒', faction:'WEI', rarity:'N', unitType:'CAVALRY', cost:1, attack:1, hp:3, keywords:['taunt'], desc:'护卫' },
+        { name:'细作', faction:'WEI', rarity:'N', unitType:'MAGE', cost:1, attack:1, hp:1, keywords:['battlecry'], desc:'登场:抓1张牌', battlecryFn:'draw1' },
+        // 2费 x6
+        { name:'荀彧', faction:'WEI', rarity:'SR', unitType:'MAGE', cost:2, attack:1, hp:4, keywords:['battlecry'], desc:'登场:抓1张牌', battlecryFn:'draw1' },
+        { name:'于禁', faction:'WEI', rarity:'R', unitType:'SHIELD', cost:2, attack:2, hp:3, keywords:['taunt'], desc:'护卫' },
+        { name:'乐进', faction:'WEI', rarity:'R', unitType:'INFANTRY', cost:2, attack:3, hp:2, keywords:[], desc:'' },
+        { name:'李典', faction:'WEI', rarity:'R', unitType:'ARCHER', cost:2, attack:2, hp:3, keywords:[], desc:'' },
+        { name:'曹洪', faction:'WEI', rarity:'R', unitType:'CAVALRY', cost:2, attack:2, hp:3, keywords:[], desc:'' },
+        { name:'程昱', faction:'WEI', rarity:'R', unitType:'MAGE', cost:2, attack:2, hp:2, keywords:['battlecry'], desc:'登场:造成1点伤害', battlecryFn:'damage1' },
+        // 3费 x6
+        { name:'郭嘉', faction:'WEI', rarity:'SSR', unitType:'MAGE', cost:3, attack:2, hp:4, keywords:['deathrattle'], desc:'遗计:抓2张牌', deathrattleFn:'draw2' },
+        { name:'夏侯渊', faction:'WEI', rarity:'SR', unitType:'CAVALRY', cost:3, attack:4, hp:2, keywords:['charge'], desc:'突击' },
+        { name:'张郃', faction:'WEI', rarity:'SR', unitType:'SHIELD', cost:3, attack:2, hp:5, keywords:['taunt'], desc:'护卫' },
+        { name:'徐晃', faction:'WEI', rarity:'SR', unitType:'INFANTRY', cost:3, attack:4, hp:3, keywords:[], desc:'' },
+        { name:'曹仁', faction:'WEI', rarity:'SR', unitType:'SHIELD', cost:3, attack:3, hp:4, keywords:['taunt'], desc:'护卫' },
+        { name:'贾诩', faction:'WEI', rarity:'SR', unitType:'MAGE', cost:3, attack:3, hp:3, keywords:['battlecry'], desc:'登场:造成2点伤害', battlecryFn:'damage2' },
+        // 4费 x4
+        { name:'张辽', faction:'WEI', rarity:'SSR', unitType:'CAVALRY', cost:4, attack:5, hp:3, keywords:['charge'], desc:'突击' },
+        { name:'许褚', faction:'WEI', rarity:'SSR', unitType:'INFANTRY', cost:4, attack:4, hp:5, keywords:['taunt'], desc:'护卫' },
+        { name:'司马懿', faction:'WEI', rarity:'SSR', unitType:'MAGE', cost:4, attack:3, hp:5, keywords:['battlecry'], desc:'登场:造成3点伤害', battlecryFn:'damage3' },
+        { name:'夏侯惇', faction:'WEI', rarity:'SSR', unitType:'INFANTRY', cost:4, attack:4, hp:4, keywords:['deathrattle'], desc:'遗计:造成2伤害给敌主公', deathrattleFn:'damageHero2' },
+        // 5费 x4
+        { name:'典韦', faction:'WEI', rarity:'SSR', unitType:'INFANTRY', cost:5, attack:6, hp:4, keywords:[], desc:'' },
+        { name:'荀攸', faction:'WEI', rarity:'SR', unitType:'MAGE', cost:5, attack:3, hp:5, keywords:['battlecry'], desc:'登场:抓2张牌', battlecryFn:'draw2' },
+        { name:'曹丕', faction:'WEI', rarity:'SR', unitType:'INFANTRY', cost:5, attack:4, hp:5, keywords:['battlecry'], desc:'登场:治疗主公3点', battlecryFn:'healHero3' },
+        { name:'虎豹骑', faction:'WEI', rarity:'SR', unitType:'CAVALRY', cost:5, attack:5, hp:4, keywords:['charge'], desc:'突击' },
+        // 6费 x3
+        { name:'吕布', faction:'WEI', rarity:'UR', unitType:'CAVALRY', cost:6, attack:7, hp:5, keywords:['charge'], desc:'突击' },
+        { name:'曹操', faction:'WEI', rarity:'UR', unitType:'MAGE', cost:6, attack:4, hp:7, keywords:['battlecry'], desc:'登场:对全体敌随从2点伤害', battlecryFn:'aoe2' },
+        { name:'张辽精骑', faction:'WEI', rarity:'SR', unitType:'CAVALRY', cost:6, attack:5, hp:6, keywords:['taunt'], desc:'护卫' },
+        // 7费 x2
+        { name:'虎卫军', faction:'WEI', rarity:'UR', unitType:'INFANTRY', cost:7, attack:7, hp:7, keywords:['taunt','charge'], desc:'护卫 突击' },
+        { name:'挟天子', faction:'WEI', rarity:'UR', unitType:'MAGE', cost:7, attack:5, hp:8, keywords:['battlecry'], desc:'登场:对全体敌随从3点伤害', battlecryFn:'aoe3' },
+        // 8费 x1
+        { name:'魏武帝', faction:'WEI', rarity:'UR', unitType:'INFANTRY', cost:8, attack:8, hp:8, keywords:['taunt','deathrattle'], desc:'护卫 遗计:对全体造成3伤害', deathrattleFn:'aoe3all' },
+    ];
+}
+
+let nextCardId = 1;
+function buildDeck(cardDefs) {
+    const deck = cardDefs.map(def => ({
+        ...def,
+        id: nextCardId++,
+        currentHp: def.hp,
+        maxHp: def.hp,
+        baseAttack: def.attack,
+        canAttack: false,
+        hasSummonSickness: true,
+    }));
+    // Shuffle
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
+}
+
+// ====== Global State ======
+let app, layers = {};
+let gameState = null;
+let boardSprites = { player: [], enemy: [] };
+let selectedAttacker = null; // { side:'player', index: N }
+let weatherParticles = [];
+let logEntries = [];
+let fpsFrames = 0, fpsLastTime = performance.now(), currentFPS = 60;
+let effectsEnabled = true;
+let weatherIndex = 0;
+let currentWeather = 'sunny';
+let animating = false; // Lock to prevent actions during animations
+
+// ====== Game State Factory ======
+function createGameState() {
+    nextCardId = 1;
+    const playerDeck = buildDeck(makeShuDeck());
+    const enemyDeck = buildDeck(makeWeiDeck());
+    return {
+        turn: 1,
+        isPlayerTurn: true,
+        battleEnded: false,
+        player: {
+            heroHp: 30,
+            maxHeroHp: 30,
+            mana: 0,
+            maxMana: 0,
+            deck: playerDeck,
+            hand: [],
+            board: [],
+            fatigueDamage: 0,
+        },
+        enemy: {
+            heroHp: 30,
+            maxHeroHp: 30,
+            mana: 0,
+            maxMana: 0,
+            deck: enemyDeck,
+            hand: [],
+            board: [],
+            fatigueDamage: 0,
+        }
+    };
+}
+
+// ====== PixiJS Scaffold ======
+function initApp() {
+    app = new PIXI.Application({
+        width: window.innerWidth,
+        height: window.innerHeight,
+        backgroundColor: 0x0a0a14,
+        antialias: true,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true
+    });
+    document.getElementById('game-container').insertBefore(app.view, document.getElementById('game-container').firstChild);
+
+    // 6-layer hierarchy
+    const layerNames = ['background','enemyZone','centerZone','playerZone','ui','effects'];
+    layerNames.forEach(name => {
+        layers[name] = new PIXI.Container();
+        layers[name].name = name;
+        app.stage.addChild(layers[name]);
+    });
+
+    drawBackground();
+    layoutZones();
+
+    // FPS monitor
+    app.ticker.add(() => {
+        fpsFrames++;
+        const now = performance.now();
+        if (now >= fpsLastTime + 1000) {
+            currentFPS = Math.round((fpsFrames * 1000) / (now - fpsLastTime));
+            fpsFrames = 0;
+            fpsLastTime = now;
+            document.getElementById('fpsBadge').textContent = currentFPS + ' FPS';
+        }
+        updateWeatherParticles();
+    });
+
+    window.addEventListener('resize', handleResize);
+    document.getElementById('loading').style.display = 'none';
+}
+
+function drawBackground() {
+    const bg = new PIXI.Graphics();
+    bg.beginFill(0x0a0a14);
+    bg.drawRect(0, 0, app.screen.width, app.screen.height);
+    bg.endFill();
+
+    const grad = new PIXI.Graphics();
+    grad.beginFill(0x1a1a2e, 0.6);
+    grad.drawRect(0, 50, app.screen.width, app.screen.height - 180);
+    grad.endFill();
+
+    // Center divider line
+    const divider = new PIXI.Graphics();
+    divider.lineStyle(2, 0x333355, 0.6);
+    const cy = app.screen.height * 0.44;
+    for (let x = 20; x < app.screen.width - 20; x += 12) {
+        divider.moveTo(x, cy);
+        divider.lineTo(x + 6, cy);
+    }
+
+    layers.background.addChild(bg, grad, divider);
+}
+
+function layoutZones() {
+    const w = app.screen.width;
+    const h = app.screen.height;
+    const topH = 95; // top bar + enemy hand
+    const bottomH = 130;
+    const battleH = h - topH - bottomH;
+
+    layers.enemyZone.position.set(w / 2, topH + battleH * 0.28);
+    layers.playerZone.position.set(w / 2, topH + battleH * 0.72);
+    layers.centerZone.position.set(w / 2, topH + battleH * 0.5);
+    layers.effects.position.set(0, 0);
+}
+
+function handleResize() {
+    if (!app) return;
+    app.renderer.resize(window.innerWidth, window.innerHeight);
+    layers.background.removeChildren();
+    drawBackground();
+    layoutZones();
+    renderBoard();
+}
+
+// ====== Board Minion Rendering (PixiJS) ======
+function createBoardMinion(card, isEnemy) {
+    const mW = 80, mH = 100;
+    const container = new PIXI.Container();
+    container.cardRef = card;
+    container.isEnemy = isEnemy;
+
+    const factionColor = FACTION_COLORS[card.faction]?.primary || 0x3a3a52;
+    const hasTaunt = card.keywords.includes('taunt') && !isWeatherFogActive();
+
+    // Taunt golden border
+    if (hasTaunt) {
+        const tauntBorder = new PIXI.Graphics();
+        tauntBorder.lineStyle(4, 0xd4af37, 0.8);
+        tauntBorder.drawRoundedRect(-mW/2 - 4, -mH/2 - 4, mW + 8, mH + 8, 14);
+        container.addChild(tauntBorder);
+        container.tauntGfx = tauntBorder;
+    }
+
+    // Card bg
+    const cardBg = new PIXI.Graphics();
+    cardBg.beginFill(factionColor);
+    cardBg.drawRoundedRect(-mW/2, -mH/2, mW, mH, 10);
+    cardBg.endFill();
+    container.addChild(cardBg);
+
+    // Rarity glow
+    if (effectsEnabled && RARITY_GLOW[card.rarity]) {
+        const rg = RARITY_GLOW[card.rarity];
+        const glow = new PIXI.Graphics();
+        glow.lineStyle(4, rg.color, rg.alpha);
+        glow.drawRoundedRect(-mW/2 - 2, -mH/2 - 2, mW + 4, mH + 4, 12);
+        try { glow.filters = [new PIXI.BlurFilter(rg.blur)]; } catch(e) {}
+        container.addChildAt(glow, 0);
+        container.glowGfx = glow;
+        gsap.to(glow, { alpha: 0.3, duration: 1.5, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+    }
+
+    // Unit icon (center)
+    const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
+    const emoji = new PIXI.Text(unitIcon, { fontSize: 30 });
+    emoji.anchor.set(0.5);
+    emoji.position.set(0, -15);
+    container.addChild(emoji);
+
+    // Name
+    const nameText = new PIXI.Text(card.name, {
+        fontFamily: 'Arial, Microsoft YaHei', fontSize: 11, fill: 0xFFFFFF,
+        fontWeight: 'bold', stroke: 0x000000, strokeThickness: 2
+    });
+    nameText.anchor.set(0.5);
+    nameText.position.set(0, 12);
+    container.addChild(nameText);
+
+    // Attack circle (bottom-left)
+    const atkCircle = new PIXI.Graphics();
+    atkCircle.beginFill(0xcc3333);
+    atkCircle.drawCircle(-mW/2 + 2, mH/2 - 2, 14);
+    atkCircle.endFill();
+    container.addChild(atkCircle);
+    const atkText = new PIXI.Text(String(card.attack), {
+        fontSize: 13, fill: 0xFFFFFF, fontWeight: 'bold'
+    });
+    atkText.anchor.set(0.5);
+    atkText.position.set(-mW/2 + 2, mH/2 - 2);
+    container.addChild(atkText);
+    container.atkText = atkText;
+
+    // HP circle (bottom-right)
+    const hpCircle = new PIXI.Graphics();
+    hpCircle.beginFill(0x339933);
+    hpCircle.drawCircle(mW/2 - 2, mH/2 - 2, 14);
+    hpCircle.endFill();
+    container.addChild(hpCircle);
+    container.hpCircleGfx = hpCircle;
+    const hpText = new PIXI.Text(String(card.currentHp), {
+        fontSize: 13, fill: 0xFFFFFF, fontWeight: 'bold'
+    });
+    hpText.anchor.set(0.5);
+    hpText.position.set(mW/2 - 2, mH/2 - 2);
+    container.addChild(hpText);
+    container.hpText = hpText;
+
+    // Sleep ZZZ indicator
+    if (card.hasSummonSickness && !card.keywords.includes('charge')) {
+        const zzz = new PIXI.Text('💤', { fontSize: 14 });
+        zzz.anchor.set(0.5);
+        zzz.position.set(mW/2 - 5, -mH/2 + 8);
+        container.addChild(zzz);
+        container.zzzText = zzz;
+    }
+
+    // Click interaction
+    container.eventMode = 'static';
+    container.cursor = 'pointer';
+    container.on('pointerdown', () => onBoardMinionClick(card, isEnemy));
+
+    return container;
+}
+
+function updateMinionVisual(sprite, card) {
+    const mW = 80, mH = 100;
+    // Update attack text
+    sprite.atkText.text = String(card.attack);
+    // Update HP text and color
+    sprite.hpText.text = String(card.currentHp);
+    if (card.currentHp < card.maxHp) {
+        sprite.hpText.style.fill = 0xff6b6b; // Damaged = red
+        sprite.hpCircleGfx.clear();
+        sprite.hpCircleGfx.beginFill(0x993333);
+        sprite.hpCircleGfx.drawCircle(mW/2 - 2, mH/2 - 2, 14);
+        sprite.hpCircleGfx.endFill();
+    }
+    // Remove ZZZ if can attack
+    if (sprite.zzzText && !card.hasSummonSickness) {
+        sprite.zzzText.visible = false;
+    }
+}
+
+function positionBoardMinions(sprites, count) {
+    const spacing = Math.min(95, 600 / Math.max(count, 1));
+    const totalW = count * spacing;
+    sprites.forEach((s, i) => {
+        const x = -totalW / 2 + i * spacing + spacing / 2;
+        s.position.set(x, 0);
+        s.originalX = x;
+        s.originalY = 0;
+    });
+}
+
+function renderBoard() {
+    if (!gameState) return;
+
+    // Clear old sprites
+    layers.playerZone.removeChildren();
+    layers.enemyZone.removeChildren();
+    boardSprites.player = [];
+    boardSprites.enemy = [];
+
+    // Player board
+    gameState.player.board.forEach(card => {
+        const sprite = createBoardMinion(card, false);
+        layers.playerZone.addChild(sprite);
+        boardSprites.player.push(sprite);
+    });
+    positionBoardMinions(boardSprites.player, gameState.player.board.length);
+
+    // Enemy board
+    gameState.enemy.board.forEach(card => {
+        const sprite = createBoardMinion(card, true);
+        layers.enemyZone.addChild(sprite);
+        boardSprites.enemy.push(sprite);
+    });
+    positionBoardMinions(boardSprites.enemy, gameState.enemy.board.length);
+
+    // Highlight attackable minions
+    highlightAttackable();
+
+    // Also add hero click targets
+    renderHeroTargets();
+}
+
+function renderHeroTargets() {
+    // Remove old hero targets from centerZone
+    layers.centerZone.removeChildren();
+
+    // Enemy hero target (above center line)
+    const enemyHero = new PIXI.Graphics();
+    enemyHero.beginFill(0x882222, 0.01); // Nearly invisible click target
+    enemyHero.drawRoundedRect(-50, -120, 100, 40, 8);
+    enemyHero.endFill();
+    enemyHero.eventMode = 'static';
+    enemyHero.cursor = 'pointer';
+    enemyHero.on('pointerdown', () => onHeroClick('enemy'));
+    layers.centerZone.addChild(enemyHero);
+}
+
+function highlightAttackable() {
+    if (!gameState || !gameState.isPlayerTurn || gameState.battleEnded || animating) return;
+
+    boardSprites.player.forEach((sprite, i) => {
+        const card = gameState.player.board[i];
+        if (!card) return;
+        const canAtk = card.canAttack && !card.hasSummonSickness;
+        setBoardMinionState(sprite, canAtk ? 'canAttack' : 'idle');
+    });
+}
+
+function setBoardMinionState(sprite, state) {
+    const mW = 80, mH = 100;
+    // Remove old border overlay
+    if (sprite.stateBorder) {
+        gsap.killTweensOf(sprite.stateBorder);
+        sprite.removeChild(sprite.stateBorder);
+        sprite.stateBorder = null;
+    }
+
+    if (state === 'canAttack') {
+        const border = new PIXI.Graphics();
+        border.lineStyle(3, 0x28a745);
+        border.drawRoundedRect(-mW/2 - 1, -mH/2 - 1, mW + 2, mH + 2, 11);
+        sprite.addChild(border);
+        sprite.stateBorder = border;
+        gsap.to(border, { alpha: 0.4, duration: 0.8, repeat: -1, yoyo: true });
+    } else if (state === 'selected') {
+        const border = new PIXI.Graphics();
+        border.lineStyle(4, 0xFFD700);
+        border.drawRoundedRect(-mW/2 - 1, -mH/2 - 1, mW + 2, mH + 2, 11);
+        sprite.addChild(border);
+        sprite.stateBorder = border;
+        gsap.to(sprite, { y: (sprite.originalY || 0) - 12, duration: 0.2 });
+    } else if (state === 'targetable') {
+        const border = new PIXI.Graphics();
+        border.lineStyle(3, 0xff4444, 0.8);
+        border.drawRoundedRect(-mW/2 - 1, -mH/2 - 1, mW + 2, mH + 2, 11);
+        sprite.addChild(border);
+        sprite.stateBorder = border;
+    } else {
+        // idle
+        if (sprite.originalY !== undefined) {
+            gsap.to(sprite, { y: sprite.originalY, duration: 0.2 });
+        }
+    }
+}
+
+// ====== Core Game Engine ======
+function initGame() {
+    gameState = createGameState();
+    selectedAttacker = null;
+    animating = false;
+
+    // Draw initial hands: first player gets 3, second (enemy) gets 4
+    for (let i = 0; i < 3; i++) drawCardRaw('player');
+    for (let i = 0; i < 4; i++) drawCardRaw('enemy');
+
+    clearLog();
+    addLog('战斗开始！蜀国 vs 魏国', 'system');
+    addLog('先手抓3张，后手抓4张', 'info');
+
+    // Start turn 1 for player
+    startTurn('player');
+}
+
+function startTurn(side) {
+    const s = gameState[side];
+    gameState.isPlayerTurn = (side === 'player');
+
+    // Increase max mana (cap 10)
+    if (s.maxMana < 10) s.maxMana++;
+    // Refill mana
+    s.mana = s.maxMana;
+
+    // Draw a card
+    drawCard(side);
+
+    // Wake up minions (remove summoning sickness)
+    s.board.forEach(m => {
+        m.canAttack = true;
+        m.hasSummonSickness = false;
+    });
+
+    gameState.turn = Math.ceil((gameState.player.maxMana + gameState.enemy.maxMana) / 2);
+    document.getElementById('turnBadge').textContent = '回合 ' + gameState.turn;
+
+    if (side === 'player') {
+        addLog(`--- 我方回合 (令旗${s.mana}/${s.maxMana}) ---`, 'system');
+        document.getElementById('btnEndTurn').disabled = false;
+    } else {
+        addLog(`--- 敌方回合 (令旗${s.mana}/${s.maxMana}) ---`, 'system');
+        document.getElementById('btnEndTurn').disabled = true;
+    }
+
+    renderAll();
+
+    if (side === 'enemy') {
+        setTimeout(() => enemyAI(), 800);
+    }
+}
+
+function drawCardRaw(side) {
+    // Draw without fatigue/burn animations (for initial draw)
+    const s = gameState[side];
+    if (s.deck.length === 0) return;
+    if (s.hand.length >= 10) return;
+    s.hand.push(s.deck.shift());
+}
+
+function drawCard(side) {
+    const s = gameState[side];
+
+    if (s.deck.length === 0) {
+        // Fatigue damage
+        s.fatigueDamage++;
+        s.heroHp -= s.fatigueDamage;
+        addLog(`${side === 'player' ? '我方' : '敌方'}牌库已空！疲劳伤害 ${s.fatigueDamage}`, 'critical');
+        showToast(`疲劳伤害 -${s.fatigueDamage}HP`);
+        if (checkGameOver()) return;
+        renderAll();
+        return;
+    }
+
+    const drawn = s.deck.shift();
+
+    if (s.hand.length >= 10) {
+        // Burn the card
+        addLog(`${side === 'player' ? '我方' : '敌方'}手牌已满！${drawn.name} 被烧毁`, 'critical');
+        showToast(`${drawn.name} 被烧毁！`);
+        return;
+    }
+
+    drawn.canAttack = false;
+    drawn.hasSummonSickness = true;
+    s.hand.push(drawn);
+
+    if (side === 'player') {
+        addLog(`抓到 ${drawn.name} (${drawn.cost}费 ${drawn.attack}/${drawn.hp})`, 'info');
+    }
+}
+
+function playCard(handIndex) {
+    if (animating || !gameState.isPlayerTurn || gameState.battleEnded) return;
+    const s = gameState.player;
+    if (handIndex < 0 || handIndex >= s.hand.length) return;
+
+    const card = s.hand[handIndex];
+    if (card.cost > s.mana) {
+        addLog('令旗不足！', 'system');
+        return;
+    }
+    if (s.board.length >= 7) {
+        addLog('战场已满（最多7个随从）！', 'system');
+        return;
+    }
+
+    // Spend mana
+    s.mana -= card.cost;
+
+    // Move from hand to board
+    s.hand.splice(handIndex, 1);
+
+    // Reset card state for board
+    card.currentHp = card.hp;
+    card.maxHp = card.hp;
+    card.canAttack = false;
+    card.hasSummonSickness = true;
+
+    // Charge keyword: can attack immediately
+    if (card.keywords.includes('charge') && !isWeatherSnowActive()) {
+        card.canAttack = true;
+        card.hasSummonSickness = false;
+    }
+
+    s.board.push(card);
+    addLog(`出牌：${card.name} (${card.cost}费 ${card.attack}/${card.hp})`, 'skill');
+
+    // Trigger battlecry
+    if (card.keywords.includes('battlecry') && card.battlecryFn) {
+        triggerBattlecry(card, 'player');
+    }
+
+    selectedAttacker = null;
+    renderAll();
+
+    if (checkGameOver()) return;
+
+    // Animate card play
+    animateCardPlay('player');
+}
+
+function performAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero) {
+    if (animating || gameState.battleEnded) return;
+
+    const attackerBoard = gameState[attackerSide].board;
+    const attacker = attackerBoard[attackerIdx];
+    if (!attacker || !attacker.canAttack) return;
+
+    // Check taunt
+    if (!isHero) {
+        const targetBoard = gameState[targetSide].board;
+        const target = targetBoard[targetIdx];
+        if (!target) return;
+
+        const hasTaunters = targetBoard.some(m => m.keywords.includes('taunt') && !isWeatherFogActive());
+        if (hasTaunters && !(target.keywords.includes('taunt') && !isWeatherFogActive())) {
+            addLog('必须先攻击护卫随从！', 'system');
+            return;
+        }
+
+        // Unit counter check
+        const attackerType = UnitType[attacker.unitType];
+        const targetType = UnitType[target.unitType];
+        let atkMultiplier = 1.0;
+        let defMultiplier = 1.0;
+
+        if (attackerType && targetType && attackerType.counters === target.unitType) {
+            atkMultiplier = 1.3;
+            addLog(`${attacker.name} 克制 ${target.name}！攻击+30%`, 'skill');
+        } else if (attackerType && targetType && attackerType.weakness === target.unitType) {
+            atkMultiplier = 0.8;
+            addLog(`${target.name} 克制 ${attacker.name}！攻击-20%`, 'info');
+        }
+
+        if (targetType && attackerType && targetType.counters === attacker.unitType) {
+            defMultiplier = 1.3;
+        } else if (targetType && attackerType && targetType.weakness === attacker.unitType) {
+            defMultiplier = 0.8;
+        }
+
+        // Weather wind bonus for archers
+        if (currentWeather === 'wind' && attacker.unitType === 'ARCHER') {
+            atkMultiplier *= 1.3;
+            addLog('风天弓兵攻击+30%！', 'info');
+        }
+        if (currentWeather === 'wind' && target.unitType === 'ARCHER') {
+            defMultiplier *= 1.3;
+        }
+
+        const atkDamage = Math.max(1, Math.floor(attacker.attack * atkMultiplier));
+        const defDamage = Math.max(1, Math.floor(target.attack * defMultiplier));
+
+        // Apply damage (mutual)
+        target.currentHp -= atkDamage;
+        attacker.currentHp -= defDamage;
+
+        addLog(`${attacker.name}(${atkDamage}伤) ⚔ ${target.name}(${defDamage}伤)`, 'attack');
+
+        // Animate attack
+        animateAttack(attackerSide, attackerIdx, targetSide, targetIdx, false, atkDamage, defDamage);
+
+        attacker.canAttack = false;
+
+        // Process deaths after animation
+        setTimeout(() => {
+            processDeaths();
+            selectedAttacker = null;
+            renderAll();
+            checkGameOver();
+        }, 500);
+    } else {
+        // Attack hero
+        const targetState = gameState[targetSide];
+        const hasTaunters = targetState.board.some(m => m.keywords.includes('taunt') && !isWeatherFogActive());
+        if (hasTaunters) {
+            addLog('必须先攻击护卫随从！', 'system');
+            return;
+        }
+
+        const damage = attacker.attack;
+        targetState.heroHp -= damage;
+        addLog(`${attacker.name} 攻击${targetSide === 'enemy' ? '敌方' : '我方'}主公，造成 ${damage} 点伤害！`, 'attack');
+
+        attacker.canAttack = false;
+
+        // Animate attack on hero
+        animateAttack(attackerSide, attackerIdx, targetSide, -1, true, damage, 0);
+
+        setTimeout(() => {
+            selectedAttacker = null;
+            renderAll();
+            checkGameOver();
+        }, 500);
+    }
+}
+
+function processDeaths() {
+    ['player', 'enemy'].forEach(side => {
+        const board = gameState[side].board;
+        for (let i = board.length - 1; i >= 0; i--) {
+            if (board[i].currentHp <= 0) {
+                const dead = board[i];
+                addLog(`${dead.name} 阵亡！`, 'critical');
+
+                // Trigger deathrattle
+                if (dead.keywords.includes('deathrattle') && dead.deathrattleFn) {
+                    triggerDeathrattle(dead, side);
+                }
+
+                board.splice(i, 1);
+            }
+        }
+    });
+}
+
+function endTurn() {
+    if (!gameState.isPlayerTurn || gameState.battleEnded || animating) return;
+
+    selectedAttacker = null;
+    document.getElementById('btnEndTurn').disabled = true;
+
+    // Disable player minion attacks
+    gameState.player.board.forEach(m => m.canAttack = false);
+
+    renderAll();
+
+    // Start enemy turn
+    setTimeout(() => startTurn('enemy'), 400);
+}
+
+function checkGameOver() {
+    if (gameState.player.heroHp <= 0) {
+        gameState.battleEnded = true;
+        addLog('我方主公阵亡...战败！', 'critical');
+        setTimeout(() => showBattleResult(false), 800);
+        return true;
+    }
+    if (gameState.enemy.heroHp <= 0) {
+        gameState.battleEnded = true;
+        addLog('敌方主公阵亡！胜利！', 'info');
+        setTimeout(() => showBattleResult(true), 800);
+        return true;
+    }
+    return false;
+}
+
+// ====== Battlecry & Deathrattle Effects ======
+function triggerBattlecry(card, side) {
+    const fn = card.battlecryFn;
+    const oppSide = side === 'player' ? 'enemy' : 'player';
+    switch (fn) {
+        case 'draw1':
+            drawCard(side);
+            addLog(`${card.name} 登场效果：抓1张牌`, 'skill');
+            break;
+        case 'draw2':
+            drawCard(side); drawCard(side);
+            addLog(`${card.name} 登场效果：抓2张牌`, 'skill');
+            break;
+        case 'draw3':
+            drawCard(side); drawCard(side); drawCard(side);
+            addLog(`${card.name} 登场效果：抓3张牌`, 'skill');
+            break;
+        case 'damage1':
+            dealRandomDamage(oppSide, 1, card.name);
+            break;
+        case 'damage2':
+            dealRandomDamage(oppSide, 2, card.name);
+            break;
+        case 'damage3':
+            dealRandomDamage(oppSide, 3, card.name);
+            break;
+        case 'healHero2':
+            gameState[side].heroHp = Math.min(gameState[side].maxHeroHp, gameState[side].heroHp + 2);
+            addLog(`${card.name} 登场效果：治疗主公2点`, 'skill');
+            break;
+        case 'healHero3':
+            gameState[side].heroHp = Math.min(gameState[side].maxHeroHp, gameState[side].heroHp + 3);
+            addLog(`${card.name} 登场效果：治疗主公3点`, 'skill');
+            break;
+        case 'healHero4':
+            gameState[side].heroHp = Math.min(gameState[side].maxHeroHp, gameState[side].heroHp + 4);
+            addLog(`${card.name} 登场效果：治疗主公4点`, 'skill');
+            break;
+        case 'aoe2':
+            aoeMinions(oppSide, 2, card.name);
+            break;
+        case 'aoe3':
+            aoeMinions(oppSide, 3, card.name);
+            break;
+    }
+}
+
+function triggerDeathrattle(card, side) {
+    const fn = card.deathrattleFn;
+    const oppSide = side === 'player' ? 'enemy' : 'player';
+    switch (fn) {
+        case 'draw2':
+            drawCard(side); drawCard(side);
+            addLog(`${card.name} 遗计：抓2张牌`, 'skill');
+            break;
+        case 'aoe3enemy':
+            aoeMinions(oppSide, 3, card.name + '(遗计)');
+            break;
+        case 'aoe3all':
+            aoeMinions('player', 3, card.name + '(遗计)');
+            aoeMinions('enemy', 3, card.name + '(遗计)');
+            addLog(`${card.name} 遗计：对全体造成3伤害`, 'critical');
+            break;
+        case 'damageHero2':
+            gameState[oppSide].heroHp -= 2;
+            addLog(`${card.name} 遗计：对敌方主公造成2伤害`, 'skill');
+            break;
+    }
+}
+
+function dealRandomDamage(targetSide, damage, sourceName) {
+    const board = gameState[targetSide].board;
+    if (board.length > 0) {
+        const target = board[Math.floor(Math.random() * board.length)];
+        target.currentHp -= damage;
+        addLog(`${sourceName} 登场效果：对 ${target.name} 造成${damage}点伤害`, 'skill');
+    } else {
+        // Hit hero
+        gameState[targetSide].heroHp -= damage;
+        addLog(`${sourceName} 登场效果：对${targetSide === 'enemy' ? '敌方' : '我方'}主公造成${damage}伤害`, 'skill');
+    }
+}
+
+function aoeMinions(targetSide, damage, sourceName) {
+    const board = gameState[targetSide].board;
+    board.forEach(m => { m.currentHp -= damage; });
+    addLog(`${sourceName} 对${targetSide === 'enemy' ? '敌方' : '我方'}全体随从造成${damage}伤害`, 'critical');
+}
+
+function isWeatherFogActive() { return currentWeather === 'fog'; }
+function isWeatherSnowActive() { return currentWeather === 'snow'; }
+
+// ====== Interaction System ======
+function onHandCardClick(handIndex) {
+    if (!gameState.isPlayerTurn || gameState.battleEnded || animating) return;
+    selectedAttacker = null;
+    playCard(handIndex);
+}
+
+function onBoardMinionClick(card, isEnemy) {
+    if (gameState.battleEnded || animating) return;
+
+    if (!isEnemy && gameState.isPlayerTurn) {
+        // Select our minion as attacker
+        if (!card.canAttack || card.hasSummonSickness) {
+            if (card.hasSummonSickness) addLog(`${card.name} 刚上场，不能攻击`, 'system');
+            return;
+        }
+        const idx = gameState.player.board.indexOf(card);
+        if (selectedAttacker && selectedAttacker.side === 'player' && selectedAttacker.index === idx) {
+            // Deselect
+            selectedAttacker = null;
+            renderAll();
+            return;
+        }
+        selectedAttacker = { side: 'player', index: idx };
+        // Update visual state
+        boardSprites.player.forEach((s, i) => {
+            setBoardMinionState(s, i === idx ? 'selected' : 'idle');
+        });
+        boardSprites.enemy.forEach(s => {
+            setBoardMinionState(s, 'targetable');
+        });
+    } else if (isEnemy && gameState.isPlayerTurn && selectedAttacker) {
+        // Attack enemy minion
+        const targetIdx = gameState.enemy.board.indexOf(card);
+        performAttack(selectedAttacker.side, selectedAttacker.index, 'enemy', targetIdx, false);
+    }
+}
+
+function onHeroClick(side) {
+    if (gameState.battleEnded || animating) return;
+
+    if (side === 'enemy' && gameState.isPlayerTurn && selectedAttacker) {
+        performAttack(selectedAttacker.side, selectedAttacker.index, 'enemy', -1, true);
+    }
+}
+
+// ====== Enemy AI ======
+function enemyAI() {
+    if (gameState.battleEnded || gameState.isPlayerTurn) return;
+
+    const actions = [];
+    const s = gameState.enemy;
+
+    // Phase 1: Play cards (greedy, highest cost first)
+    const playable = s.hand
+        .map((c, i) => ({ card: c, idx: i }))
+        .filter(x => x.card.cost <= s.mana && s.board.length < 7)
+        .sort((a, b) => b.card.cost - a.card.cost);
+
+    let manaLeft = s.mana;
+    let boardCount = s.board.length;
+    const toPlay = [];
+    for (const p of playable) {
+        if (p.card.cost <= manaLeft && boardCount < 7) {
+            toPlay.push(p);
+            manaLeft -= p.card.cost;
+            boardCount++;
+        }
+    }
+
+    // Phase 2: Attack with minions
+    // Build attack sequence after playing cards
+    const executeAI = (step) => {
+        if (gameState.battleEnded) return;
+
+        if (step < toPlay.length) {
+            // Play a card
+            const cardInfo = toPlay[step];
+            const currentIdx = s.hand.indexOf(cardInfo.card);
+            if (currentIdx >= 0) {
+                aiPlayCard(currentIdx);
+            }
+            setTimeout(() => executeAI(step + 1), 600);
+        } else {
+            // Attack phase
+            setTimeout(() => aiAttackPhase(), 400);
+        }
+    };
+
+    if (toPlay.length > 0 || s.board.length > 0) {
+        executeAI(0);
+    } else {
+        // No actions, end turn
+        setTimeout(() => aiEndTurn(), 400);
+    }
+}
+
+function aiPlayCard(handIndex) {
+    const s = gameState.enemy;
+    if (handIndex < 0 || handIndex >= s.hand.length) return;
+    const card = s.hand[handIndex];
+    if (card.cost > s.mana || s.board.length >= 7) return;
+
+    s.mana -= card.cost;
+    s.hand.splice(handIndex, 1);
+
+    card.currentHp = card.hp;
+    card.maxHp = card.hp;
+    card.canAttack = false;
+    card.hasSummonSickness = true;
+
+    if (card.keywords.includes('charge') && !isWeatherSnowActive()) {
+        card.canAttack = true;
+        card.hasSummonSickness = false;
+    }
+
+    s.board.push(card);
+    addLog(`敌方出牌：${card.name} (${card.cost}费 ${card.attack}/${card.hp})`, 'attack');
+
+    if (card.keywords.includes('battlecry') && card.battlecryFn) {
+        triggerBattlecry(card, 'enemy');
+        processDeaths();
+    }
+
+    renderAll();
+    checkGameOver();
+}
+
+function aiAttackPhase() {
+    if (gameState.battleEnded) return;
+
+    const attackers = gameState.enemy.board.filter(m => m.canAttack && !m.hasSummonSickness);
+    if (attackers.length === 0) {
+        aiEndTurn();
+        return;
+    }
+
+    let atkIndex = 0;
+    const doAttack = () => {
+        if (atkIndex >= attackers.length || gameState.battleEnded) {
+            aiEndTurn();
+            return;
+        }
+
+        const attacker = attackers[atkIndex];
+        const atkBoardIdx = gameState.enemy.board.indexOf(attacker);
+        if (atkBoardIdx < 0 || !attacker.canAttack) {
+            atkIndex++;
+            doAttack();
+            return;
+        }
+
+        const playerBoard = gameState.player.board;
+        const hasTaunters = playerBoard.filter(m => m.keywords.includes('taunt') && !isWeatherFogActive());
+
+        let target = null;
+        let targetIdx = -1;
+        let hitHero = false;
+
+        if (hasTaunters.length > 0) {
+            // Must attack taunters
+            target = hasTaunters[Math.floor(Math.random() * hasTaunters.length)];
+            targetIdx = playerBoard.indexOf(target);
+        } else {
+            // Look for favorable trades
+            let bestTrade = null;
+            playerBoard.forEach((m, i) => {
+                // Can we kill it and survive?
+                if (m.currentHp <= attacker.attack && attacker.currentHp > m.attack) {
+                    if (!bestTrade || m.attack > bestTrade.card.attack) {
+                        bestTrade = { card: m, idx: i };
+                    }
+                }
+            });
+
+            if (bestTrade) {
+                target = bestTrade.card;
+                targetIdx = bestTrade.idx;
+            } else if (playerBoard.length === 0 || Math.random() < 0.6) {
+                // Go face
+                hitHero = true;
+            } else {
+                // Hit a random minion
+                targetIdx = Math.floor(Math.random() * playerBoard.length);
+                target = playerBoard[targetIdx];
+            }
+        }
+
+        if (hitHero) {
+            // Attack player hero
+            const damage = attacker.attack;
+            gameState.player.heroHp -= damage;
+            addLog(`${attacker.name} 攻击我方主公，造成 ${damage} 伤害！`, 'attack');
+            attacker.canAttack = false;
+
+            animateAttack('enemy', atkBoardIdx, 'player', -1, true, damage, 0);
+
+            setTimeout(() => {
+                renderAll();
+                if (!checkGameOver()) {
+                    atkIndex++;
+                    setTimeout(doAttack, 500);
+                }
+            }, 500);
+        } else if (target) {
+            // Attack minion
+            const atkMultiplier = getCounterMultiplier(attacker, target);
+            const defMultiplier = getCounterMultiplier(target, attacker);
+            const atkDamage = Math.max(1, Math.floor(attacker.attack * atkMultiplier));
+            const defDamage = Math.max(1, Math.floor(target.attack * defMultiplier));
+
+            target.currentHp -= atkDamage;
+            attacker.currentHp -= defDamage;
+            attacker.canAttack = false;
+
+            addLog(`${attacker.name}(${atkDamage}伤) ⚔ ${target.name}(${defDamage}伤)`, 'attack');
+
+            animateAttack('enemy', atkBoardIdx, 'player', targetIdx, false, atkDamage, defDamage);
+
+            setTimeout(() => {
+                processDeaths();
+                renderAll();
+                if (!checkGameOver()) {
+                    atkIndex++;
+                    setTimeout(doAttack, 500);
+                }
+            }, 500);
+        } else {
+            atkIndex++;
+            doAttack();
+        }
+    };
+
+    doAttack();
+}
+
+function getCounterMultiplier(attacker, target) {
+    const at = UnitType[attacker.unitType];
+    const tt = UnitType[target.unitType];
+    if (at && tt && at.counters === target.unitType) return 1.3;
+    if (at && tt && at.weakness === target.unitType) return 0.8;
+    if (currentWeather === 'wind' && attacker.unitType === 'ARCHER') return 1.3;
+    return 1.0;
+}
+
+function aiEndTurn() {
+    if (gameState.battleEnded) return;
+    gameState.enemy.board.forEach(m => m.canAttack = false);
+    renderAll();
+    setTimeout(() => startTurn('player'), 400);
+}
+
+// ====== Animations ======
+function animateAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero, atkDamage, defDamage) {
+    const attackerSprites = boardSprites[attackerSide];
+    const targetSprites = boardSprites[targetSide];
+    const attackerSprite = attackerSprites[attackerIdx];
+    if (!attackerSprite) return;
+
+    animating = true;
+
+    let targetPos;
+    if (isHero) {
+        // Target is hero - compute hero global position
+        if (targetSide === 'enemy') {
+            targetPos = { x: app.screen.width / 2, y: 70 };
+        } else {
+            targetPos = { x: app.screen.width / 2, y: app.screen.height - 50 };
+        }
+    } else {
+        const targetSprite = targetSprites[targetIdx];
+        if (!targetSprite) { animating = false; return; }
+        targetPos = targetSprite.parent.toGlobal(targetSprite.position);
+    }
+
+    const origX = attackerSprite.position.x;
+    const origY = attackerSprite.position.y;
+    const attackerGlobal = attackerSprite.parent.toGlobal(attackerSprite.position);
+    const dx = (targetPos.x - attackerGlobal.x) * 0.3;
+    const dy = (targetPos.y - attackerGlobal.y) * 0.3;
+    const localDx = dx / (attackerSprite.parent.scale?.x || 1);
+    const localDy = dy / (attackerSprite.parent.scale?.y || 1);
+
+    gsap.timeline()
+        .to(attackerSprite, { x: origX + localDx, y: origY + localDy, duration: 0.15, ease: 'power2.in' })
+        .to(attackerSprite, { x: origX, y: origY, duration: 0.25, ease: 'back.out(2)' })
+        .call(() => {
+            // Show damage numbers
+            if (!isHero) {
+                const targetSprite = targetSprites[targetIdx];
+                if (targetSprite) {
+                    showDamageNumber(targetSprite, atkDamage, false);
+                    showDamageNumber(attackerSprite, defDamage, false);
+                    // Shake target
+                    gsap.to(targetSprite, { x: targetSprite.position.x + 8, duration: 0.05, repeat: 5, yoyo: true, onComplete: () => {
+                        targetSprite.x = targetSprite.originalX || 0;
+                    }});
+                }
+            } else {
+                // Hero damage flash
+                const heroId = targetSide === 'player' ? 'playerHpBadge' : 'enemyHpBadge';
+                const badge = document.getElementById(heroId);
+                badge.style.transform = 'scale(1.3)';
+                badge.style.color = '#ff0000';
+                setTimeout(() => { badge.style.transform = ''; badge.style.color = ''; }, 400);
+            }
+            animating = false;
+        });
+}
+
+function animateCardPlay() {
+    // Simple flash effect for now
+}
+
+function showDamageNumber(sprite, damage, isCritical) {
+    if (!damage || damage <= 0) return;
+    const globalPos = sprite.parent.toGlobal(sprite.position);
+    const style = {
+        fontSize: isCritical ? 36 : 24,
+        fill: isCritical ? 0xFFD700 : 0xff6b6b,
+        fontWeight: 'bold',
+        stroke: 0x000000,
+        strokeThickness: 4
+    };
+    const dmgText = new PIXI.Text('-' + damage, style);
+    dmgText.anchor.set(0.5);
+    dmgText.position.set(globalPos.x + (Math.random() - 0.5) * 20, globalPos.y - 20);
+    layers.effects.addChild(dmgText);
+
+    gsap.to(dmgText, { y: dmgText.y - 60, alpha: 0, duration: 1.0, ease: 'power2.out', onComplete: () => {
+        layers.effects.removeChild(dmgText);
+        dmgText.destroy();
+    }});
+    gsap.fromTo(dmgText.scale, { x: 0.5, y: 0.5 }, { x: 1.2, y: 1.2, duration: 0.15, ease: 'back.out(2)', onComplete: () => {
+        gsap.to(dmgText.scale, { x: 1, y: 1, duration: 0.2 });
+    }});
+}
+
+function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'toast-msg';
+    toast.textContent = msg;
+    document.getElementById('game-container').appendChild(toast);
+    setTimeout(() => toast.remove(), 2200);
+}
+
+// ====== UI Rendering (DOM) ======
+function renderAll() {
+    if (!gameState) return;
+    renderBoard();
+    renderHandCards();
+    renderEnemyHand();
+    renderTopBar();
+    renderBottomInfo();
+}
+
+function renderHandCards() {
+    const handRow = document.getElementById('handRow');
+    // Remove old cards but keep deck icon
+    const deckIcon = document.getElementById('playerDeckIcon');
+    handRow.innerHTML = '';
+    handRow.appendChild(deckIcon);
+
+    // Update deck count
+    deckIcon.textContent = gameState.player.deck.length;
+
+    gameState.player.hand.forEach((card, idx) => {
+        const el = document.createElement('div');
+        const canPlay = gameState.isPlayerTurn && card.cost <= gameState.player.mana && gameState.player.board.length < 7 && !gameState.battleEnded && !animating;
+        el.className = 'hand-card ' + (canPlay ? 'playable' : 'unplayable');
+        el.onclick = () => onHandCardClick(idx);
+
+        const keywordText = [];
+        if (card.keywords.includes('taunt')) keywordText.push('护卫');
+        if (card.keywords.includes('charge')) keywordText.push('突击');
+        if (card.keywords.includes('battlecry')) keywordText.push('登场');
+        if (card.keywords.includes('deathrattle')) keywordText.push('遗计');
+
+        const factionLabel = FACTION_COLORS[card.faction]?.label || '?';
+        const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
+
+        el.innerHTML = `
+            <span class="card-cost">${card.cost}</span>
+            <div class="card-art">${unitIcon}</div>
+            <div class="card-name">${card.name}</div>
+            ${keywordText.length ? `<div class="card-keywords">${keywordText.join(' ')}</div>` : ''}
+            <div class="card-stats">
+                <span class="card-atk">⚔${card.attack}</span>
+                <span class="card-hp">♥${card.hp}</span>
+            </div>
+            <div class="card-desc">
+                <strong>${card.name}</strong> [${factionLabel}]<br>
+                ${card.cost}费 ${card.attack}攻/${card.hp}血<br>
+                ${card.desc || '无特殊效果'}
+            </div>
+        `;
+        handRow.appendChild(el);
+    });
+}
+
+function renderEnemyHand() {
+    const area = document.getElementById('enemyHandArea');
+    area.innerHTML = '';
+    for (let i = 0; i < gameState.enemy.hand.length; i++) {
+        const back = document.createElement('div');
+        back.className = 'enemy-card-back';
+        back.textContent = '🂠';
+        area.appendChild(back);
+    }
+}
+
+function renderTopBar() {
+    // Enemy hero HP
+    const eHp = document.getElementById('enemyHpBadge');
+    eHp.textContent = `敌主公 ${Math.max(0, gameState.enemy.heroHp)}`;
+
+    // Enemy mana
+    document.getElementById('enemyManaBadge').textContent = `令旗 ${gameState.enemy.mana}/${gameState.enemy.maxMana}`;
+
+    // Enemy deck
+    document.getElementById('enemyDeckBadge').textContent = `牌库 ${gameState.enemy.deck.length}`;
+}
+
+function renderBottomInfo() {
+    // Player hero HP
+    const pHp = document.getElementById('playerHpBadge');
+    pHp.textContent = `我方主公 ${Math.max(0, gameState.player.heroHp)}`;
+
+    // Mana crystals
+    const crystals = document.getElementById('manaCrystals');
+    crystals.innerHTML = '';
+    for (let i = 0; i < gameState.player.maxMana; i++) {
+        const gem = document.createElement('div');
+        gem.className = 'mana-gem ' + (i < gameState.player.mana ? 'filled' : 'empty');
+        crystals.appendChild(gem);
+    }
+
+    // Mana text
+    document.getElementById('playerManaBadge').textContent = `${gameState.player.mana}/${gameState.player.maxMana}`;
+}
+
+// ====== Weather Particle System ======
+function cycleWeather() {
+    weatherIndex = (weatherIndex + 1) % weatherOrder.length;
+    currentWeather = weatherOrder[weatherIndex];
+    updateWeatherDisplay();
+    clearWeatherParticles();
+    addLog(`天气变化：${WeatherTypes[currentWeather].name}（${WeatherTypes[currentWeather].effect}）`, 'skill');
+    // Re-render board for taunt/charge changes due to weather
+    if (gameState) renderAll();
+}
+
+function updateWeatherDisplay() {
+    const w = WeatherTypes[currentWeather];
+    document.getElementById('weatherBtn').textContent = w.icon;
+    document.getElementById('weatherBtn').title = `${w.name}\n${w.effect}\n点击切换`;
+}
+
+function clearWeatherParticles() {
+    weatherParticles.forEach(p => {
+        layers.effects.removeChild(p);
+        p.destroy();
+    });
+    weatherParticles = [];
+}
+
+function updateWeatherParticles() {
+    if (!effectsEnabled) return;
+    const maxParticles = 50;
+    if (weatherParticles.length >= maxParticles) return;
+
+    const w = app.screen.width;
+    const h = app.screen.height;
+
+    switch (currentWeather) {
+        case 'sunny':
+            if (Math.random() < 0.03 && weatherParticles.length < 20) {
+                const sparkle = new PIXI.Graphics();
+                sparkle.beginFill(0xFFD700, 0.6);
+                sparkle.drawCircle(0, 0, 2 + Math.random() * 3);
+                sparkle.endFill();
+                sparkle.position.set(Math.random() * w, Math.random() * h * 0.4);
+                layers.effects.addChild(sparkle);
+                weatherParticles.push(sparkle);
+                gsap.to(sparkle, { alpha: 0, duration: 2, onComplete: () => removeParticle(sparkle) });
+            }
+            break;
+        case 'rain':
+            if (Math.random() < 0.3) {
+                const drop = new PIXI.Graphics();
+                drop.beginFill(0x6699cc, 0.7);
+                drop.drawRect(0, 0, 1.5, 12);
+                drop.endFill();
+                drop.position.set(Math.random() * w, -20);
+                drop.vy = 8 + Math.random() * 4;
+                layers.effects.addChild(drop);
+                weatherParticles.push(drop);
+            }
+            break;
+        case 'snow':
+            if (Math.random() < 0.08) {
+                const flake = new PIXI.Graphics();
+                flake.beginFill(0xffffff, 0.8);
+                flake.drawCircle(0, 0, 2 + Math.random() * 3);
+                flake.endFill();
+                flake.position.set(Math.random() * w, -10);
+                flake.vy = 1 + Math.random() * 2;
+                flake.vx = (Math.random() - 0.5) * 1;
+                flake.rot = (Math.random() - 0.5) * 0.02;
+                layers.effects.addChild(flake);
+                weatherParticles.push(flake);
+            }
+            break;
+        case 'fog':
+            if (Math.random() < 0.01 && weatherParticles.length < 8) {
+                const fog = new PIXI.Graphics();
+                fog.beginFill(0xcccccc, 0.12);
+                fog.drawCircle(0, 0, 60 + Math.random() * 80);
+                fog.endFill();
+                fog.position.set(-100, Math.random() * h);
+                fog.vx = 0.5 + Math.random() * 0.5;
+                layers.effects.addChild(fog);
+                weatherParticles.push(fog);
+            }
+            break;
+        case 'wind':
+            if (Math.random() < 0.15) {
+                const line = new PIXI.Graphics();
+                line.lineStyle(1, 0xaaaaaa, 0.5);
+                line.moveTo(0, 0);
+                line.lineTo(30 + Math.random() * 40, 0);
+                line.position.set(-50, Math.random() * h);
+                line.vx = 10 + Math.random() * 8;
+                layers.effects.addChild(line);
+                weatherParticles.push(line);
+            }
+            break;
+    }
+
+    // Move particles
+    for (let i = weatherParticles.length - 1; i >= 0; i--) {
+        const p = weatherParticles[i];
+        if (p.vy) p.y += p.vy;
+        if (p.vx) p.x += p.vx;
+        if (p.rot) p.rotation += p.rot;
+        if (p.y > h + 20 || p.x > w + 150) {
+            removeParticle(p);
+        }
+    }
+}
+
+function removeParticle(p) {
+    const idx = weatherParticles.indexOf(p);
+    if (idx !== -1) weatherParticles.splice(idx, 1);
+    if (p.parent) p.parent.removeChild(p);
+    p.destroy();
+}
+
+// ====== Battle Log ======
+function addLog(msg, type = 'system') {
+    logEntries.push({ msg, type });
+    if (logEntries.length > 50) logEntries.shift();
+
+    const body = document.getElementById('battleLogBody');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry ' + type;
+    entry.textContent = msg;
+    body.appendChild(entry);
+    body.scrollTop = body.scrollHeight;
+}
+
+function clearLog() {
+    logEntries = [];
+    document.getElementById('battleLogBody').innerHTML = '';
+}
+
+function toggleBattleLog() {
+    const log = document.getElementById('battleLog');
+    log.classList.toggle('collapsed');
+    document.getElementById('logToggle').textContent = log.classList.contains('collapsed') ? '展开' : '折叠';
+}
+
+// ====== Effects Toggle ======
+function toggleEffects() {
+    effectsEnabled = !effectsEnabled;
+    if (!effectsEnabled) {
+        clearWeatherParticles();
+        addLog('特效已关闭', 'system');
+    } else {
+        addLog('特效已开启', 'system');
+    }
+}
+
+// ====== Side Menu ======
+function toggleMenu() {
+    const menu = document.getElementById('sideMenu');
+    const overlay = document.getElementById('menuOverlay');
+    if (menu.classList.contains('open')) {
+        closeMenu();
+    } else {
+        menu.classList.add('open');
+        overlay.classList.add('show');
+    }
+}
+function closeMenu() {
+    document.getElementById('sideMenu').classList.remove('open');
+    document.getElementById('menuOverlay').classList.remove('show');
+}
+
+// ====== Battle Result & API ======
+function showBattleResult(isWin) {
+    const overlay = document.getElementById('battleResult');
+    const title = document.getElementById('resultTitle');
+    const stars = document.getElementById('resultStars');
+    const rewards = document.getElementById('resultRewards');
+
+    title.textContent = isWin ? '胜利！' : '战败...';
+    title.className = 'result-title ' + (isWin ? 'win' : 'lose');
+
+    if (isWin) {
+        const starCount = calcStars();
+        stars.textContent = '⭐'.repeat(starCount) + '☆'.repeat(3 - starCount);
+        addLog(`战斗胜利！获得 ${starCount} 星`, 'info');
+    } else {
+        stars.textContent = '';
+        addLog('战斗失败...', 'critical');
+    }
+
+    rewards.innerHTML = '';
+    if (isWin) {
+        const turn = gameState.turn;
+        rewards.innerHTML = `
+            <div class="result-reward-item">金币: +${200 + turn * 10}</div>
+            <div class="result-reward-item">经验: +${100 + turn * 5}</div>
+        `;
+    }
+
+    overlay.classList.add('show');
+
+    if (!IS_DEMO && isWin) {
+        submitBattleResult(isWin);
+    }
+}
+
+function calcStars() {
+    const hpRatio = gameState.player.heroHp / gameState.player.maxHeroHp;
+    if (hpRatio >= 0.7) return 3;
+    if (hpRatio >= 0.3) return 2;
+    return 1;
+}
+
+function resetBattle() {
+    document.getElementById('battleResult').classList.remove('show');
+    selectedAttacker = null;
+    animating = false;
+    clearWeatherParticles();
+
+    layers.playerZone.removeChildren();
+    layers.enemyZone.removeChildren();
+    layers.centerZone.removeChildren();
+    boardSprites.player = [];
+    boardSprites.enemy = [];
+
+    if (IS_DEMO) {
+        initGame();
+    } else {
+        loadStageData(STAGE_ID);
+    }
+    document.getElementById('turnBadge').textContent = '回合 1';
+}
+
+// ====== API Client ======
+const APIClient = {
+    async getStage(stageId) {
+        try {
+            const resp = await fetch(`/api/pve/stage/${stageId}`);
+            if (!resp.ok) throw new Error('API error');
+            return await resp.json();
+        } catch (e) {
+            console.warn('API unavailable, falling back to demo mode', e);
+            return null;
+        }
+    },
+    async getStamina() {
+        try {
+            const resp = await fetch('/api/pve/stamina');
+            if (!resp.ok) throw new Error('API error');
+            return await resp.json();
+        } catch (e) {
+            return null;
+        }
+    },
+    async submitBattle(stageId, result, stars, turns) {
+        try {
+            const resp = await fetch('/api/pve/battle/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stage_id: stageId, result, stars, turns })
+            });
+            if (!resp.ok) throw new Error('API error');
+            return await resp.json();
+        } catch (e) {
+            console.warn('Failed to submit battle result', e);
+            return null;
+        }
+    }
+};
+
+async function loadStageData(stageId) {
+    const stageResp = await APIClient.getStage(stageId);
+    if (!stageResp || !stageResp.success) {
+        addLog('API不可用，使用Demo数据', 'system');
+        initGame();
+        return;
+    }
+    // For now, use demo deck in stage mode too
+    addLog('关卡模式加载中...', 'system');
+    initGame();
+}
+
+async function submitBattleResult(isWin) {
+    if (!STAGE_ID) return;
+    const result = await APIClient.submitBattle(STAGE_ID, isWin ? 'win' : 'lose', calcStars(), gameState.turn);
+    if (result && result.success && result.rewards) {
+        const rewardsDiv = document.getElementById('resultRewards');
+        rewardsDiv.innerHTML = '';
+        if (result.rewards.coins) {
+            rewardsDiv.innerHTML += `<div class="result-reward-item">金币: +${result.rewards.coins}</div>`;
+        }
+        if (result.rewards.exp) {
+            rewardsDiv.innerHTML += `<div class="result-reward-item">经验: +${result.rewards.exp}</div>`;
+        }
+        if (result.drops) {
+            result.drops.forEach(d => {
+                rewardsDiv.innerHTML += `<div class="result-reward-item">${d.item_type}: +${d.quantity}</div>`;
+            });
+        }
+    }
+}
+
+// ====== Initialization ======
+window.addEventListener('load', function() {
+    if (typeof PIXI === 'undefined' || typeof gsap === 'undefined') {
+        document.getElementById('loading').innerHTML = '<div class="loading-text" style="color:#ff4444">加载失败，请检查网络连接</div>';
+        return;
+    }
+
+    try {
+        initApp();
+        updateWeatherDisplay();
+
+        if (IS_DEMO) {
+            initGame();
+        } else {
+            loadStageData(STAGE_ID);
+        }
+    } catch (error) {
+        console.error('初始化失败:', error);
+        document.getElementById('loading').innerHTML = '<div class="loading-text" style="color:#ff4444">初始化失败: ' + error.message + '</div>';
+    }
+});
+</script>
+</body>
+</html>
