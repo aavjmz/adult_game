@@ -4,8 +4,10 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+    # 数据库路径：容器内使用/app/data，本地开发使用项目根目录
+    db_path = os.environ.get('DB_PATH', os.path.join(basedir, 'data', 'game.db'))
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, 'game.db')
+        'sqlite:///' + db_path
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # 卡牌稀有度配置
