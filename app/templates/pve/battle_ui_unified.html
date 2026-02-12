@@ -624,31 +624,31 @@ function createBoardMinion(card, isEnemy) {
     // Unit art (center) - use artwork image if available, otherwise emoji
     const artUrl = CARD_ART_MAP[card.name];
     if (artUrl) {
-        try {
-            const texture = PIXI.Texture.from(artUrl);
-            const artSprite = new PIXI.Sprite(texture);
-            artSprite.anchor.set(0.5);
-            artSprite.position.set(0, -15);
-            // Fit art within card bounds
-            const artW = mW - 8, artH = 50;
+        const artW = mW - 8, artH = 50;
+        // Create mask first
+        const artMask = new PIXI.Graphics();
+        artMask.beginFill(0xffffff);
+        artMask.drawRoundedRect(-artW/2, -artH/2, artW, artH, 6);
+        artMask.endFill();
+        artMask.position.set(0, -15);
+        container.addChild(artMask);
+
+        const texture = PIXI.Texture.from(artUrl);
+        const artSprite = new PIXI.Sprite(texture);
+        artSprite.anchor.set(0.5);
+        artSprite.position.set(0, -15);
+        artSprite.mask = artMask;
+        container.addChild(artSprite);
+
+        // Set size now if texture ready, otherwise wait for load
+        const fitArt = () => {
             artSprite.width = artW;
             artSprite.height = artH;
-            // Apply rounded mask
-            const artMask = new PIXI.Graphics();
-            artMask.beginFill(0xffffff);
-            artMask.drawRoundedRect(-artW/2, -artH/2, artW, artH, 6);
-            artMask.endFill();
-            artMask.position.set(0, -15);
-            container.addChild(artMask);
-            artSprite.mask = artMask;
-            container.addChild(artSprite);
-        } catch(e) {
-            // Fallback to emoji
-            const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
-            const emoji = new PIXI.Text(unitIcon, { fontSize: 30 });
-            emoji.anchor.set(0.5);
-            emoji.position.set(0, -15);
-            container.addChild(emoji);
+        };
+        if (texture.baseTexture.valid) {
+            fitArt();
+        } else {
+            texture.baseTexture.on('loaded', fitArt);
         }
     } else {
         const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
