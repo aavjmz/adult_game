@@ -13,8 +13,8 @@ services:
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
       - PYTHONUNBUFFERED=1
     volumes:
-      # 挂载数据目录，持久化数据库文件和静态资源
-      - game_data:/app
+      # 挂载data目录，持久化数据库文件
+      - game_data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8080')"]

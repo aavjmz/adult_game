@@ -4,7 +4,7 @@ set -e
 echo "Starting Adult Card Game..."
 
 # 检查数据库是否存在
-if [ ! -f "/app/game.db" ]; then
+if [ ! -f "/app/data/game.db" ]; then
     echo "Database not found. Initializing database..."
     python migrate_complete.py
     echo "Database initialized successfully!"

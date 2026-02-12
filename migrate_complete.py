@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def backup_database():
     """备份数据库"""
-    db_path = 'game.db'
+    db_path = os.path.join('data', 'game.db')
     if os.path.exists(db_path):
         timestamp = int(datetime.now().timestamp())
         backup_path = f'{db_path}.backup_{timestamp}'
@@ -33,7 +33,7 @@ def add_missing_columns():
     """添加所有缺失的字段"""
     print("检查并添加缺失的字段...")
 
-    conn = sqlite3.connect('game.db')
+    conn = sqlite3.connect(os.path.join('data', 'game.db'))
     cursor = conn.cursor()
 
     # 获取现有字段
@@ -424,7 +424,7 @@ def verify_database():
     print("验证数据库结构...")
     print("="*60)
 
-    conn = sqlite3.connect('game.db')
+    conn = sqlite3.connect(os.path.join('data', 'game.db'))
     cursor = conn.cursor()
 
     cursor.execute("PRAGMA table_info(cards)")
