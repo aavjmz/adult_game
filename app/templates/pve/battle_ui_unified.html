@@ -132,7 +132,47 @@
             .top-bar { height: 44px; }
             .enemy-hand-area { top: 44px; height: 38px; }
             .enemy-card-back { width: 24px; height: 32px; font-size: 10px; }
+            .mulligan-card { width: 100px; height: 140px; }
+            .mulligan-card .mc-art { font-size: 32px; height: 45px; }
         }
+
+        /* ====== Mulligan Overlay ====== */
+        .mulligan-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 600; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); }
+        .mulligan-overlay.show { display: flex; }
+        .mulligan-title { font-size: 22px; font-weight: bold; color: #FFD700; margin-bottom: 8px; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+        .mulligan-subtitle { font-size: 13px; color: #aaa; margin-bottom: 24px; }
+        .mulligan-cards { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; padding: 0 16px; }
+        .mulligan-card { width: 120px; height: 170px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 3px solid #5a5a6f; border-radius: 10px; cursor: pointer; position: relative; display: flex; flex-direction: column; align-items: center; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; }
+        .mulligan-card:hover { transform: translateY(-8px); box-shadow: 0 8px 25px rgba(0,0,0,0.5); }
+        .mulligan-card.selected { border-color: #ff4444; box-shadow: 0 0 15px rgba(255,68,68,0.5); }
+        .mulligan-card.selected::after { content: '✕'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 48px; color: #ff4444; font-weight: bold; text-shadow: 0 0 10px rgba(255,0,0,0.8); pointer-events: none; z-index: 1; }
+        .mulligan-card .mc-cost { position: absolute; top: -8px; left: -8px; width: 28px; height: 28px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 2; }
+        .mulligan-card .mc-art { width: 100%; height: 55px; display: flex; align-items: center; justify-content: center; font-size: 36px; margin-top: 12px; }
+        .mulligan-card .mc-name { font-size: 12px; font-weight: bold; margin-top: 4px; text-align: center; }
+        .mulligan-card .mc-desc { font-size: 10px; color: #aaa; text-align: center; margin-top: 2px; padding: 0 6px; }
+        .mulligan-card .mc-stats { display: flex; justify-content: space-between; width: 100%; padding: 0 10px; margin-top: auto; margin-bottom: 6px; }
+        .mulligan-card .mc-atk { font-size: 13px; font-weight: bold; color: #ff6b6b; }
+        .mulligan-card .mc-hp { font-size: 13px; font-weight: bold; color: #69db7c; }
+        .mulligan-btn { margin-top: 24px; padding: 12px 40px; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; color: #fff; background: linear-gradient(135deg, #d4af37, #b8944d); transition: transform 0.2s, box-shadow 0.2s; }
+        .mulligan-btn:hover { transform: scale(1.05); box-shadow: 0 4px 15px rgba(212,175,55,0.4); }
+        .mulligan-btn:active { transform: scale(0.95); }
+
+        /* ====== Drag-to-Play ====== */
+        .hand-card.dragging-source { opacity: 0.35; transform: none !important; pointer-events: none; }
+        .drag-ghost { position: fixed; z-index: 10000; pointer-events: none; width: 76px; height: 105px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 2px solid #28a745; border-radius: 8px; box-shadow: 0 8px 30px rgba(40,167,69,0.5); display: flex; flex-direction: column; align-items: center; transform: scale(1.15); transition: none; }
+        .drag-ghost .card-cost { position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 1; }
+        .drag-ghost .card-art { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-top: 8px; }
+        .drag-ghost .card-name { font-size: 9px; font-weight: bold; margin-top: 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; }
+        .drag-ghost .card-stats { display: flex; justify-content: space-between; width: 100%; padding: 0 6px; margin-top: auto; margin-bottom: 4px; }
+        .drag-ghost .card-atk { font-size: 11px; font-weight: bold; color: #ff6b6b; }
+        .drag-ghost .card-hp { font-size: 11px; font-weight: bold; color: #69db7c; }
+        .drag-ghost.unplayable { border-color: #ff4444; box-shadow: 0 8px 30px rgba(255,68,68,0.3); }
+        .drop-zone-indicator { position: absolute; top: 0; left: 0; right: 0; bottom: 130px; z-index: 99; display: none; pointer-events: none; }
+        .drop-zone-indicator.show { display: block; }
+        .drop-zone-indicator .drop-zone-inner { position: absolute; left: 10%; right: 10%; top: 40%; height: 80px; border: 3px dashed rgba(40,167,69,0.6); border-radius: 16px; background: rgba(40,167,69,0.08); display: flex; align-items: center; justify-content: center; transition: border-color 0.2s, background 0.2s; }
+        .drop-zone-indicator.hover .drop-zone-inner { border-color: rgba(40,167,69,0.9); background: rgba(40,167,69,0.15); }
+        .drop-zone-label { font-size: 14px; color: rgba(40,167,69,0.7); font-weight: bold; }
+        .hand-row.dragging { overflow: visible; }
     </style>
 </head>
 <body>
@@ -214,6 +254,21 @@
                 <button class="result-btn secondary" onclick="resetBattle()">再战一次</button>
                 <button class="result-btn primary" onclick="window.location.href='/pve/battle-ui-comparison'">返回</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Mulligan Overlay -->
+    <div class="mulligan-overlay" id="mulliganOverlay">
+        <div class="mulligan-title">起手换牌</div>
+        <div class="mulligan-subtitle">点击选择要替换的牌，然后确认</div>
+        <div class="mulligan-cards" id="mulliganCards"></div>
+        <button class="mulligan-btn" id="mulliganBtn" onclick="confirmMulligan()">确认 (不换牌)</button>
+    </div>
+
+    <!-- Drop Zone Indicator -->
+    <div class="drop-zone-indicator" id="dropZoneIndicator">
+        <div class="drop-zone-inner">
+            <span class="drop-zone-label">拖到此处出牌</span>
         </div>
     </div>
 </div>
@@ -377,6 +432,17 @@ let effectsEnabled = true;
 let weatherIndex = 0;
 let currentWeather = 'sunny';
 let animating = false; // Lock to prevent actions during animations
+let mulliganSelected = []; // Indices of cards selected for mulligan replacement
+
+// Drag-to-play state
+let dragState = {
+    active: false,           // Currently dragging
+    cardIndex: -1,           // Hand index of card being dragged
+    ghost: null,             // Ghost DOM element
+    sourceEl: null,          // Original card DOM element
+    startX: 0, startY: 0,   // Pointer start position
+    isDragThresholdMet: false // True once dragged past threshold
+};
 
 // ====== Game State Factory ======
 function createGameState() {
@@ -734,8 +800,147 @@ function initGame() {
     addLog('战斗开始！蜀国 vs 魏国', 'system');
     addLog('先手抓3张，后手抓4张', 'info');
 
-    // Start turn 1 for player
-    startTurn('player');
+    // Show mulligan phase before starting
+    showMulligan();
+}
+
+// ====== Mulligan System ======
+function showMulligan() {
+    mulliganSelected = [];
+    const overlay = document.getElementById('mulliganOverlay');
+    const container = document.getElementById('mulliganCards');
+    container.innerHTML = '';
+
+    // Render initial hand as mulligan cards
+    renderAll(); // Show the board state behind overlay
+    gameState.player.hand.forEach((card, idx) => {
+        const el = document.createElement('div');
+        el.className = 'mulligan-card';
+        el.dataset.index = idx;
+        el.onclick = () => toggleMulliganCard(idx, el);
+
+        const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
+        const keywordText = [];
+        if (card.keywords.includes('taunt')) keywordText.push('护卫');
+        if (card.keywords.includes('charge')) keywordText.push('突击');
+        if (card.keywords.includes('battlecry')) keywordText.push('登场');
+        if (card.keywords.includes('deathrattle')) keywordText.push('遗计');
+
+        el.innerHTML = `
+            <span class="mc-cost">${card.cost}</span>
+            <div class="mc-art">${unitIcon}</div>
+            <div class="mc-name">${card.name}</div>
+            <div class="mc-desc">${keywordText.length ? keywordText.join(' ') : (card.desc || '')}</div>
+            <div class="mc-stats">
+                <span class="mc-atk">⚔${card.attack}</span>
+                <span class="mc-hp">♥${card.hp}</span>
+            </div>
+        `;
+        container.appendChild(el);
+    });
+
+    updateMulliganButton();
+    overlay.classList.add('show');
+}
+
+function toggleMulliganCard(idx, el) {
+    const pos = mulliganSelected.indexOf(idx);
+    if (pos === -1) {
+        mulliganSelected.push(idx);
+        el.classList.add('selected');
+    } else {
+        mulliganSelected.splice(pos, 1);
+        el.classList.remove('selected');
+    }
+    updateMulliganButton();
+}
+
+function updateMulliganButton() {
+    const btn = document.getElementById('mulliganBtn');
+    const count = mulliganSelected.length;
+    btn.textContent = count === 0 ? '确认 (不换牌)' : `确认换牌 (换${count}张)`;
+}
+
+function confirmMulligan() {
+    const overlay = document.getElementById('mulliganOverlay');
+
+    if (mulliganSelected.length > 0) {
+        // Sort descending so splice indices stay valid
+        const sorted = [...mulliganSelected].sort((a, b) => b - a);
+        const returned = [];
+        sorted.forEach(idx => {
+            returned.push(gameState.player.hand.splice(idx, 1)[0]);
+        });
+
+        // Put returned cards back into deck
+        returned.forEach(card => gameState.player.deck.push(card));
+
+        // Shuffle deck
+        const deck = gameState.player.deck;
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+
+        // Draw same number of new cards
+        const drawCount = returned.length;
+        for (let i = 0; i < drawCount; i++) {
+            drawCardRaw('player');
+        }
+
+        addLog(`换牌：替换了${drawCount}张牌`, 'info');
+    } else {
+        addLog('起手换牌：保留全部手牌', 'info');
+    }
+
+    // AI mulligan
+    aiMulligan();
+
+    // Fade out overlay
+    overlay.style.transition = 'opacity 0.4s';
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+        overlay.classList.remove('show');
+        overlay.style.transition = '';
+        overlay.style.opacity = '';
+        mulliganSelected = [];
+
+        // Now start the game
+        startTurn('player');
+    }, 400);
+}
+
+function aiMulligan() {
+    // AI strategy: replace cards that cost 5 or more
+    const hand = gameState.enemy.hand;
+    const toReplace = [];
+    hand.forEach((card, idx) => {
+        if (card.cost >= 5) toReplace.push(idx);
+    });
+
+    if (toReplace.length === 0) return;
+
+    // Sort descending for safe splicing
+    toReplace.sort((a, b) => b - a);
+    const returned = [];
+    toReplace.forEach(idx => {
+        returned.push(hand.splice(idx, 1)[0]);
+    });
+
+    // Put back and shuffle
+    returned.forEach(card => gameState.enemy.deck.push(card));
+    const deck = gameState.enemy.deck;
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+
+    // Draw replacements
+    for (let i = 0; i < returned.length; i++) {
+        drawCardRaw('enemy');
+    }
+
+    addLog(`敌方换牌：替换了${returned.length}张牌`, 'info');
 }
 
 function startTurn(side) {
@@ -1103,6 +1308,7 @@ function isWeatherSnowActive() { return currentWeather === 'snow'; }
 
 // ====== Interaction System ======
 function onHandCardClick(handIndex) {
+    if (dragState.isDragThresholdMet) return; // Prevent click after drag
     if (!gameState.isPlayerTurn || gameState.battleEnded || animating) return;
     selectedAttacker = null;
     playCard(handIndex);
@@ -1145,6 +1351,217 @@ function onHeroClick(side) {
     if (side === 'enemy' && gameState.isPlayerTurn && selectedAttacker) {
         performAttack(selectedAttacker.side, selectedAttacker.index, 'enemy', -1, true);
     }
+}
+
+// ====== Drag-to-Play System ======
+function getPointerPos(e) {
+    if (e.touches && e.touches.length > 0) {
+        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+}
+
+function onDragPointerDown(e, cardIndex, cardEl) {
+    if (!gameState.isPlayerTurn || gameState.battleEnded || animating) return;
+    // Only left mouse button or touch
+    if (e.type === 'mousedown' && e.button !== 0) return;
+
+    const pos = getPointerPos(e);
+    dragState.cardIndex = cardIndex;
+    dragState.sourceEl = cardEl;
+    dragState.startX = pos.x;
+    dragState.startY = pos.y;
+    dragState.isDragThresholdMet = false;
+    dragState.active = false;
+
+    // Bind move/up listeners
+    document.addEventListener('mousemove', onDragPointerMove);
+    document.addEventListener('mouseup', onDragPointerUp);
+    document.addEventListener('touchmove', onDragPointerMove, { passive: false });
+    document.addEventListener('touchend', onDragPointerUp);
+    document.addEventListener('touchcancel', onDragPointerUp);
+}
+
+function onDragPointerMove(e) {
+    const pos = getPointerPos(e);
+    const dx = pos.x - dragState.startX;
+    const dy = pos.y - dragState.startY;
+
+    if (!dragState.isDragThresholdMet) {
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+            dragState.isDragThresholdMet = true;
+            startDrag(pos);
+        }
+        return;
+    }
+
+    e.preventDefault();
+
+    // Move ghost
+    if (dragState.ghost) {
+        dragState.ghost.style.left = (pos.x - 38) + 'px';
+        dragState.ghost.style.top = (pos.y - 52) + 'px';
+    }
+
+    updateDropZoneVisual(pos);
+}
+
+function startDrag(pos) {
+    dragState.active = true;
+
+    // Mark source card
+    if (dragState.sourceEl) {
+        dragState.sourceEl.classList.add('dragging-source');
+    }
+
+    // Add dragging class to hand row
+    document.getElementById('handRow').classList.add('dragging');
+
+    // Create ghost element (clone of card)
+    const card = gameState.player.hand[dragState.cardIndex];
+    if (!card) { cleanupDrag(); return; }
+
+    const canPlay = card.cost <= gameState.player.mana && gameState.player.board.length < 7;
+    const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
+
+    const ghost = document.createElement('div');
+    ghost.className = 'drag-ghost' + (canPlay ? '' : ' unplayable');
+    ghost.innerHTML = `
+        <span class="card-cost">${card.cost}</span>
+        <div class="card-art">${unitIcon}</div>
+        <div class="card-name">${card.name}</div>
+        <div class="card-stats">
+            <span class="card-atk">⚔${card.attack}</span>
+            <span class="card-hp">♥${card.hp}</span>
+        </div>
+    `;
+    ghost.style.left = (pos.x - 38) + 'px';
+    ghost.style.top = (pos.y - 52) + 'px';
+    document.body.appendChild(ghost);
+    dragState.ghost = ghost;
+
+    // Show drop zone
+    const indicator = document.getElementById('dropZoneIndicator');
+    indicator.classList.add('show');
+}
+
+function updateDropZoneVisual(pos) {
+    const indicator = document.getElementById('dropZoneIndicator');
+    if (isInDropZone(pos)) {
+        indicator.classList.add('hover');
+    } else {
+        indicator.classList.remove('hover');
+    }
+}
+
+function isInDropZone(pos) {
+    // Drop zone: upper portion of screen (above the bottom panel)
+    const bottomPanel = document.getElementById('bottomPanel');
+    const bottomTop = bottomPanel.getBoundingClientRect().top;
+    // Card must be dragged above the bottom panel area
+    return pos.y < bottomTop - 20;
+}
+
+function onDragPointerUp(e) {
+    // Remove listeners
+    document.removeEventListener('mousemove', onDragPointerMove);
+    document.removeEventListener('mouseup', onDragPointerUp);
+    document.removeEventListener('touchmove', onDragPointerMove);
+    document.removeEventListener('touchend', onDragPointerUp);
+    document.removeEventListener('touchcancel', onDragPointerUp);
+
+    if (!dragState.isDragThresholdMet) {
+        // No drag happened, let click handle it
+        resetDragState();
+        return;
+    }
+
+    const pos = e.changedTouches ? { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY } : { x: e.clientX, y: e.clientY };
+    const card = gameState.player.hand[dragState.cardIndex];
+    const canPlay = card && card.cost <= gameState.player.mana && gameState.player.board.length < 7 && !gameState.battleEnded && !animating;
+
+    if (isInDropZone(pos) && canPlay) {
+        // Play the card with a fly-in animation
+        const ghost = dragState.ghost;
+        const idx = dragState.cardIndex;
+        if (ghost) {
+            // Animate ghost to center of player zone then play
+            const targetY = window.innerHeight * 0.45;
+            const targetX = window.innerWidth / 2 - 38;
+            ghost.style.transition = 'left 0.2s ease, top 0.2s ease, opacity 0.2s ease, transform 0.2s ease';
+            ghost.style.left = targetX + 'px';
+            ghost.style.top = targetY + 'px';
+            ghost.style.opacity = '0';
+            ghost.style.transform = 'scale(0.5)';
+            setTimeout(() => {
+                cleanupDrag();
+                selectedAttacker = null;
+                playCard(idx);
+            }, 200);
+        } else {
+            cleanupDrag();
+            selectedAttacker = null;
+            playCard(idx);
+        }
+    } else {
+        // Snap back
+        snapBack();
+    }
+}
+
+function snapBack() {
+    const ghost = dragState.ghost;
+    if (ghost && dragState.sourceEl) {
+        const rect = dragState.sourceEl.getBoundingClientRect();
+        ghost.style.transition = 'left 0.25s ease, top 0.25s ease, opacity 0.25s ease';
+        ghost.style.left = rect.left + 'px';
+        ghost.style.top = rect.top + 'px';
+        ghost.style.opacity = '0.5';
+        setTimeout(() => cleanupDrag(), 250);
+    } else {
+        cleanupDrag();
+    }
+}
+
+function cleanupDrag() {
+    // Remove ghost
+    if (dragState.ghost && dragState.ghost.parentNode) {
+        dragState.ghost.parentNode.removeChild(dragState.ghost);
+    }
+
+    // Remove source highlight
+    if (dragState.sourceEl) {
+        dragState.sourceEl.classList.remove('dragging-source');
+    }
+
+    // Hide drop zone
+    const indicator = document.getElementById('dropZoneIndicator');
+    indicator.classList.remove('show', 'hover');
+
+    // Remove dragging class
+    document.getElementById('handRow').classList.remove('dragging');
+
+    const wasDrag = dragState.isDragThresholdMet;
+    dragState.active = false;
+    dragState.ghost = null;
+    dragState.sourceEl = null;
+    dragState.cardIndex = -1;
+
+    // Re-render hand cards now that drag is over
+    if (gameState) renderHandCards();
+
+    // Keep isDragThresholdMet true briefly to suppress the click event
+    if (wasDrag) {
+        setTimeout(() => { dragState.isDragThresholdMet = false; }, 50);
+    }
+}
+
+function resetDragState() {
+    dragState.active = false;
+    dragState.ghost = null;
+    dragState.sourceEl = null;
+    dragState.cardIndex = -1;
+    dragState.isDragThresholdMet = false;
 }
 
 // ====== Enemy AI ======
@@ -1458,6 +1875,9 @@ function renderAll() {
 }
 
 function renderHandCards() {
+    // Guard: don't rebuild during drag
+    if (dragState.active) return;
+
     const handRow = document.getElementById('handRow');
     // Remove old cards but keep deck icon
     const deckIcon = document.getElementById('playerDeckIcon');
@@ -1472,6 +1892,10 @@ function renderHandCards() {
         const canPlay = gameState.isPlayerTurn && card.cost <= gameState.player.mana && gameState.player.board.length < 7 && !gameState.battleEnded && !animating;
         el.className = 'hand-card ' + (canPlay ? 'playable' : 'unplayable');
         el.onclick = () => onHandCardClick(idx);
+
+        // Drag listeners
+        el.addEventListener('mousedown', (e) => onDragPointerDown(e, idx, el));
+        el.addEventListener('touchstart', (e) => onDragPointerDown(e, idx, el), { passive: false });
 
         const keywordText = [];
         if (card.keywords.includes('taunt')) keywordText.push('护卫');
