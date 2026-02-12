@@ -2318,6 +2318,36 @@ async function submitBattleResult(isWin) {
 }
 
 // ====== Initialization ======
+// Preload all card artwork images
+function preloadCardArt() {
+    const urls = Object.values(CARD_ART_MAP);
+    if (urls.length === 0) return Promise.resolve();
+
+    const loadingText = document.querySelector('.loading-text');
+    let loaded = 0;
+
+    return new Promise((resolve) => {
+        let pending = urls.length;
+        const onDone = () => {
+            loaded++;
+            if (loadingText) loadingText.textContent = `加载原画中... (${loaded}/${urls.length})`;
+            pending--;
+            if (pending <= 0) resolve();
+        };
+
+        urls.forEach(url => {
+            // Preload for DOM (img cache)
+            const img = new Image();
+            img.onload = onDone;
+            img.onerror = onDone; // Don't block on failed loads
+            img.src = url;
+        });
+
+        // Timeout fallback: don't wait forever
+        setTimeout(resolve, 8000);
+    });
+}
+
 window.addEventListener('load', function() {
     if (typeof PIXI === 'undefined' || typeof gsap === 'undefined') {
         document.getElementById('loading').innerHTML = '<div class="loading-text" style="color:#ff4444">加载失败，请检查网络连接</div>';
@@ -2328,11 +2358,19 @@ window.addEventListener('load', function() {
         initApp();
         updateWeatherDisplay();
 
-        if (IS_DEMO) {
-            initGame();
-        } else {
-            loadStageData(STAGE_ID);
-        }
+        // Preload card art, then start game
+        preloadCardArt().then(() => {
+            // Also preload into PixiJS texture cache
+            Object.values(CARD_ART_MAP).forEach(url => {
+                try { PIXI.Texture.from(url); } catch(e) {}
+            });
+
+            if (IS_DEMO) {
+                initGame();
+            } else {
+                loadStageData(STAGE_ID);
+            }
+        });
     } catch (error) {
         console.error('初始化失败:', error);
         document.getElementById('loading').innerHTML = '<div class="loading-text" style="color:#ff4444">初始化失败: ' + error.message + '</div>';
