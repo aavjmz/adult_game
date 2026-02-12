@@ -53,7 +53,7 @@
         .hand-card.playable { border-color: #28a745; box-shadow: 0 0 8px rgba(40,167,69,0.5); }
         .hand-card.unplayable { border-color: #555; opacity: 0.6; }
         .hand-card .card-cost { position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 1; }
-        .hand-card .card-art { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-top: 8px; }
+        .hand-card .card-art { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-top: 8px; overflow: hidden; border-radius: 4px; }
         .hand-card .card-name { font-size: 9px; font-weight: bold; margin-top: 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; }
         .hand-card .card-stats { display: flex; justify-content: space-between; width: 100%; padding: 0 6px; margin-top: auto; margin-bottom: 4px; }
         .hand-card .card-atk { font-size: 11px; font-weight: bold; color: #ff6b6b; }
@@ -147,7 +147,7 @@
         .mulligan-card.selected { border-color: #ff4444; box-shadow: 0 0 15px rgba(255,68,68,0.5); }
         .mulligan-card.selected::after { content: '✕'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 48px; color: #ff4444; font-weight: bold; text-shadow: 0 0 10px rgba(255,0,0,0.8); pointer-events: none; z-index: 1; }
         .mulligan-card .mc-cost { position: absolute; top: -8px; left: -8px; width: 28px; height: 28px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 2; }
-        .mulligan-card .mc-art { width: 100%; height: 55px; display: flex; align-items: center; justify-content: center; font-size: 36px; margin-top: 12px; }
+        .mulligan-card .mc-art { width: 100%; height: 55px; display: flex; align-items: center; justify-content: center; font-size: 36px; margin-top: 12px; overflow: hidden; border-radius: 4px; }
         .mulligan-card .mc-name { font-size: 12px; font-weight: bold; margin-top: 4px; text-align: center; }
         .mulligan-card .mc-desc { font-size: 10px; color: #aaa; text-align: center; margin-top: 2px; padding: 0 6px; }
         .mulligan-card .mc-stats { display: flex; justify-content: space-between; width: 100%; padding: 0 10px; margin-top: auto; margin-bottom: 6px; }
@@ -161,7 +161,7 @@
         .hand-card.dragging-source { opacity: 0.35; transform: none !important; pointer-events: none; }
         .drag-ghost { position: fixed; z-index: 10000; pointer-events: none; width: 76px; height: 105px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 2px solid #28a745; border-radius: 8px; box-shadow: 0 8px 30px rgba(40,167,69,0.5); display: flex; flex-direction: column; align-items: center; transform: scale(1.15); transition: none; }
         .drag-ghost .card-cost { position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 1; }
-        .drag-ghost .card-art { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-top: 8px; }
+        .drag-ghost .card-art { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-top: 8px; overflow: hidden; border-radius: 4px; }
         .drag-ghost .card-name { font-size: 9px; font-weight: bold; margin-top: 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; }
         .drag-ghost .card-stats { display: flex; justify-content: space-between; width: 100%; padding: 0 6px; margin-top: auto; margin-bottom: 4px; }
         .drag-ghost .card-atk { font-size: 11px; font-weight: bold; color: #ff6b6b; }
@@ -312,6 +312,28 @@ const JOB_CLASS_MAP = {
     '武将': 'INFANTRY', '谋士': 'MAGE', '弓将': 'ARCHER', '骑将': 'CAVALRY', '步将': 'SHIELD'
 };
 const FACTION_MAP = { '魏': 'WEI', '蜀': 'SHU', '吴': 'WU', '群': 'QUN' };
+
+// Card name → artwork image mapping
+const CARD_ART_MAP = {
+    '张辽': '/static/images/cards/zhangliao.png',
+    '关羽': '/static/images/cards/guanyu.png',
+    '赵云': '/static/images/cards/zhaoyun.png',
+    '诸葛亮': '/static/images/cards/zhugeliang.png',
+    '刘备': '/static/images/cards/liubei.png',
+    '曹操': '/static/images/cards/caocao.png',
+    '吕布': '/static/images/cards/lvbu.png',
+    '孙策': '/static/images/cards/sunce.png',
+    '孙权': '/static/images/cards/sunquan.png',
+};
+
+function getCardArtHtml(card, height) {
+    const artUrl = CARD_ART_MAP[card.name];
+    if (artUrl) {
+        return `<img src="${artUrl}" alt="${card.name}" style="width:100%;height:${height}px;object-fit:cover;border-radius:4px;">`;
+    }
+    const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
+    return unitIcon;
+}
 
 // ====== Card Definitions ======
 // keywords: charge=突击, taunt=护卫, battlecry=登场, deathrattle=遗计
@@ -599,12 +621,42 @@ function createBoardMinion(card, isEnemy) {
         gsap.to(glow, { alpha: 0.3, duration: 1.5, repeat: -1, yoyo: true, ease: 'sine.inOut' });
     }
 
-    // Unit icon (center)
-    const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
-    const emoji = new PIXI.Text(unitIcon, { fontSize: 30 });
-    emoji.anchor.set(0.5);
-    emoji.position.set(0, -15);
-    container.addChild(emoji);
+    // Unit art (center) - use artwork image if available, otherwise emoji
+    const artUrl = CARD_ART_MAP[card.name];
+    if (artUrl) {
+        try {
+            const texture = PIXI.Texture.from(artUrl);
+            const artSprite = new PIXI.Sprite(texture);
+            artSprite.anchor.set(0.5);
+            artSprite.position.set(0, -15);
+            // Fit art within card bounds
+            const artW = mW - 8, artH = 50;
+            artSprite.width = artW;
+            artSprite.height = artH;
+            // Apply rounded mask
+            const artMask = new PIXI.Graphics();
+            artMask.beginFill(0xffffff);
+            artMask.drawRoundedRect(-artW/2, -artH/2, artW, artH, 6);
+            artMask.endFill();
+            artMask.position.set(0, -15);
+            container.addChild(artMask);
+            artSprite.mask = artMask;
+            container.addChild(artSprite);
+        } catch(e) {
+            // Fallback to emoji
+            const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
+            const emoji = new PIXI.Text(unitIcon, { fontSize: 30 });
+            emoji.anchor.set(0.5);
+            emoji.position.set(0, -15);
+            container.addChild(emoji);
+        }
+    } else {
+        const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
+        const emoji = new PIXI.Text(unitIcon, { fontSize: 30 });
+        emoji.anchor.set(0.5);
+        emoji.position.set(0, -15);
+        container.addChild(emoji);
+    }
 
     // Name
     const nameText = new PIXI.Text(card.name, {
@@ -819,7 +871,7 @@ function showMulligan() {
         el.dataset.index = idx;
         el.onclick = () => toggleMulliganCard(idx, el);
 
-        const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
+        const mulliganArt = getCardArtHtml(card, 55);
         const keywordText = [];
         if (card.keywords.includes('taunt')) keywordText.push('护卫');
         if (card.keywords.includes('charge')) keywordText.push('突击');
@@ -828,7 +880,7 @@ function showMulligan() {
 
         el.innerHTML = `
             <span class="mc-cost">${card.cost}</span>
-            <div class="mc-art">${unitIcon}</div>
+            <div class="mc-art">${mulliganArt}</div>
             <div class="mc-name">${card.name}</div>
             <div class="mc-desc">${keywordText.length ? keywordText.join(' ') : (card.desc || '')}</div>
             <div class="mc-stats">
@@ -1422,13 +1474,13 @@ function startDrag(pos) {
     if (!card) { cleanupDrag(); return; }
 
     const canPlay = card.cost <= gameState.player.mana && gameState.player.board.length < 7;
-    const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
+    const ghostArt = getCardArtHtml(card, 50);
 
     const ghost = document.createElement('div');
     ghost.className = 'drag-ghost' + (canPlay ? '' : ' unplayable');
     ghost.innerHTML = `
         <span class="card-cost">${card.cost}</span>
-        <div class="card-art">${unitIcon}</div>
+        <div class="card-art">${ghostArt}</div>
         <div class="card-name">${card.name}</div>
         <div class="card-stats">
             <span class="card-atk">⚔${card.attack}</span>
@@ -1904,11 +1956,11 @@ function renderHandCards() {
         if (card.keywords.includes('deathrattle')) keywordText.push('遗计');
 
         const factionLabel = FACTION_COLORS[card.faction]?.label || '?';
-        const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
+        const cardArt = getCardArtHtml(card, 50);
 
         el.innerHTML = `
             <span class="card-cost">${card.cost}</span>
-            <div class="card-art">${unitIcon}</div>
+            <div class="card-art">${cardArt}</div>
             <div class="card-name">${card.name}</div>
             ${keywordText.length ? `<div class="card-keywords">${keywordText.join(' ')}</div>` : ''}
             <div class="card-stats">
