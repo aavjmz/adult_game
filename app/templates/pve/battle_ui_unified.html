@@ -1212,13 +1212,16 @@ function performAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero)
 
         attacker.canAttack = false;
 
-        // Process deaths after animation
+        // Process deaths after animation (600ms = 400ms animation + 200ms for HP update to be visible)
         setTimeout(() => {
             processDeaths();
             selectedAttacker = null;
-            renderAll();
-            checkGameOver();
-        }, 500);
+            // Extra delay for death flash to show before sprites are rebuilt
+            setTimeout(() => {
+                renderAll();
+                checkGameOver();
+            }, 300);
+        }, 600);
     } else {
         // Attack hero
         const targetState = gameState[targetSide];
@@ -1241,27 +1244,51 @@ function performAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero)
             selectedAttacker = null;
             renderAll();
             checkGameOver();
-        }, 500);
+        }, 600);
     }
 }
 
 function processDeaths() {
-    ['player', 'enemy'].forEach(side => {
-        const board = gameState[side].board;
-        for (let i = board.length - 1; i >= 0; i--) {
-            if (board[i].currentHp <= 0) {
-                const dead = board[i];
-                addLog(`${dead.name} 阵亡！`, 'critical');
+    // Loop until no more deaths (handles deathrattle chain kills)
+    let hadDeaths = true;
+    while (hadDeaths) {
+        hadDeaths = false;
+        ['player', 'enemy'].forEach(side => {
+            const board = gameState[side].board;
+            for (let i = board.length - 1; i >= 0; i--) {
+                if (board[i].currentHp <= 0) {
+                    hadDeaths = true;
+                    const dead = board[i];
+                    addLog(`${dead.name} 阵亡！`, 'critical');
 
-                // Trigger deathrattle
-                if (dead.keywords.includes('deathrattle') && dead.deathrattleFn) {
-                    triggerDeathrattle(dead, side);
+                    // Death flash effect on sprite
+                    const sprites = boardSprites[side];
+                    const sprite = sprites[i];
+                    if (sprite && sprite.parent) {
+                        // Brief red flash before removal
+                        const flash = new PIXI.Graphics();
+                        flash.beginFill(0xff0000, 0.6);
+                        flash.drawRoundedRect(-40, -50, 80, 100, 10);
+                        flash.endFill();
+                        sprite.addChild(flash);
+                        gsap.to(flash, { alpha: 0, duration: 0.4, onComplete: () => {
+                            if (flash.parent) flash.parent.removeChild(flash);
+                        }});
+                    }
+
+                    // Show toast for deaths
+                    showToast(`${dead.name} 阵亡！`);
+
+                    // Trigger deathrattle
+                    if (dead.keywords.includes('deathrattle') && dead.deathrattleFn) {
+                        triggerDeathrattle(dead, side);
+                    }
+
+                    board.splice(i, 1);
                 }
-
-                board.splice(i, 1);
             }
-        }
-    });
+        });
+    }
 }
 
 function endTurn() {
@@ -1814,7 +1841,7 @@ function aiAttackPhase() {
                     atkIndex++;
                     setTimeout(doAttack, 500);
                 }
-            }, 500);
+            }, 600);
         } else if (target) {
             // Attack minion
             const atkMultiplier = getCounterMultiplier(attacker, target);
@@ -1832,12 +1859,14 @@ function aiAttackPhase() {
 
             setTimeout(() => {
                 processDeaths();
-                renderAll();
-                if (!checkGameOver()) {
-                    atkIndex++;
-                    setTimeout(doAttack, 500);
-                }
-            }, 500);
+                setTimeout(() => {
+                    renderAll();
+                    if (!checkGameOver()) {
+                        atkIndex++;
+                        setTimeout(doAttack, 500);
+                    }
+                }, 300);
+            }, 600);
         } else {
             atkIndex++;
             doAttack();
@@ -1905,16 +1934,23 @@ function animateAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero,
         .to(attackerSprite, { x: origX, y: origY, duration: 0.25, ease: 'back.out(2)' })
         .call(() => {
             try {
-                // Show damage numbers
+                // Show damage numbers and update HP visuals immediately
                 if (!isHero) {
                     const targetSprite = targetSprites[targetIdx];
+                    // Update HP text on sprites immediately so damage is visible
+                    const targetCard = gameState[targetSide]?.board[targetIdx];
+                    const attackerCard = gameState[attackerSide]?.board[attackerIdx];
                     if (targetSprite && targetSprite.parent) {
+                        if (targetCard) updateMinionVisual(targetSprite, targetCard);
                         showDamageNumber(targetSprite, atkDamage, false);
-                        showDamageNumber(attackerSprite, defDamage, false);
                         // Shake target
                         gsap.to(targetSprite, { x: targetSprite.position.x + 8, duration: 0.05, repeat: 5, yoyo: true, onComplete: () => {
                             targetSprite.x = targetSprite.originalX || 0;
                         }});
+                    }
+                    if (attackerSprite && attackerSprite.parent) {
+                        if (attackerCard) updateMinionVisual(attackerSprite, attackerCard);
+                        showDamageNumber(attackerSprite, defDamage, false);
                     }
                 } else {
                     // Hero damage flash
@@ -1923,6 +1959,8 @@ function animateAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero,
                     badge.style.transform = 'scale(1.3)';
                     badge.style.color = '#ff0000';
                     setTimeout(() => { badge.style.transform = ''; badge.style.color = ''; }, 400);
+                    // Also update hero HP text immediately
+                    renderTopBar();
                 }
             } finally {
                 animating = false;
