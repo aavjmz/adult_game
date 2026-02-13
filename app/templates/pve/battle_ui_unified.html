@@ -1136,17 +1136,32 @@ function playCard(handIndex) {
 }
 
 function performAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero) {
-    if (animating || gameState.battleEnded) return;
+    if (animating) {
+        console.warn('[Attack blocked] animating=true');
+        return;
+    }
+    if (gameState.battleEnded) return;
 
     const attackerBoard = gameState[attackerSide].board;
     const attacker = attackerBoard[attackerIdx];
-    if (!attacker || !attacker.canAttack) return;
+    if (!attacker) {
+        console.warn('[Attack blocked] attacker not found at index', attackerIdx);
+        return;
+    }
+    if (!attacker.canAttack) {
+        console.warn('[Attack blocked] attacker canAttack=false', attacker.name);
+        addLog(`${attacker.name} 本回合已攻击过`, 'system');
+        return;
+    }
 
     // Check taunt
     if (!isHero) {
         const targetBoard = gameState[targetSide].board;
         const target = targetBoard[targetIdx];
-        if (!target) return;
+        if (!target) {
+            console.warn('[Attack blocked] target not found at index', targetIdx, 'board size', targetBoard.length);
+            return;
+        }
 
         const hasTaunters = targetBoard.some(m => m.keywords.includes('taunt') && !isWeatherFogActive());
         if (hasTaunters && !(target.keywords.includes('taunt') && !isWeatherFogActive())) {
@@ -1386,7 +1401,11 @@ function onBoardMinionClick(card, isEnemy) {
     if (!isEnemy && gameState.isPlayerTurn) {
         // Select our minion as attacker
         if (!card.canAttack || card.hasSummonSickness) {
-            if (card.hasSummonSickness) addLog(`${card.name} 刚上场，不能攻击`, 'system');
+            if (card.hasSummonSickness) {
+                addLog(`${card.name} 刚上场，不能攻击`, 'system');
+            } else {
+                addLog(`${card.name} 本回合已攻击过`, 'system');
+            }
             return;
         }
         const idx = gameState.player.board.indexOf(card);
@@ -1407,7 +1426,13 @@ function onBoardMinionClick(card, isEnemy) {
     } else if (isEnemy && gameState.isPlayerTurn && selectedAttacker) {
         // Attack enemy minion
         const targetIdx = gameState.enemy.board.indexOf(card);
+        if (targetIdx < 0) {
+            console.warn('[Click] enemy card not found in board', card.name);
+            return;
+        }
         performAttack(selectedAttacker.side, selectedAttacker.index, 'enemy', targetIdx, false);
+    } else if (isEnemy && gameState.isPlayerTurn && !selectedAttacker) {
+        addLog('请先选择我方随从再攻击', 'system');
     }
 }
 
@@ -1416,6 +1441,8 @@ function onHeroClick(side) {
 
     if (side === 'enemy' && gameState.isPlayerTurn && selectedAttacker) {
         performAttack(selectedAttacker.side, selectedAttacker.index, 'enemy', -1, true);
+    } else if (side === 'enemy' && gameState.isPlayerTurn && !selectedAttacker) {
+        addLog('请先选择我方随从再攻击', 'system');
     }
 }
 
