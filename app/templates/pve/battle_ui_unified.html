@@ -30,9 +30,10 @@
         .weather-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 2px 8px; font-size: 16px; cursor: pointer; color: #fff; }
         .weather-btn:active { background: rgba(255,255,255,0.25); }
         .fps-badge { font-size: 11px; opacity: 0.6; }
-        .hero-hp-badge { font-size: 12px; font-weight: bold; padding: 2px 8px; border-radius: 8px; }
+        .hero-hp-badge { font-size: 12px; font-weight: bold; padding: 2px 8px; border-radius: 8px; user-select: none; transition: transform 0.15s, box-shadow 0.15s; }
         .hero-hp-badge.enemy { background: rgba(200,50,50,0.4); color: #ff6b6b; }
         .hero-hp-badge.player { background: rgba(50,150,50,0.4); color: #69db7c; }
+        .hero-hp-badge.targetable { box-shadow: 0 0 8px 2px rgba(255,80,80,0.7); transform: scale(1.1); cursor: pointer; }
         .mana-badge { font-size: 12px; color: #4facfe; padding: 2px 6px; background: rgba(79,172,254,0.15); border-radius: 6px; }
         .deck-badge { font-size: 11px; color: #aaa; padding: 2px 6px; background: rgba(255,255,255,0.08); border-radius: 6px; }
 
@@ -789,18 +790,30 @@ function renderBoard() {
 }
 
 function renderHeroTargets() {
-    // Remove old hero targets from centerZone
+    // Use HTML hero badges as click targets instead of PixiJS overlay
+    // This avoids z-index overlap with enemy minion sprites
     layers.centerZone.removeChildren();
 
-    // Enemy hero target (above center line)
-    const enemyHero = new PIXI.Graphics();
-    enemyHero.beginFill(0x882222, 0.01); // Nearly invisible click target
-    enemyHero.drawRoundedRect(-50, -120, 100, 40, 8);
-    enemyHero.endFill();
-    enemyHero.eventMode = 'static';
-    enemyHero.cursor = 'pointer';
-    enemyHero.on('pointerdown', () => onHeroClick('enemy'));
-    layers.centerZone.addChild(enemyHero);
+    const enemyBadge = document.getElementById('enemyHpBadge');
+    const playerBadge = document.getElementById('playerHpBadge');
+    if (enemyBadge) {
+        enemyBadge.onclick = () => onHeroClick('enemy');
+    }
+    if (playerBadge) {
+        playerBadge.onclick = () => onHeroClick('player');
+    }
+    updateHeroBadgeTargetable(!!selectedAttacker);
+}
+
+function updateHeroBadgeTargetable(targetable) {
+    const enemyBadge = document.getElementById('enemyHpBadge');
+    if (enemyBadge) {
+        if (targetable) {
+            enemyBadge.classList.add('targetable');
+        } else {
+            enemyBadge.classList.remove('targetable');
+        }
+    }
 }
 
 function highlightAttackable() {
@@ -1450,6 +1463,8 @@ function onBoardMinionClick(card, isEnemy) {
         boardSprites.enemy.forEach(s => {
             setBoardMinionState(s, 'targetable');
         });
+        // Highlight enemy hero badge as targetable
+        updateHeroBadgeTargetable(true);
     } else if (isEnemy && gameState.isPlayerTurn && selectedAttacker) {
         // Attack enemy minion
         const targetIdx = gameState.enemy.board.indexOf(card);
