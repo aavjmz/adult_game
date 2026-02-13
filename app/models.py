@@ -17,6 +17,7 @@ class User(UserMixin, db.Model):
     # 游戏资源
     tickets = db.Column(db.Integer, default=10)  # 抽卡券
     coins = db.Column(db.Integer, default=1000)  # 游戏币
+    gems = db.Column(db.Integer, default=0)  # 宝石（高级货币）
 
     # 抽卡保底计数
     sr_pity_count = db.Column(db.Integer, default=0)   # SR保底计数

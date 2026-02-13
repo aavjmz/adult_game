@@ -29,7 +29,8 @@ class PVEBattle:
         """
         self.user = user
         self.stage = stage
-        self.user_team = user_team
+        self.user_team = user_team  # 原始UserCard ORM对象列表（用于保存记录）
+        self.user_team_units = []   # 我方战斗单位（字典格式，与enemy_team一致）
         self.enemy_team = []
         self.battle_log = []
         self.turn = 0
@@ -40,8 +41,30 @@ class PVEBattle:
         self.damage_taken = 0
         self.deaths = 0
 
+        # 初始化我方战斗单位
+        self._init_user_team_units()
+
         # 生成敌方队伍
         self._generate_enemy_team()
+
+    def _init_user_team_units(self):
+        """将UserCard ORM对象包装为战斗单位字典（与enemy_team结构一致）"""
+        for uc in self.user_team:
+            card = uc.card
+            level = uc.level
+            unit = {
+                'user_card': uc,
+                'card': card,
+                'level': level,
+                'hp': self._calculate_hp(card, level),
+                'max_hp': self._calculate_hp(card, level),
+                'attack': self._calculate_attack(card, level),
+                'defense': self._calculate_defense(card, level),
+                'speed': card.speed,
+                'is_alive': True,
+                'skill_cooldown': 0
+            }
+            self.user_team_units.append(unit)
 
     def _generate_enemy_team(self):
         """根据关卡配置生成敌方队伍"""
@@ -131,7 +154,7 @@ class PVEBattle:
     def _check_battle_end(self):
         """检查战斗是否结束"""
         # 检查我方是否全灭
-        user_alive = any(unit['is_alive'] for unit in self._get_user_team_units())
+        user_alive = any(unit['is_alive'] for unit in self.user_team_units)
         if not user_alive:
             return True
 
@@ -148,12 +171,12 @@ class PVEBattle:
         all_units = []
 
         # 添加我方单位
-        for user_card in self.user_team:
-            if user_card.hp > 0:  # 假设UserCard有hp字段（需要扩展）
+        for unit in self.user_team_units:
+            if unit['is_alive']:
                 all_units.append({
                     'type': 'user',
-                    'unit': user_card,
-                    'speed': self._get_unit_speed(user_card)
+                    'unit': unit,
+                    'speed': unit['speed']
                 })
 
         # 添加敌方单位
@@ -175,14 +198,11 @@ class PVEBattle:
             else:
                 self._enemy_unit_action(unit_data['unit'])
 
-    def _get_unit_speed(self, user_card):
-        """获取用户单位速度"""
-        # 基础速度来自卡牌
-        card = user_card.card
-        return card.speed
-
-    def _user_unit_action(self, user_card):
+    def _user_unit_action(self, unit):
         """用户单位行动"""
+        if not unit['is_alive']:
+            return
+
         # 简化版：随机攻击一个敌人
         alive_enemies = [e for e in self.enemy_team if e['is_alive']]
         if not alive_enemies:
@@ -191,8 +211,7 @@ class PVEBattle:
         target = random.choice(alive_enemies)
 
         # 计算伤害
-        card = user_card.card
-        damage = self._calculate_damage(card.attack, target['defense'])
+        damage = self._calculate_damage(unit['attack'], target['defense'])
 
         # 应用伤害
         target['hp'] -= damage
@@ -201,7 +220,7 @@ class PVEBattle:
         # 记录日志
         self.battle_log.append({
             'turn': self.turn,
-            'actor': card.name,
+            'actor': unit['card'].name,
             'action': 'attack',
             'target': target['card'].name,
             'damage': damage
@@ -217,9 +236,12 @@ class PVEBattle:
 
     def _enemy_unit_action(self, enemy_unit):
         """敌方单位行动"""
+        if not enemy_unit['is_alive']:
+            return
+
         # 使用AI策略选择目标和行动
         ai = EnemyAI(self.ai_strategy)
-        action = ai.choose_action(enemy_unit, self.user_team, self.enemy_team)
+        action = ai.choose_action(enemy_unit, self.user_team_units, self.enemy_team)
 
         if action['type'] == 'attack':
             self._enemy_attack(enemy_unit, action.get('target'))
@@ -227,18 +249,17 @@ class PVEBattle:
     def _enemy_attack(self, attacker, target):
         """敌方攻击"""
         if not target:
-            # 随机选择一个目标
-            alive_users = [u for u in self.user_team if hasattr(u, 'hp') and u.hp > 0]
+            # 随机选择一个存活目标
+            alive_users = [u for u in self.user_team_units if u['is_alive']]
             if not alive_users:
                 return
             target = random.choice(alive_users)
 
         # 计算伤害
-        damage = self._calculate_damage(attacker['attack'], target.card.defense)
+        damage = self._calculate_damage(attacker['attack'], target['defense'])
 
-        # 应用伤害（这里需要UserCard有hp字段）
-        # TODO: 需要为UserCard添加战斗时的临时HP
-
+        # 应用伤害
+        target['hp'] -= damage
         self.damage_taken += damage
 
         # 记录日志
@@ -246,9 +267,18 @@ class PVEBattle:
             'turn': self.turn,
             'actor': attacker['card'].name,
             'action': 'attack',
-            'target': target.card.name,
+            'target': target['card'].name,
             'damage': damage
         })
+
+        # 检查目标是否死亡
+        if target['hp'] <= 0:
+            target['is_alive'] = False
+            self.deaths += 1
+            self.battle_log.append({
+                'turn': self.turn,
+                'message': f"{target['card'].name} 阵亡"
+            })
 
     def _calculate_damage(self, attack, defense):
         """计算伤害"""
@@ -263,20 +293,10 @@ class PVEBattle:
 
         return max(1, damage)
 
-    def _get_user_team_units(self):
-        """获取我方单位列表（临时格式）"""
-        units = []
-        for user_card in self.user_team:
-            units.append({
-                'card': user_card.card,
-                'is_alive': hasattr(user_card, 'hp') and user_card.hp > 0
-            })
-        return units
-
     def _settle_battle(self):
         """战斗结算"""
         # 判断胜负
-        user_alive = any(unit['is_alive'] for unit in self._get_user_team_units())
+        user_alive = any(unit['is_alive'] for unit in self.user_team_units)
         enemy_alive = any(unit['is_alive'] for unit in self.enemy_team)
 
         if not enemy_alive:
@@ -488,19 +508,18 @@ class EnemyAI:
 
         Args:
             unit: 当前单位
-            player_team: 玩家队伍
+            player_team: 玩家队伍（字典列表）
 
         Returns:
             dict: 行动
         """
-        # 找到血量最低的目标
-        alive_targets = [u for u in player_team if hasattr(u, 'hp') and u.hp > 0]
+        alive_targets = [u for u in player_team if u['is_alive']]
 
         if not alive_targets:
             return {'type': 'wait'}
 
-        # 简化版：随机选择目标（实际应选择HP最低的）
-        target = random.choice(alive_targets)
+        # 选择HP最低的目标
+        target = min(alive_targets, key=lambda u: u['hp'])
 
         return {
             'type': 'attack',
@@ -513,14 +532,13 @@ class EnemyAI:
 
         Args:
             unit: 当前单位
-            player_team: 玩家队伍
+            player_team: 玩家队伍（字典列表）
             enemy_team: 敌方队伍
 
         Returns:
             dict: 行动
         """
-        # 简化版：仍然攻击，但选择随机目标
-        alive_targets = [u for u in player_team if hasattr(u, 'hp') and u.hp > 0]
+        alive_targets = [u for u in player_team if u['is_alive']]
 
         if not alive_targets:
             return {'type': 'wait'}
@@ -538,13 +556,12 @@ class EnemyAI:
 
         Args:
             unit: 当前单位
-            player_team: 玩家队伍
+            player_team: 玩家队伍（字典列表）
 
         Returns:
             dict: 行动
         """
-        # 简化版：随机攻击
-        alive_targets = [u for u in player_team if hasattr(u, 'hp') and u.hp > 0]
+        alive_targets = [u for u in player_team if u['is_alive']]
 
         if not alive_targets:
             return {'type': 'wait'}

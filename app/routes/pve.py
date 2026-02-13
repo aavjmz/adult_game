@@ -4,10 +4,11 @@ PVE系统路由
 
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
-from app.models import db, Stage, UserCard, UserStageProgress
+from app.models import db, Stage, UserCard, UserStageProgress, UserItem
 from app.utils.pve_battle import PVEBattle
 from app.utils.stamina import StaminaSystem
 import json
+import random
 
 pve_bp = Blueprint('pve', __name__, url_prefix='/api/pve')
 
@@ -257,10 +258,43 @@ def sweep_stage():
         total_rewards['coins'] += coins
         total_rewards['exp'] += exp
 
-        # TODO: 计算掉落物品
+        # 计算掉落物品
+        if stage.drop_config:
+            drop_config = json.loads(stage.drop_config)
+            for drop_item in drop_config:
+                if random.random() < drop_item['probability']:
+                    quantity = random.randint(
+                        drop_item['quantity'][0],
+                        drop_item['quantity'][1]
+                    )
+                    total_rewards['items'].append({
+                        'item_type': drop_item['item_type'],
+                        'item_subtype': drop_item.get('item_subtype'),
+                        'quantity': quantity
+                    })
 
     # 发放奖励
     current_user.coins += total_rewards['coins']
+
+    # 将掉落物品写入用户背包
+    for item in total_rewards['items']:
+        existing = UserItem.query.filter_by(
+            user_id=current_user.id,
+            item_type=item['item_type'],
+            item_subtype=item['item_subtype']
+        ).first()
+
+        if existing:
+            existing.quantity += item['quantity']
+        else:
+            new_item = UserItem(
+                user_id=current_user.id,
+                item_type=item['item_type'],
+                item_subtype=item['item_subtype'],
+                quantity=item['quantity']
+            )
+            db.session.add(new_item)
+
     db.session.commit()
 
     return jsonify({

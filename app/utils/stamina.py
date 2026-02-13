@@ -5,7 +5,7 @@
 """
 
 from datetime import datetime, timedelta
-from app.models import db
+from app.models import db, UserItem
 
 
 class StaminaSystem:
@@ -161,18 +161,15 @@ class StaminaSystem:
         Returns:
             dict: 购买结果
         """
-        # TODO: 需要在User模型中添加gems字段
-        # 暂时使用tickets代替gems进行测试
-
         # 检查是否有足够的宝石
-        if user.tickets < gems_cost:
+        if user.gems < gems_cost:
             return {
                 'success': False,
                 'message': '宝石不足'
             }
 
         # 消耗宝石
-        user.tickets -= gems_cost
+        user.gems -= gems_cost
 
         # 增加体力
         actual_added = StaminaSystem.add_stamina(user, stamina_amount)
@@ -181,6 +178,7 @@ class StaminaSystem:
             'success': True,
             'stamina_added': actual_added,
             'gems_spent': gems_cost,
+            'gems_remaining': user.gems,
             'message': f'成功购买{actual_added}点体力'
         }
 
@@ -211,8 +209,23 @@ class StaminaSystem:
                 'message': '无效的药水类型'
             }
 
-        # TODO: 检查用户背包中是否有该药水
-        # 这需要与物品系统集成
+        # 检查用户背包中是否有该药水
+        potion_item = UserItem.query.filter_by(
+            user_id=user.id,
+            item_type='stamina_potion',
+            item_subtype=potion_type
+        ).first()
+
+        if not potion_item or potion_item.quantity <= 0:
+            return {
+                'success': False,
+                'message': f'背包中没有{potion_type}体力药水'
+            }
+
+        # 消耗药水
+        potion_item.quantity -= 1
+        if potion_item.quantity <= 0:
+            db.session.delete(potion_item)
 
         # 增加体力
         actual_added = StaminaSystem.add_stamina(user, recovery_amount)
