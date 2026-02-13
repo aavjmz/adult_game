@@ -48,17 +48,18 @@
         .info-row-right { display: flex; align-items: center; gap: 8px; }
 
         /* Hand Cards (DOM) */
-        .hand-card { width: 76px; height: 105px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 2px solid #5a5a6f; border-radius: 8px; cursor: pointer; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; position: relative; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+        .hand-card { width: 76px; height: 105px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 2px solid #5a5a6f; border-radius: 8px; cursor: pointer; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; flex-shrink: 0; }
         .hand-card:hover { transform: translateY(-30px) scale(1.3); z-index: 200; box-shadow: 0 8px 25px rgba(0,0,0,0.6); }
         .hand-card.playable { border-color: #28a745; box-shadow: 0 0 8px rgba(40,167,69,0.5); }
         .hand-card.unplayable { border-color: #555; opacity: 0.6; }
-        .hand-card .card-cost { position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 1; }
-        .hand-card .card-art { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-top: 8px; overflow: hidden; border-radius: 4px; }
-        .hand-card .card-name { font-size: 9px; font-weight: bold; margin-top: 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; }
-        .hand-card .card-stats { display: flex; justify-content: space-between; width: 100%; padding: 0 6px; margin-top: auto; margin-bottom: 4px; }
-        .hand-card .card-atk { font-size: 11px; font-weight: bold; color: #ff6b6b; }
-        .hand-card .card-hp { font-size: 11px; font-weight: bold; color: #69db7c; }
-        .hand-card .card-keywords { font-size: 7px; color: #ffd43b; text-align: center; margin-top: 1px; }
+        .hand-card .card-cost { position: absolute; top: -2px; left: -2px; width: 22px; height: 22px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 2; }
+        .hand-card .card-art { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border-radius: 6px; }
+        .hand-card .card-art img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+        .hand-card .card-name { position: absolute; bottom: 18px; left: 0; width: 100%; font-size: 9px; font-weight: bold; text-align: center; color: #fff; text-shadow: 0 0 4px #000, 0 0 4px #000; z-index: 1; background: linear-gradient(transparent, rgba(0,0,0,0.7)); padding: 4px 0 1px; }
+        .hand-card .card-stats { position: absolute; bottom: 2px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 6px; z-index: 1; }
+        .hand-card .card-atk { font-size: 12px; font-weight: bold; color: #ff6b6b; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+        .hand-card .card-hp { font-size: 12px; font-weight: bold; color: #69db7c; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+        .hand-card .card-keywords { position: absolute; bottom: 30px; left: 0; width: 100%; font-size: 7px; color: #ffd43b; text-align: center; z-index: 1; text-shadow: 0 0 3px #000; }
         .hand-card .card-desc { display: none; position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.95); border: 1px solid #b8944d; border-radius: 8px; padding: 8px 10px; font-size: 11px; width: 160px; text-align: center; z-index: 300; pointer-events: none; white-space: normal; }
         .hand-card:hover .card-desc { display: block; }
 
@@ -126,14 +127,12 @@
             .battle-log { width: calc(100% - 16px); bottom: 135px; }
             .battle-log.collapsed { max-height: 28px; }
             .hand-card { width: 64px; height: 90px; }
-            .hand-card .card-art { font-size: 22px; height: 40px; }
-            .hand-card .card-cost { width: 18px; height: 18px; font-size: 10px; top: -4px; left: -4px; }
+            .hand-card .card-cost { width: 18px; height: 18px; font-size: 10px; top: -2px; left: -2px; }
             .bottom-panel { height: 115px; }
             .top-bar { height: 44px; }
             .enemy-hand-area { top: 44px; height: 38px; }
             .enemy-card-back { width: 24px; height: 32px; font-size: 10px; }
             .mulligan-card { width: 100px; height: 140px; }
-            .mulligan-card .mc-art { font-size: 32px; height: 45px; }
         }
 
         /* ====== Mulligan Overlay ====== */
@@ -142,30 +141,32 @@
         .mulligan-title { font-size: 22px; font-weight: bold; color: #FFD700; margin-bottom: 8px; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
         .mulligan-subtitle { font-size: 13px; color: #aaa; margin-bottom: 24px; }
         .mulligan-cards { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; padding: 0 16px; }
-        .mulligan-card { width: 120px; height: 170px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 3px solid #5a5a6f; border-radius: 10px; cursor: pointer; position: relative; display: flex; flex-direction: column; align-items: center; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; }
+        .mulligan-card { width: 120px; height: 170px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 3px solid #5a5a6f; border-radius: 10px; cursor: pointer; position: relative; overflow: hidden; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; }
         .mulligan-card:hover { transform: translateY(-8px); box-shadow: 0 8px 25px rgba(0,0,0,0.5); }
         .mulligan-card.selected { border-color: #ff4444; box-shadow: 0 0 15px rgba(255,68,68,0.5); }
-        .mulligan-card.selected::after { content: '✕'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 48px; color: #ff4444; font-weight: bold; text-shadow: 0 0 10px rgba(255,0,0,0.8); pointer-events: none; z-index: 1; }
-        .mulligan-card .mc-cost { position: absolute; top: -8px; left: -8px; width: 28px; height: 28px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 2; }
-        .mulligan-card .mc-art { width: 100%; height: 55px; display: flex; align-items: center; justify-content: center; font-size: 36px; margin-top: 12px; overflow: hidden; border-radius: 4px; }
-        .mulligan-card .mc-name { font-size: 12px; font-weight: bold; margin-top: 4px; text-align: center; }
-        .mulligan-card .mc-desc { font-size: 10px; color: #aaa; text-align: center; margin-top: 2px; padding: 0 6px; }
-        .mulligan-card .mc-stats { display: flex; justify-content: space-between; width: 100%; padding: 0 10px; margin-top: auto; margin-bottom: 6px; }
-        .mulligan-card .mc-atk { font-size: 13px; font-weight: bold; color: #ff6b6b; }
-        .mulligan-card .mc-hp { font-size: 13px; font-weight: bold; color: #69db7c; }
+        .mulligan-card.selected::after { content: '✕'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 48px; color: #ff4444; font-weight: bold; text-shadow: 0 0 10px rgba(255,0,0,0.8); pointer-events: none; z-index: 3; }
+        .mulligan-card .mc-cost { position: absolute; top: -4px; left: -4px; width: 28px; height: 28px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 2; }
+        .mulligan-card .mc-art { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border-radius: 8px; }
+        .mulligan-card .mc-art img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+        .mulligan-card .mc-name { position: absolute; bottom: 28px; left: 0; width: 100%; font-size: 12px; font-weight: bold; text-align: center; color: #fff; text-shadow: 0 0 4px #000, 0 0 4px #000; z-index: 1; background: linear-gradient(transparent, rgba(0,0,0,0.7)); padding: 6px 0 1px; }
+        .mulligan-card .mc-desc { position: absolute; bottom: 16px; left: 0; width: 100%; font-size: 10px; color: #ddd; text-align: center; z-index: 1; text-shadow: 0 0 3px #000; }
+        .mulligan-card .mc-stats { position: absolute; bottom: 2px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 10px; z-index: 1; }
+        .mulligan-card .mc-atk { font-size: 13px; font-weight: bold; color: #ff6b6b; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+        .mulligan-card .mc-hp { font-size: 13px; font-weight: bold; color: #69db7c; text-shadow: 0 0 3px #000, 0 0 3px #000; }
         .mulligan-btn { margin-top: 24px; padding: 12px 40px; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; color: #fff; background: linear-gradient(135deg, #d4af37, #b8944d); transition: transform 0.2s, box-shadow 0.2s; }
         .mulligan-btn:hover { transform: scale(1.05); box-shadow: 0 4px 15px rgba(212,175,55,0.4); }
         .mulligan-btn:active { transform: scale(0.95); }
 
         /* ====== Drag-to-Play ====== */
         .hand-card.dragging-source { opacity: 0.35; transform: none !important; pointer-events: none; }
-        .drag-ghost { position: fixed; z-index: 10000; pointer-events: none; width: 76px; height: 105px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 2px solid #28a745; border-radius: 8px; box-shadow: 0 8px 30px rgba(40,167,69,0.5); display: flex; flex-direction: column; align-items: center; transform: scale(1.15); transition: none; }
-        .drag-ghost .card-cost { position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 1; }
-        .drag-ghost .card-art { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-top: 8px; overflow: hidden; border-radius: 4px; }
-        .drag-ghost .card-name { font-size: 9px; font-weight: bold; margin-top: 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; }
-        .drag-ghost .card-stats { display: flex; justify-content: space-between; width: 100%; padding: 0 6px; margin-top: auto; margin-bottom: 4px; }
-        .drag-ghost .card-atk { font-size: 11px; font-weight: bold; color: #ff6b6b; }
-        .drag-ghost .card-hp { font-size: 11px; font-weight: bold; color: #69db7c; }
+        .drag-ghost { position: fixed; z-index: 10000; pointer-events: none; width: 76px; height: 105px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 2px solid #28a745; border-radius: 8px; box-shadow: 0 8px 30px rgba(40,167,69,0.5); overflow: hidden; transform: scale(1.15); transition: none; }
+        .drag-ghost .card-cost { position: absolute; top: -2px; left: -2px; width: 22px; height: 22px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 2; }
+        .drag-ghost .card-art { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border-radius: 6px; }
+        .drag-ghost .card-art img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+        .drag-ghost .card-name { position: absolute; bottom: 18px; left: 0; width: 100%; font-size: 9px; font-weight: bold; text-align: center; color: #fff; text-shadow: 0 0 4px #000, 0 0 4px #000; z-index: 1; }
+        .drag-ghost .card-stats { position: absolute; bottom: 2px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 6px; z-index: 1; }
+        .drag-ghost .card-atk { font-size: 11px; font-weight: bold; color: #ff6b6b; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+        .drag-ghost .card-hp { font-size: 11px; font-weight: bold; color: #69db7c; text-shadow: 0 0 3px #000, 0 0 3px #000; }
         .drag-ghost.unplayable { border-color: #ff4444; box-shadow: 0 8px 30px rgba(255,68,68,0.3); }
         .drop-zone-indicator { position: absolute; top: 0; left: 0; right: 0; bottom: 130px; z-index: 99; display: none; pointer-events: none; }
         .drop-zone-indicator.show { display: block; }
@@ -326,13 +327,13 @@ const CARD_ART_MAP = {
     '孙权': '/static/images/cards/sunquan.png',
 };
 
-function getCardArtHtml(card, height) {
+function getCardArtHtml(card) {
     const artUrl = CARD_ART_MAP[card.name];
     if (artUrl) {
-        return `<img src="${artUrl}" alt="${card.name}" style="width:100%;height:${height}px;object-fit:cover;border-radius:4px;">`;
+        return `<img src="${artUrl}" alt="${card.name}">`;
     }
     const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
-    return unitIcon;
+    return `<span style="font-size:36px;display:flex;align-items:center;justify-content:center;width:100%;height:100%">${unitIcon}</span>`;
 }
 
 // ====== Card Definitions ======
@@ -621,50 +622,62 @@ function createBoardMinion(card, isEnemy) {
         gsap.to(glow, { alpha: 0.3, duration: 1.5, repeat: -1, yoyo: true, ease: 'sine.inOut' });
     }
 
-    // Unit art (center) - use artwork image if available, otherwise emoji
+    // Unit art - full card background, or emoji fallback
     const artUrl = CARD_ART_MAP[card.name];
     if (artUrl) {
-        const artW = mW - 8, artH = 50;
-        // Create mask first
+        const artW = mW - 4, artH = mH - 4;
+        // Create mask covering full card
         const artMask = new PIXI.Graphics();
         artMask.beginFill(0xffffff);
-        artMask.drawRoundedRect(-artW/2, -artH/2, artW, artH, 6);
+        artMask.drawRoundedRect(-artW/2, -artH/2, artW, artH, 8);
         artMask.endFill();
-        artMask.position.set(0, -15);
         container.addChild(artMask);
 
         const texture = PIXI.Texture.from(artUrl);
         const artSprite = new PIXI.Sprite(texture);
-        artSprite.anchor.set(0.5);
-        artSprite.position.set(0, -15);
+        artSprite.anchor.set(0.5, 0.5);
         artSprite.mask = artMask;
         container.addChild(artSprite);
 
-        // Set size now if texture ready, otherwise wait for load
+        // Cover-style scaling to fill full card, shift down to show face
         const fitArt = () => {
-            artSprite.width = artW;
-            artSprite.height = artH;
+            const scaleX = artW / texture.width;
+            const scaleY = artH / texture.height;
+            const scale = Math.max(scaleX, scaleY);
+            artSprite.scale.set(scale);
+            // Shift sprite down so top of image (face) is visible
+            const scaledH = texture.height * scale;
+            const excess = scaledH - artH;
+            if (excess > 0) {
+                artSprite.position.y = Math.min(excess * 0.4, excess / 2);
+            }
         };
         if (texture.baseTexture.valid) {
             fitArt();
         } else {
             texture.baseTexture.on('loaded', fitArt);
         }
+
+        // Semi-transparent gradient overlay at bottom for text readability
+        const overlay = new PIXI.Graphics();
+        overlay.beginFill(0x000000, 0.5);
+        overlay.drawRect(-mW/2, mH/2 - 30, mW, 30);
+        overlay.endFill();
+        container.addChild(overlay);
     } else {
         const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
-        const emoji = new PIXI.Text(unitIcon, { fontSize: 30 });
+        const emoji = new PIXI.Text(unitIcon, { fontSize: 36 });
         emoji.anchor.set(0.5);
-        emoji.position.set(0, -15);
         container.addChild(emoji);
     }
 
-    // Name
+    // Name (positioned in bottom overlay area)
     const nameText = new PIXI.Text(card.name, {
         fontFamily: 'Arial, Microsoft YaHei', fontSize: 11, fill: 0xFFFFFF,
-        fontWeight: 'bold', stroke: 0x000000, strokeThickness: 2
+        fontWeight: 'bold', stroke: 0x000000, strokeThickness: 3
     });
     nameText.anchor.set(0.5);
-    nameText.position.set(0, 12);
+    nameText.position.set(0, mH/2 - 22);
     container.addChild(nameText);
 
     // Attack circle (bottom-left)
@@ -871,7 +884,7 @@ function showMulligan() {
         el.dataset.index = idx;
         el.onclick = () => toggleMulliganCard(idx, el);
 
-        const mulliganArt = getCardArtHtml(card, 55);
+        const mulliganArt = getCardArtHtml(card);
         const keywordText = [];
         if (card.keywords.includes('taunt')) keywordText.push('护卫');
         if (card.keywords.includes('charge')) keywordText.push('突击');
@@ -1110,6 +1123,7 @@ function playCard(handIndex) {
     // Trigger battlecry
     if (card.keywords.includes('battlecry') && card.battlecryFn) {
         triggerBattlecry(card, 'player');
+        processDeaths();
     }
 
     selectedAttacker = null;
@@ -1474,7 +1488,7 @@ function startDrag(pos) {
     if (!card) { cleanupDrag(); return; }
 
     const canPlay = card.cost <= gameState.player.mana && gameState.player.board.length < 7;
-    const ghostArt = getCardArtHtml(card, 50);
+    const ghostArt = getCardArtHtml(card);
 
     const ghost = document.createElement('div');
     ghost.className = 'drag-ghost' + (canPlay ? '' : ' unplayable');
@@ -1809,10 +1823,16 @@ function aiAttackPhase() {
 function getCounterMultiplier(attacker, target) {
     const at = UnitType[attacker.unitType];
     const tt = UnitType[target.unitType];
-    if (at && tt && at.counters === target.unitType) return 1.3;
-    if (at && tt && at.weakness === target.unitType) return 0.8;
-    if (currentWeather === 'wind' && attacker.unitType === 'ARCHER') return 1.3;
-    return 1.0;
+    let multiplier = 1.0;
+    if (at && tt && at.counters === target.unitType) {
+        multiplier = 1.3;
+    } else if (at && tt && at.weakness === target.unitType) {
+        multiplier = 0.8;
+    }
+    if (currentWeather === 'wind' && attacker.unitType === 'ARCHER') {
+        multiplier *= 1.3;
+    }
+    return multiplier;
 }
 
 function aiEndTurn() {
@@ -1857,26 +1877,29 @@ function animateAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero,
         .to(attackerSprite, { x: origX + localDx, y: origY + localDy, duration: 0.15, ease: 'power2.in' })
         .to(attackerSprite, { x: origX, y: origY, duration: 0.25, ease: 'back.out(2)' })
         .call(() => {
-            // Show damage numbers
-            if (!isHero) {
-                const targetSprite = targetSprites[targetIdx];
-                if (targetSprite) {
-                    showDamageNumber(targetSprite, atkDamage, false);
-                    showDamageNumber(attackerSprite, defDamage, false);
-                    // Shake target
-                    gsap.to(targetSprite, { x: targetSprite.position.x + 8, duration: 0.05, repeat: 5, yoyo: true, onComplete: () => {
-                        targetSprite.x = targetSprite.originalX || 0;
-                    }});
+            try {
+                // Show damage numbers
+                if (!isHero) {
+                    const targetSprite = targetSprites[targetIdx];
+                    if (targetSprite && targetSprite.parent) {
+                        showDamageNumber(targetSprite, atkDamage, false);
+                        showDamageNumber(attackerSprite, defDamage, false);
+                        // Shake target
+                        gsap.to(targetSprite, { x: targetSprite.position.x + 8, duration: 0.05, repeat: 5, yoyo: true, onComplete: () => {
+                            targetSprite.x = targetSprite.originalX || 0;
+                        }});
+                    }
+                } else {
+                    // Hero damage flash
+                    const heroId = targetSide === 'player' ? 'playerHpBadge' : 'enemyHpBadge';
+                    const badge = document.getElementById(heroId);
+                    badge.style.transform = 'scale(1.3)';
+                    badge.style.color = '#ff0000';
+                    setTimeout(() => { badge.style.transform = ''; badge.style.color = ''; }, 400);
                 }
-            } else {
-                // Hero damage flash
-                const heroId = targetSide === 'player' ? 'playerHpBadge' : 'enemyHpBadge';
-                const badge = document.getElementById(heroId);
-                badge.style.transform = 'scale(1.3)';
-                badge.style.color = '#ff0000';
-                setTimeout(() => { badge.style.transform = ''; badge.style.color = ''; }, 400);
+            } finally {
+                animating = false;
             }
-            animating = false;
         });
 }
 
@@ -1886,6 +1909,7 @@ function animateCardPlay() {
 
 function showDamageNumber(sprite, damage, isCritical) {
     if (!damage || damage <= 0) return;
+    if (!sprite || !sprite.parent) return;
     const globalPos = sprite.parent.toGlobal(sprite.position);
     const style = {
         fontSize: isCritical ? 36 : 24,
@@ -1956,7 +1980,7 @@ function renderHandCards() {
         if (card.keywords.includes('deathrattle')) keywordText.push('遗计');
 
         const factionLabel = FACTION_COLORS[card.faction]?.label || '?';
-        const cardArt = getCardArtHtml(card, 50);
+        const cardArt = getCardArtHtml(card);
 
         el.innerHTML = `
             <span class="card-cost">${card.cost}</span>
