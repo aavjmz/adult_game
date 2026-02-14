@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>三国战斗 - 炉石风格</title>
+    <title>{% if battle_mode|default('pve') == 'pvp' %}PVP对战{% else %}三国战斗{% endif %} - 炉石风格</title>
     <!-- PixiJS with fallback -->
     <script src="https://unpkg.com/pixi.js@7.3.2/dist/pixi.min.js"
             onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js'"></script>
@@ -220,7 +220,7 @@
         <div class="menu-item" onclick="toggleEffects(); closeMenu();">特效开关</div>
         <div class="menu-item" onclick="toggleBattleLog(); closeMenu();">日志开关</div>
         <div class="menu-item" onclick="resetBattle(); closeMenu();">重置战斗</div>
-        <div class="menu-item" onclick="goBack()">返回关卡</div>
+        <div class="menu-item" onclick="goBack()">{% if battle_mode|default('pve') == 'pvp' %}返回大厅{% else %}返回关卡{% endif %}</div>
     </div>
 
     <!-- Top Bar (simplified) -->
@@ -321,7 +321,9 @@
 <script>
 // ====== Constants & Config ======
 const STAGE_ID = {{ stage_id if stage_id is not none else 'null' }};
-const IS_DEMO = STAGE_ID === null;
+const BATTLE_MODE = '{{ battle_mode|default("pve") }}';
+const IS_PVP = BATTLE_MODE === 'pvp';
+const IS_DEMO = STAGE_ID === null && !IS_PVP;
 
 const FACTION_COLORS = {
     WEI: { primary: 0x2c3e67, label: '魏', css: '#4a6fa5' },
@@ -2403,7 +2405,9 @@ function closeMenu() {
 }
 
 function goBack() {
-    if (STAGE_ID) {
+    if (IS_PVP) {
+        window.location.href = '/';
+    } else if (STAGE_ID) {
         window.location.href = `/pve/stage/${STAGE_ID}`;
     } else {
         window.location.href = '/pve/';
@@ -2440,7 +2444,7 @@ function showBattleResult(isWin) {
 
     overlay.classList.add('show');
 
-    if (!IS_DEMO && isWin) {
+    if (!IS_DEMO) {
         submitBattleResult(isWin);
     }
 }
@@ -2464,7 +2468,9 @@ function resetBattle() {
     boardSprites.player = [];
     boardSprites.enemy = [];
 
-    if (IS_DEMO) {
+    if (IS_PVP) {
+        loadPvpData();
+    } else if (IS_DEMO) {
         initGame();
     } else {
         loadStageData(STAGE_ID);
@@ -2505,6 +2511,30 @@ const APIClient = {
             return await resp.json();
         } catch (e) {
             console.warn('Failed to settle battle', e);
+            return null;
+        }
+    },
+    async getOpponentDeck() {
+        try {
+            const resp = await fetch('/battle/opponent-deck');
+            if (!resp.ok) throw new Error('API error');
+            return await resp.json();
+        } catch (e) {
+            console.warn('Failed to load opponent deck', e);
+            return null;
+        }
+    },
+    async settlePvpBattle(result, turns) {
+        try {
+            const resp = await fetch('/battle/settle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ result, turns })
+            });
+            if (!resp.ok) throw new Error('API error');
+            return await resp.json();
+        } catch (e) {
+            console.warn('Failed to settle PVP battle', e);
             return null;
         }
     }
@@ -2642,18 +2672,64 @@ async function loadStageData(stageId) {
     initGame();
 }
 
+async function loadPvpData() {
+    addLog('匹配对手中...', 'system');
+
+    const [deckResp, opponentResp] = await Promise.all([
+        APIClient.getUserDeck(),
+        APIClient.getOpponentDeck()
+    ]);
+
+    // 构建玩家牌组
+    if (deckResp && deckResp.success && deckResp.deck.length > 0) {
+        customPlayerDeckDefs = buildDeckFromUserCards(deckResp.deck);
+        addLog(`已加载 ${deckResp.deck.length} 张卡牌构建牌组`, 'info');
+    } else {
+        customPlayerDeckDefs = null;
+        addLog('未找到卡牌，使用默认蜀国牌组', 'system');
+    }
+
+    // 构建对手牌组
+    if (opponentResp && opponentResp.success && opponentResp.deck.length > 0) {
+        customEnemyDeckDefs = buildDeckFromUserCards(opponentResp.deck);
+        const opponentName = opponentResp.opponent_name || '对手';
+        addLog(`对手: ${opponentName}`, 'system');
+
+        // 更新敌方英雄显示
+        const enemyNameTag = document.getElementById('enemyNameTag');
+        if (enemyNameTag) {
+            const factionLabel = { WEI: '魏', SHU: '蜀', WU: '吴', QUN: '群' };
+            const fl = factionLabel[opponentResp.opponent_faction] || '群';
+            enemyNameTag.textContent = `${fl}·${opponentName}`;
+        }
+    } else {
+        customEnemyDeckDefs = null;
+        addLog('对手数据加载失败，使用默认魏国牌组', 'system');
+    }
+
+    initGame();
+}
+
 async function submitBattleResult(isWin) {
-    if (!STAGE_ID) return;
+    if (!STAGE_ID && !IS_PVP) return;
 
     const rewardsDiv = document.getElementById('resultRewards');
     rewardsDiv.innerHTML = '<div class="result-reward-item" style="color:#aaa;">结算中...</div>';
 
-    const result = await APIClient.settleBattle(
-        STAGE_ID,
-        isWin ? 'win' : 'lose',
-        calcStars(),
-        gameState.turn
-    );
+    let result;
+    if (IS_PVP) {
+        result = await APIClient.settlePvpBattle(
+            isWin ? 'win' : 'lose',
+            gameState.turn
+        );
+    } else {
+        result = await APIClient.settleBattle(
+            STAGE_ID,
+            isWin ? 'win' : 'lose',
+            calcStars(),
+            gameState.turn
+        );
+    }
 
     if (result && result.success) {
         rewardsDiv.innerHTML = '';
@@ -2662,11 +2738,17 @@ async function submitBattleResult(isWin) {
         if (rewards.coins) {
             rewardsDiv.innerHTML += `<div class="result-reward-item">💰 金币: +${rewards.coins}</div>`;
         }
+        if (rewards.tickets) {
+            rewardsDiv.innerHTML += `<div class="result-reward-item">🎫 抽卡券: +${rewards.tickets}</div>`;
+        }
+        if (rewards.gems) {
+            rewardsDiv.innerHTML += `<div class="result-reward-item">💎 宝石: +${rewards.gems}</div>`;
+        }
         if (rewards.exp) {
             rewardsDiv.innerHTML += `<div class="result-reward-item">⭐ 经验: +${rewards.exp}</div>`;
         }
 
-        // 首通奖励
+        // 首通奖励（PVE only）
         if (rewards.first_clear) {
             const fc = rewards.first_clear;
             rewardsDiv.innerHTML += '<div class="result-reward-item" style="color:#FFD700;font-weight:bold;border-top:1px solid #FFD700;padding-top:8px;margin-top:4px;">🏆 首通奖励</div>';
@@ -2675,7 +2757,7 @@ async function submitBattleResult(isWin) {
             if (fc.tickets) rewardsDiv.innerHTML += `<div class="result-reward-item">🎫 抽卡券: +${fc.tickets}</div>`;
         }
 
-        // 掉落物品
+        // 掉落物品（PVE only）
         if (result.drops && result.drops.length > 0) {
             rewardsDiv.innerHTML += '<div class="result-reward-item" style="border-top:1px solid rgba(255,255,255,0.2);padding-top:8px;margin-top:4px;">📦 掉落物品</div>';
             result.drops.forEach(d => {
@@ -2736,7 +2818,9 @@ window.addEventListener('load', function() {
                 try { PIXI.Texture.from(url); } catch(e) {}
             });
 
-            if (IS_DEMO) {
+            if (IS_PVP) {
+                loadPvpData();
+            } else if (IS_DEMO) {
                 initGame();
             } else {
                 loadStageData(STAGE_ID);
