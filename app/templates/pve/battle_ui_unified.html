@@ -220,7 +220,7 @@
         <div class="menu-item" onclick="toggleEffects(); closeMenu();">特效开关</div>
         <div class="menu-item" onclick="toggleBattleLog(); closeMenu();">日志开关</div>
         <div class="menu-item" onclick="resetBattle(); closeMenu();">重置战斗</div>
-        <div class="menu-item" onclick="window.location.href='/pve/battle-ui-comparison'">返回对比页</div>
+        <div class="menu-item" onclick="goBack()">返回关卡</div>
     </div>
 
     <!-- Top Bar (simplified) -->
@@ -297,7 +297,7 @@
             <div class="result-rewards" id="resultRewards"></div>
             <div class="result-buttons">
                 <button class="result-btn secondary" onclick="resetBattle()">再战一次</button>
-                <button class="result-btn primary" onclick="window.location.href='/pve/battle-ui-comparison'">返回</button>
+                <button class="result-btn primary" onclick="goBack()">返回</button>
             </div>
         </div>
     </div>
@@ -512,10 +512,13 @@ let dragState = {
 };
 
 // ====== Game State Factory ======
+let customPlayerDeckDefs = null; // Set by loadStageData for real battles
+let customEnemyDeckDefs = null;
+
 function createGameState() {
     nextCardId = 1;
-    const playerDeck = buildDeck(makeShuDeck());
-    const enemyDeck = buildDeck(makeWeiDeck());
+    const playerDeck = buildDeck(customPlayerDeckDefs || makeShuDeck());
+    const enemyDeck = buildDeck(customEnemyDeckDefs || makeWeiDeck());
     return {
         turn: 1,
         isPlayerTurn: true,
@@ -2399,6 +2402,14 @@ function closeMenu() {
     document.getElementById('menuOverlay').classList.remove('show');
 }
 
+function goBack() {
+    if (STAGE_ID) {
+        window.location.href = `/pve/stage/${STAGE_ID}`;
+    } else {
+        window.location.href = '/pve/';
+    }
+}
+
 // ====== Battle Result & API ======
 function showBattleResult(isWin) {
     const overlay = document.getElementById('battleResult');
@@ -2473,18 +2484,19 @@ const APIClient = {
             return null;
         }
     },
-    async getStamina() {
+    async getUserDeck() {
         try {
-            const resp = await fetch('/api/pve/stamina');
+            const resp = await fetch('/api/pve/user-deck');
             if (!resp.ok) throw new Error('API error');
             return await resp.json();
         } catch (e) {
+            console.warn('Failed to load user deck', e);
             return null;
         }
     },
-    async submitBattle(stageId, result, stars, turns) {
+    async settleBattle(stageId, result, stars, turns) {
         try {
-            const resp = await fetch('/api/pve/battle/start', {
+            const resp = await fetch('/api/pve/battle/settle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ stage_id: stageId, result, stars, turns })
@@ -2492,41 +2504,187 @@ const APIClient = {
             if (!resp.ok) throw new Error('API error');
             return await resp.json();
         } catch (e) {
-            console.warn('Failed to submit battle result', e);
+            console.warn('Failed to settle battle', e);
             return null;
         }
     }
 };
 
+// 将用户卡牌转换为30张战斗牌组（不足则用低费填充卡补齐）
+function buildDeckFromUserCards(userCards) {
+    const TARGET_SIZE = 30;
+    const deckDefs = [];
+
+    // 每张用户卡牌生成1-3张牌，稀有度越高张数越少
+    const copies = { 'N': 3, 'R': 2, 'SR': 2, 'SSR': 1, 'UR': 1 };
+
+    for (const card of userCards) {
+        const count = copies[card.rarity] || 1;
+        for (let i = 0; i < count && deckDefs.length < TARGET_SIZE; i++) {
+            const def = {
+                name: card.name,
+                faction: card.faction || 'QUN',
+                rarity: card.rarity,
+                unitType: card.unitType || 'INFANTRY',
+                cost: card.cost,
+                attack: card.attack,
+                hp: card.hp,
+                keywords: card.keywords || [],
+                desc: card.desc || '',
+            };
+            // 为有battlecry关键词的卡牌设定效果
+            if (def.keywords.includes('battlecry') && !def.battlecryFn) {
+                def.battlecryFn = 'damage1';
+            }
+            deckDefs.push(def);
+        }
+    }
+
+    // 不足30张则用通用填充卡补齐
+    const filler = [
+        { name:'征召兵', faction:'QUN', rarity:'N', unitType:'INFANTRY', cost:1, attack:1, hp:2, keywords:[], desc:'' },
+        { name:'民兵', faction:'QUN', rarity:'N', unitType:'SHIELD', cost:1, attack:1, hp:3, keywords:['taunt'], desc:'护卫' },
+        { name:'游侠', faction:'QUN', rarity:'N', unitType:'ARCHER', cost:2, attack:2, hp:2, keywords:[], desc:'' },
+        { name:'老兵', faction:'QUN', rarity:'N', unitType:'INFANTRY', cost:2, attack:2, hp:3, keywords:[], desc:'' },
+    ];
+    let fi = 0;
+    while (deckDefs.length < TARGET_SIZE) {
+        deckDefs.push({ ...filler[fi % filler.length] });
+        fi++;
+    }
+
+    return deckDefs;
+}
+
+// 根据关卡敌人配置生成敌方牌组
+function buildEnemyDeckFromConfig(enemyConfig) {
+    const TARGET_SIZE = 30;
+    const deckDefs = [];
+    const enemies = enemyConfig.enemies || [];
+
+    // 为每个敌方单位生成对应卡牌（每个敌人3-5张）
+    for (const enemy of enemies) {
+        const name = enemy.name || '敌兵';
+        const level = enemy.level || 1;
+        const baseCost = Math.max(1, Math.min(8, Math.floor(level / 3) + 1));
+
+        // 生成不同费用的变体
+        const variants = [
+            { cost: Math.max(1, baseCost - 1), atk: Math.max(1, Math.floor(level * 0.4)), hp: Math.max(1, Math.floor(level * 0.5) + 1), kw: [], desc: '' },
+            { cost: baseCost, atk: Math.max(1, Math.floor(level * 0.5)), hp: Math.max(1, Math.floor(level * 0.6) + 1), kw: ['taunt'], desc: '护卫' },
+            { cost: baseCost, atk: Math.max(2, Math.floor(level * 0.6)), hp: Math.max(1, Math.floor(level * 0.4)), kw: ['charge'], desc: '突击' },
+            { cost: Math.min(8, baseCost + 1), atk: Math.max(2, Math.floor(level * 0.6) + 1), hp: Math.max(2, Math.floor(level * 0.6) + 1), kw: [], desc: '' },
+            { cost: Math.min(8, baseCost + 2), atk: Math.max(3, Math.floor(level * 0.8)), hp: Math.max(3, Math.floor(level * 0.8)), kw: ['taunt'], desc: '护卫' },
+        ];
+
+        for (const v of variants) {
+            if (deckDefs.length >= TARGET_SIZE) break;
+            deckDefs.push({
+                name: name, faction: 'QUN', rarity: level > 5 ? 'SR' : level > 3 ? 'R' : 'N',
+                unitType: v.kw.includes('taunt') ? 'SHIELD' : v.kw.includes('charge') ? 'CAVALRY' : 'INFANTRY',
+                cost: v.cost, attack: v.atk, hp: v.hp, keywords: v.kw, desc: v.desc,
+            });
+        }
+    }
+
+    // 补齐
+    const filler = [
+        { name:'黄巾兵', faction:'QUN', rarity:'N', unitType:'INFANTRY', cost:1, attack:2, hp:1, keywords:[], desc:'' },
+        { name:'贼寇', faction:'QUN', rarity:'N', unitType:'INFANTRY', cost:1, attack:1, hp:2, keywords:[], desc:'' },
+        { name:'山贼', faction:'QUN', rarity:'N', unitType:'ARCHER', cost:2, attack:2, hp:2, keywords:[], desc:'' },
+        { name:'盾兵', faction:'QUN', rarity:'N', unitType:'SHIELD', cost:2, attack:1, hp:3, keywords:['taunt'], desc:'护卫' },
+        { name:'流寇头目', faction:'QUN', rarity:'R', unitType:'CAVALRY', cost:3, attack:3, hp:3, keywords:[], desc:'' },
+    ];
+    let fi = 0;
+    while (deckDefs.length < TARGET_SIZE) {
+        deckDefs.push({ ...filler[fi % filler.length] });
+        fi++;
+    }
+
+    return deckDefs;
+}
+
 async function loadStageData(stageId) {
-    const stageResp = await APIClient.getStage(stageId);
+    addLog('加载关卡数据...', 'system');
+
+    const [stageResp, deckResp] = await Promise.all([
+        APIClient.getStage(stageId),
+        APIClient.getUserDeck()
+    ]);
+
     if (!stageResp || !stageResp.success) {
-        addLog('API不可用，使用Demo数据', 'system');
+        addLog('关卡数据加载失败，使用演示模式', 'system');
+        customPlayerDeckDefs = null;
+        customEnemyDeckDefs = null;
         initGame();
         return;
     }
-    // For now, use demo deck in stage mode too
-    addLog('关卡模式加载中...', 'system');
+
+    // 构建玩家牌组
+    if (deckResp && deckResp.success && deckResp.deck.length > 0) {
+        customPlayerDeckDefs = buildDeckFromUserCards(deckResp.deck);
+        addLog(`已加载 ${deckResp.deck.length} 张卡牌构建牌组`, 'info');
+    } else {
+        customPlayerDeckDefs = null;
+        addLog('未找到卡牌，使用默认蜀国牌组', 'system');
+    }
+
+    // 构建敌方牌组
+    const stageData = stageResp.stage;
+    if (stageData.enemy_config && stageData.enemy_config.enemies) {
+        customEnemyDeckDefs = buildEnemyDeckFromConfig(stageData.enemy_config);
+        addLog(`关卡: ${stageData.name}`, 'system');
+    } else {
+        customEnemyDeckDefs = null;
+        addLog('敌方配置缺失，使用默认魏国牌组', 'system');
+    }
+
     initGame();
 }
 
 async function submitBattleResult(isWin) {
     if (!STAGE_ID) return;
-    const result = await APIClient.submitBattle(STAGE_ID, isWin ? 'win' : 'lose', calcStars(), gameState.turn);
-    if (result && result.success && result.rewards) {
-        const rewardsDiv = document.getElementById('resultRewards');
+
+    const rewardsDiv = document.getElementById('resultRewards');
+    rewardsDiv.innerHTML = '<div class="result-reward-item" style="color:#aaa;">结算中...</div>';
+
+    const result = await APIClient.settleBattle(
+        STAGE_ID,
+        isWin ? 'win' : 'lose',
+        calcStars(),
+        gameState.turn
+    );
+
+    if (result && result.success) {
         rewardsDiv.innerHTML = '';
-        if (result.rewards.coins) {
-            rewardsDiv.innerHTML += `<div class="result-reward-item">金币: +${result.rewards.coins}</div>`;
+        const rewards = result.rewards || {};
+
+        if (rewards.coins) {
+            rewardsDiv.innerHTML += `<div class="result-reward-item">💰 金币: +${rewards.coins}</div>`;
         }
-        if (result.rewards.exp) {
-            rewardsDiv.innerHTML += `<div class="result-reward-item">经验: +${result.rewards.exp}</div>`;
+        if (rewards.exp) {
+            rewardsDiv.innerHTML += `<div class="result-reward-item">⭐ 经验: +${rewards.exp}</div>`;
         }
-        if (result.drops) {
+
+        // 首通奖励
+        if (rewards.first_clear) {
+            const fc = rewards.first_clear;
+            rewardsDiv.innerHTML += '<div class="result-reward-item" style="color:#FFD700;font-weight:bold;border-top:1px solid #FFD700;padding-top:8px;margin-top:4px;">🏆 首通奖励</div>';
+            if (fc.coins) rewardsDiv.innerHTML += `<div class="result-reward-item">💰 金币: +${fc.coins}</div>`;
+            if (fc.gems) rewardsDiv.innerHTML += `<div class="result-reward-item">💎 宝石: +${fc.gems}</div>`;
+            if (fc.tickets) rewardsDiv.innerHTML += `<div class="result-reward-item">🎫 抽卡券: +${fc.tickets}</div>`;
+        }
+
+        // 掉落物品
+        if (result.drops && result.drops.length > 0) {
+            rewardsDiv.innerHTML += '<div class="result-reward-item" style="border-top:1px solid rgba(255,255,255,0.2);padding-top:8px;margin-top:4px;">📦 掉落物品</div>';
             result.drops.forEach(d => {
-                rewardsDiv.innerHTML += `<div class="result-reward-item">${d.item_type}: +${d.quantity}</div>`;
+                const name = d.item_subtype ? `${d.item_type}:${d.item_subtype}` : d.item_type;
+                rewardsDiv.innerHTML += `<div class="result-reward-item">${name}: x${d.quantity}</div>`;
             });
         }
+    } else {
+        rewardsDiv.innerHTML = '<div class="result-reward-item" style="color:#ff6b6b;">结算失败</div>';
     }
 }
 
