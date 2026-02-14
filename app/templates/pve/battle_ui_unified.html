@@ -22,24 +22,38 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .loading-text { font-size: 16px; color: #FFD700; }
 
-        /* Top Bar */
-        .top-bar { position: absolute; top: 0; left: 0; right: 0; height: 50px; background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 100%); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; z-index: 100; backdrop-filter: blur(5px); }
+        /* Top Bar (simplified: turn + weather + FPS only) */
+        .top-bar { position: absolute; top: 0; left: 0; right: 0; height: 40px; background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 100%); display: flex; align-items: center; justify-content: center; padding: 0 12px; z-index: 100; backdrop-filter: blur(5px); }
         .top-bar-left, .top-bar-center, .top-bar-right { display: flex; align-items: center; gap: 8px; }
-        .top-bar-center { position: absolute; left: 50%; transform: translateX(-50%); }
-        .turn-badge { background: linear-gradient(135deg, #b8944d, #d4af37); padding: 3px 12px; border-radius: 12px; font-size: 13px; font-weight: bold; }
+        .top-bar-left { position: absolute; left: 12px; }
+        .top-bar-right { position: absolute; right: 12px; }
+        .turn-badge { background: linear-gradient(135deg, #b8944d, #d4af37); padding: 3px 14px; border-radius: 12px; font-size: 13px; font-weight: bold; }
         .weather-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 2px 8px; font-size: 16px; cursor: pointer; color: #fff; }
         .weather-btn:active { background: rgba(255,255,255,0.25); }
         .fps-badge { font-size: 11px; opacity: 0.6; }
-        .hero-hp-badge { font-size: 12px; font-weight: bold; padding: 2px 8px; border-radius: 8px; user-select: none; transition: transform 0.15s, box-shadow 0.15s; }
-        .hero-hp-badge.enemy { background: rgba(200,50,50,0.4); color: #ff6b6b; }
-        .hero-hp-badge.player { background: rgba(50,150,50,0.4); color: #69db7c; }
-        .hero-hp-badge.targetable { box-shadow: 0 0 8px 2px rgba(255,80,80,0.7); transform: scale(1.1); cursor: pointer; }
-        .mana-badge { font-size: 12px; color: #4facfe; padding: 2px 6px; background: rgba(79,172,254,0.15); border-radius: 6px; }
         .deck-badge { font-size: 11px; color: #aaa; padding: 2px 6px; background: rgba(255,255,255,0.08); border-radius: 6px; }
+        .mana-badge { font-size: 12px; color: #4facfe; padding: 2px 6px; background: rgba(79,172,254,0.15); border-radius: 6px; }
 
-        /* Enemy Hand (card backs) */
-        .enemy-hand-area { position: absolute; top: 50px; left: 0; right: 0; height: 45px; display: flex; align-items: center; justify-content: center; gap: 4px; z-index: 90; pointer-events: none; }
-        .enemy-card-back { width: 30px; height: 40px; background: linear-gradient(135deg, #3a2a1a, #5a3a2a); border: 1px solid #8b6914; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+        /* ====== Hero Portrait Areas (Hearthstone-style) ====== */
+        .hero-area { position: absolute; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; z-index: 95; pointer-events: auto; }
+        .enemy-hero-area { top: 52px; }
+        .player-hero-area { bottom: 138px; }
+        .hero-portrait { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; border: 3px solid #8b7355; box-shadow: 0 0 15px rgba(0,0,0,0.6), inset 0 0 10px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative; }
+        .hero-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+        .hero-portrait::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,0.1); }
+        .hero-portrait.enemy { border-color: #8b2020; box-shadow: 0 0 15px rgba(139,32,32,0.4), inset 0 0 10px rgba(0,0,0,0.3); }
+        .hero-portrait.player { border-color: #2d6a4f; box-shadow: 0 0 15px rgba(45,106,79,0.4), inset 0 0 10px rgba(0,0,0,0.3); }
+        .hero-portrait.targetable { box-shadow: 0 0 20px 6px rgba(255,60,60,0.7); transform: scale(1.12); border-color: #ff4444; }
+        .hero-info { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+        .hero-hp-circle { width: 32px; height: 32px; background: linear-gradient(135deg, #cc2222, #991111); border: 2px solid #ff4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #fff; text-shadow: 0 1px 3px #000; position: relative; margin-top: -10px; }
+        .hero-hp-circle::before { content: ''; position: absolute; top: -1px; left: -1px; right: -1px; bottom: -1px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); }
+        .hero-mana-circle { width: 28px; height: 28px; background: linear-gradient(135deg, #4facfe, #0077cc); border: 2px solid #66bbff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #fff; text-shadow: 0 1px 3px #000; margin-top: -8px; }
+        .hero-deck-count { font-size: 10px; color: #aaa; margin-top: 2px; }
+        .hero-name-tag { font-size: 10px; color: #d4af37; font-weight: bold; margin-top: 2px; text-shadow: 0 1px 3px #000; }
+
+        /* Enemy Hand (card backs) - shifted right to not overlap hero */
+        .enemy-hand-area { position: absolute; top: 42px; left: 0; right: 0; height: 40px; display: flex; align-items: center; justify-content: center; gap: 3px; z-index: 90; pointer-events: none; }
+        .enemy-card-back { width: 26px; height: 36px; background: linear-gradient(135deg, #3a2a1a, #5a3a2a); border: 1px solid #8b6914; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
 
         /* Bottom Panel */
         .bottom-panel { position: absolute; bottom: 0; left: 0; right: 0; height: 130px; background: linear-gradient(0deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 80%, transparent 100%); z-index: 100; display: flex; flex-direction: column; padding: 0; backdrop-filter: blur(5px); }
@@ -67,10 +81,11 @@
         /* Deck icon */
         .deck-icon { width: 40px; height: 55px; background: linear-gradient(135deg, #3a2a1a, #5a3a2a); border: 2px solid #8b6914; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #d4af37; position: absolute; left: 10px; bottom: 5px; cursor: default; }
 
-        /* End Turn Button */
-        .btn-end-turn { position: absolute; right: 10px; bottom: 20px; padding: 10px 18px; border: none; border-radius: 10px; font-size: 13px; font-weight: bold; cursor: pointer; color: #fff; background: linear-gradient(135deg, #d4af37, #b8944d); z-index: 101; transition: all 0.2s; }
-        .btn-end-turn:active { transform: scale(0.95); }
-        .btn-end-turn:disabled { opacity: 0.4; cursor: not-allowed; }
+        /* End Turn Button — right side, vertically centered */
+        .btn-end-turn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 52px; height: 52px; padding: 0; border: 2px solid #b8944d; border-radius: 50%; font-size: 11px; font-weight: bold; cursor: pointer; color: #fff; background: linear-gradient(135deg, #28a745, #20c997); box-shadow: 0 0 14px rgba(40,167,69,0.5); z-index: 101; transition: all 0.2s; line-height: 1.2; }
+        .btn-end-turn:hover { box-shadow: 0 0 22px rgba(40,167,69,0.7); }
+        .btn-end-turn:active { transform: translateY(-50%) scale(0.92); }
+        .btn-end-turn:disabled { opacity: 0.4; cursor: not-allowed; background: linear-gradient(135deg, #555, #444); box-shadow: none; }
 
         /* Mana crystals */
         .mana-crystals { display: flex; gap: 2px; align-items: center; }
@@ -125,15 +140,23 @@
 
         /* Mobile Responsive */
         @media (max-width: 600px) {
-            .battle-log { width: calc(100% - 16px); bottom: 135px; }
+            .battle-log { width: calc(100% - 16px); bottom: 120px; }
             .battle-log.collapsed { max-height: 28px; }
-            .hand-card { width: 64px; height: 90px; }
-            .hand-card .card-cost { width: 18px; height: 18px; font-size: 10px; top: -2px; left: -2px; }
-            .bottom-panel { height: 115px; }
-            .top-bar { height: 44px; }
-            .enemy-hand-area { top: 44px; height: 38px; }
-            .enemy-card-back { width: 24px; height: 32px; font-size: 10px; }
+            .hand-card { width: 58px; height: 82px; }
+            .hand-card .card-cost { width: 17px; height: 17px; font-size: 9px; top: -2px; left: -2px; }
+            .hand-card .card-name { font-size: 8px; bottom: 14px; }
+            .hand-card .card-atk, .hand-card .card-hp { font-size: 10px; }
+            .bottom-panel { height: 110px; }
+            .top-bar { height: 36px; }
+            .enemy-hand-area { top: 36px; height: 34px; }
+            .enemy-card-back { width: 22px; height: 30px; font-size: 9px; }
             .mulligan-card { width: 100px; height: 140px; }
+            .hero-portrait { width: 56px; height: 56px; }
+            .hero-hp-circle { width: 26px; height: 26px; font-size: 12px; margin-top: -8px; }
+            .hero-mana-circle { width: 22px; height: 22px; font-size: 10px; }
+            .enemy-hero-area { top: 38px; }
+            .player-hero-area { bottom: 118px; }
+            .btn-end-turn { width: 44px; height: 44px; font-size: 10px; right: 4px; }
         }
 
         /* ====== Mulligan Overlay ====== */
@@ -200,17 +223,13 @@
         <div class="menu-item" onclick="window.location.href='/pve/battle-ui-comparison'">返回对比页</div>
     </div>
 
-    <!-- Top Bar -->
+    <!-- Top Bar (simplified) -->
     <div class="top-bar" id="topBar">
         <div class="top-bar-left">
-            <span class="hero-hp-badge enemy" id="enemyHpBadge">敌主公 30</span>
-            <span class="mana-badge" id="enemyManaBadge">令旗 0/0</span>
-            <span class="deck-badge" id="enemyDeckBadge">牌库 30</span>
+            <span class="deck-badge" id="enemyDeckBadge">敌牌库 30</span>
         </div>
-        <div class="top-bar-center">
-            <span class="turn-badge" id="turnBadge">回合 1</span>
-            <button class="weather-btn" id="weatherBtn" onclick="cycleWeather()" title="切换天气"></button>
-        </div>
+        <span class="turn-badge" id="turnBadge">回合 1</span>
+        <button class="weather-btn" id="weatherBtn" onclick="cycleWeather()" title="切换天气"></button>
         <div class="top-bar-right">
             <span class="fps-badge" id="fpsBadge">60 FPS</span>
         </div>
@@ -218,6 +237,30 @@
 
     <!-- Enemy Hand (card backs) -->
     <div class="enemy-hand-area" id="enemyHandArea"></div>
+
+    <!-- Enemy Hero Area -->
+    <div class="hero-area enemy-hero-area" id="enemyHeroArea">
+        <div class="hero-name-tag" id="enemyNameTag">魏·曹操</div>
+        <div class="hero-portrait enemy" id="enemyHeroPortrait">
+            <img src="/static/images/cards/caocao.png" alt="曹操">
+        </div>
+        <div class="hero-info">
+            <div class="hero-hp-circle" id="enemyHpCircle">30</div>
+            <div class="hero-mana-circle" id="enemyManaCircle">0</div>
+        </div>
+    </div>
+
+    <!-- Player Hero Area -->
+    <div class="hero-area player-hero-area" id="playerHeroArea">
+        <div class="hero-info">
+            <div class="hero-mana-circle" id="playerManaCircle">0</div>
+            <div class="hero-hp-circle" id="playerHpCircle">30</div>
+        </div>
+        <div class="hero-portrait player" id="playerHeroPortrait">
+            <img src="/static/images/cards/liubei.png" alt="刘备">
+        </div>
+        <div class="hero-name-tag" id="playerNameTag">蜀·刘备</div>
+    </div>
 
     <!-- Battle Log -->
     <div class="battle-log collapsed" id="battleLog">
@@ -236,11 +279,11 @@
         </div>
         <div class="info-row">
             <div class="info-row-left">
-                <span class="hero-hp-badge player" id="playerHpBadge">我方主公 30</span>
                 <div class="mana-crystals" id="manaCrystals"></div>
                 <span class="mana-badge" id="playerManaBadge">0/0</span>
             </div>
             <div class="info-row-right">
+                <span class="deck-badge" id="playerDeckBadge">牌库 30</span>
             </div>
         </div>
     </div>
@@ -541,37 +584,92 @@ function initApp() {
 }
 
 function drawBackground() {
+    const W = app.screen.width, H = app.screen.height;
+    const topH = 82, bottomH = 130;
+
+    // Base dark fill
     const bg = new PIXI.Graphics();
     bg.beginFill(0x0a0a14);
-    bg.drawRect(0, 0, app.screen.width, app.screen.height);
+    bg.drawRect(0, 0, W, H);
     bg.endFill();
 
-    const grad = new PIXI.Graphics();
-    grad.beginFill(0x1a1a2e, 0.6);
-    grad.drawRect(0, 50, app.screen.width, app.screen.height - 180);
-    grad.endFill();
-
-    // Center divider line
-    const divider = new PIXI.Graphics();
-    divider.lineStyle(2, 0x333355, 0.6);
-    const cy = app.screen.height * 0.44;
-    for (let x = 20; x < app.screen.width - 20; x += 12) {
-        divider.moveTo(x, cy);
-        divider.lineTo(x + 6, cy);
+    // Board area — dark wood texture (simulated with stripes)
+    const board = new PIXI.Graphics();
+    const boardTop = topH, boardBot = H - bottomH;
+    const boardH = boardBot - boardTop;
+    // Base board color
+    board.beginFill(0x1a1510, 0.95);
+    board.drawRect(0, boardTop, W, boardH);
+    board.endFill();
+    // Horizontal wood grain lines
+    for (let y = boardTop; y < boardBot; y += 18) {
+        const alpha = 0.03 + Math.random() * 0.04;
+        board.lineStyle(1, 0x8b7355, alpha);
+        board.moveTo(0, y);
+        board.lineTo(W, y);
     }
+    // Subtle vertical panels
+    for (let x = 0; x < W; x += 80) {
+        board.lineStyle(1, 0x5a4a3a, 0.04);
+        board.moveTo(x, boardTop);
+        board.lineTo(x, boardBot);
+    }
+    // Edge vignette — darkened borders
+    const edgeTop = new PIXI.Graphics();
+    edgeTop.beginFill(0x000000, 0.4);
+    edgeTop.drawRect(0, boardTop, W, 30);
+    edgeTop.endFill();
+    const edgeBot = new PIXI.Graphics();
+    edgeBot.beginFill(0x000000, 0.4);
+    edgeBot.drawRect(0, boardBot - 30, W, 30);
+    edgeBot.endFill();
 
-    layers.background.addChild(bg, grad, divider);
+    // Side borders — gold trim
+    const borderL = new PIXI.Graphics();
+    borderL.lineStyle(2, 0xb8944d, 0.15);
+    borderL.moveTo(4, boardTop);
+    borderL.lineTo(4, boardBot);
+    const borderR = new PIXI.Graphics();
+    borderR.lineStyle(2, 0xb8944d, 0.15);
+    borderR.moveTo(W - 4, boardTop);
+    borderR.lineTo(W - 4, boardBot);
+
+    // Center divider — ornate chain/rope style
+    const cy = boardTop + boardH * 0.5;
+    const divider = new PIXI.Graphics();
+    // Main line
+    divider.lineStyle(2, 0xb8944d, 0.35);
+    divider.moveTo(20, cy);
+    divider.lineTo(W - 20, cy);
+    // Decorative dots along the line
+    divider.lineStyle(0);
+    for (let x = 30; x < W - 30; x += 24) {
+        divider.beginFill(0xb8944d, 0.25);
+        divider.drawCircle(x, cy, 3);
+        divider.endFill();
+    }
+    // Center diamond ornament
+    divider.beginFill(0xd4af37, 0.4);
+    divider.moveTo(W/2, cy - 8);
+    divider.lineTo(W/2 + 8, cy);
+    divider.lineTo(W/2, cy + 8);
+    divider.lineTo(W/2 - 8, cy);
+    divider.closePath();
+    divider.endFill();
+
+    layers.background.addChild(bg, board, edgeTop, edgeBot, borderL, borderR, divider);
 }
 
 function layoutZones() {
     const w = app.screen.width;
     const h = app.screen.height;
-    const topH = 95; // top bar + enemy hand
+    const topH = 82; // top bar + enemy hand + enemy hero
     const bottomH = 130;
     const battleH = h - topH - bottomH;
 
-    layers.enemyZone.position.set(w / 2, topH + battleH * 0.28);
-    layers.playerZone.position.set(w / 2, topH + battleH * 0.72);
+    // Push minion zones toward center, leaving room for hero portraits
+    layers.enemyZone.position.set(w / 2, topH + battleH * 0.35);
+    layers.playerZone.position.set(w / 2, topH + battleH * 0.65);
     layers.centerZone.position.set(w / 2, topH + battleH * 0.5);
     layers.effects.position.set(0, 0);
 }
@@ -790,28 +888,27 @@ function renderBoard() {
 }
 
 function renderHeroTargets() {
-    // Use HTML hero badges as click targets instead of PixiJS overlay
-    // This avoids z-index overlap with enemy minion sprites
+    // Use hero portrait elements as click targets
     layers.centerZone.removeChildren();
 
-    const enemyBadge = document.getElementById('enemyHpBadge');
-    const playerBadge = document.getElementById('playerHpBadge');
-    if (enemyBadge) {
-        enemyBadge.onclick = () => onHeroClick('enemy');
+    const enemyPortrait = document.getElementById('enemyHeroPortrait');
+    const playerPortrait = document.getElementById('playerHeroPortrait');
+    if (enemyPortrait) {
+        enemyPortrait.onclick = () => onHeroClick('enemy');
     }
-    if (playerBadge) {
-        playerBadge.onclick = () => onHeroClick('player');
+    if (playerPortrait) {
+        playerPortrait.onclick = () => onHeroClick('player');
     }
-    updateHeroBadgeTargetable(!!selectedAttacker);
+    updateHeroPortraitTargetable(!!selectedAttacker);
 }
 
-function updateHeroBadgeTargetable(targetable) {
-    const enemyBadge = document.getElementById('enemyHpBadge');
-    if (enemyBadge) {
+function updateHeroPortraitTargetable(targetable) {
+    const enemyPortrait = document.getElementById('enemyHeroPortrait');
+    if (enemyPortrait) {
         if (targetable) {
-            enemyBadge.classList.add('targetable');
+            enemyPortrait.classList.add('targetable');
         } else {
-            enemyBadge.classList.remove('targetable');
+            enemyPortrait.classList.remove('targetable');
         }
     }
 }
@@ -1464,7 +1561,7 @@ function onBoardMinionClick(card, isEnemy) {
             setBoardMinionState(s, 'targetable');
         });
         // Highlight enemy hero badge as targetable
-        updateHeroBadgeTargetable(true);
+        updateHeroPortraitTargetable(true);
     } else if (isEnemy && gameState.isPlayerTurn && selectedAttacker) {
         // Attack enemy minion
         const targetIdx = gameState.enemy.board.indexOf(card);
@@ -1968,14 +2065,23 @@ function animateAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero,
                         showDamageNumber(attackerSprite, defDamage, false);
                     }
                 } else {
-                    // Hero damage flash
-                    const heroId = targetSide === 'player' ? 'playerHpBadge' : 'enemyHpBadge';
-                    const badge = document.getElementById(heroId);
-                    badge.style.transform = 'scale(1.3)';
-                    badge.style.color = '#ff0000';
-                    setTimeout(() => { badge.style.transform = ''; badge.style.color = ''; }, 400);
-                    // Also update hero HP text immediately
-                    renderTopBar();
+                    // Hero damage flash on portrait
+                    const portraitId = targetSide === 'player' ? 'playerHeroPortrait' : 'enemyHeroPortrait';
+                    const hpCircleId = targetSide === 'player' ? 'playerHpCircle' : 'enemyHpCircle';
+                    const portrait = document.getElementById(portraitId);
+                    const hpCircle = document.getElementById(hpCircleId);
+                    portrait.style.transform = 'scale(1.15)';
+                    portrait.style.boxShadow = '0 0 25px 8px rgba(255,0,0,0.8)';
+                    hpCircle.style.transform = 'scale(1.3)';
+                    hpCircle.style.background = 'linear-gradient(135deg, #ff0000, #cc0000)';
+                    setTimeout(() => {
+                        portrait.style.transform = '';
+                        portrait.style.boxShadow = '';
+                        hpCircle.style.transform = '';
+                        hpCircle.style.background = '';
+                    }, 400);
+                    // Update hero HP
+                    renderHeroAreas();
                 }
             } finally {
                 animating = false;
@@ -2027,6 +2133,7 @@ function renderAll() {
     renderHandCards();
     renderEnemyHand();
     renderTopBar();
+    renderHeroAreas();
     renderBottomInfo();
 }
 
@@ -2093,22 +2200,21 @@ function renderEnemyHand() {
 }
 
 function renderTopBar() {
-    // Enemy hero HP
-    const eHp = document.getElementById('enemyHpBadge');
-    eHp.textContent = `敌主公 ${Math.max(0, gameState.enemy.heroHp)}`;
+    // Enemy deck count in top bar
+    document.getElementById('enemyDeckBadge').textContent = `敌牌库 ${gameState.enemy.deck.length}`;
+}
 
-    // Enemy mana
-    document.getElementById('enemyManaBadge').textContent = `令旗 ${gameState.enemy.mana}/${gameState.enemy.maxMana}`;
+function renderHeroAreas() {
+    // Enemy hero
+    document.getElementById('enemyHpCircle').textContent = Math.max(0, gameState.enemy.heroHp);
+    document.getElementById('enemyManaCircle').textContent = `${gameState.enemy.mana}`;
 
-    // Enemy deck
-    document.getElementById('enemyDeckBadge').textContent = `牌库 ${gameState.enemy.deck.length}`;
+    // Player hero
+    document.getElementById('playerHpCircle').textContent = Math.max(0, gameState.player.heroHp);
+    document.getElementById('playerManaCircle').textContent = `${gameState.player.mana}`;
 }
 
 function renderBottomInfo() {
-    // Player hero HP
-    const pHp = document.getElementById('playerHpBadge');
-    pHp.textContent = `我方主公 ${Math.max(0, gameState.player.heroHp)}`;
-
     // Mana crystals
     const crystals = document.getElementById('manaCrystals');
     crystals.innerHTML = '';
@@ -2120,6 +2226,9 @@ function renderBottomInfo() {
 
     // Mana text
     document.getElementById('playerManaBadge').textContent = `${gameState.player.mana}/${gameState.player.maxMana}`;
+
+    // Player deck count
+    document.getElementById('playerDeckBadge').textContent = `牌库 ${gameState.player.deck.length}`;
 }
 
 // ====== Weather Particle System ======
