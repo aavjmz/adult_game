@@ -50,6 +50,10 @@ def pull():
             'defense': card.defense,
             'hp': card.hp,
             'is_golden': card.is_golden,
+            'image_url': card.image_url,
+            'element': card.element,
+            'faction': card.faction,
+            'job_class': card.job_class,
             'skill_name': card.skill_name,
             'skill_description': card.skill_description,
             'is_new': True  # 可以进一步检查是否为新卡

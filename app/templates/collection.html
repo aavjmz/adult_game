@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}卡牌图鉴 - 成人卡牌游戏{% endblock %}
+{% block title %}卡牌图鉴 - 三国卡牌游戏{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -10,29 +10,57 @@
 
         <div class="card-grid">
             {% for card in cards %}
-                <div class="card-item {% if card.is_golden %}golden{% endif %} {% if not card.owned %}opacity: 0.5{% endif %}">
-                    <span class="card-rarity rarity-{{ card.rarity }}">{{ card.rarity }}</span>
-                    <div class="card-name">{{ card.name }}</div>
-
-                    <div class="card-stats">
-                        <div class="stat">
-                            <div class="stat-label">攻击</div>
-                            <div class="stat-value">{{ card.attack }}</div>
+                <div class="game-card rarity-border-{{ card.rarity }} {% if card.is_golden %}golden-card{% endif %} {% if not card.owned %}not-owned{% endif %}">
+                    <!-- 卡牌原画 -->
+                    <div class="game-card-art">
+                        <span class="game-card-rarity rarity-{{ card.rarity }}">{{ card.rarity }}</span>
+                        {% if card.image_url %}
+                            <img src="{{ card.image_url }}" alt="{{ card.name }}" loading="lazy">
+                        {% else %}
+                            <div class="game-card-art-placeholder placeholder-{{ card.rarity }}">
+                                {{ card.name[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <!-- 卡牌信息 -->
+                    <div class="game-card-info">
+                        <div class="game-card-name">{{ card.name }}</div>
+                        <div class="game-card-tags">
+                            {% if card.element and card.element != '无' %}
+                                <span class="game-card-tag">{{ card.element }}</span>
+                            {% endif %}
+                            {% if card.faction %}
+                                <span class="game-card-tag">{{ card.faction }}</span>
+                            {% endif %}
+                            {% if card.job_class %}
+                                <span class="game-card-tag">{{ card.job_class }}</span>
+                            {% endif %}
                         </div>
-                        <div class="stat">
-                            <div class="stat-label">防御</div>
-                            <div class="stat-value">{{ card.defense }}</div>
+                        <div class="game-card-stats">
+                            <div class="game-card-stat">
+                                <div class="game-card-stat-label">攻击</div>
+                                <div class="game-card-stat-value atk">{{ card.attack }}</div>
+                            </div>
+                            <div class="game-card-stat">
+                                <div class="game-card-stat-label">防御</div>
+                                <div class="game-card-stat-value def">{{ card.defense }}</div>
+                            </div>
+                            <div class="game-card-stat">
+                                <div class="game-card-stat-label">生命</div>
+                                <div class="game-card-stat-value hp">{{ card.hp }}</div>
+                            </div>
                         </div>
-                        <div class="stat">
-                            <div class="stat-label">生命</div>
-                            <div class="stat-value">{{ card.hp }}</div>
+                        <div class="game-card-footer">
+                            {% if card.owned %}
+                                <span style="color: #51cf66;">已拥有</span>
+                            {% else %}
+                                <span style="color: #888;">未拥有</span>
+                            {% endif %}
                         </div>
                     </div>
-
+                    <!-- 拥有状态角标 -->
                     {% if card.owned %}
-                        <div style="margin-top: 10px; color: #28a745; font-weight: bold;">✓ 已拥有</div>
-                    {% else %}
-                        <div style="margin-top: 10px; color: #999;">未拥有</div>
+                        <span class="game-card-owned-badge owned">✓</span>
                     {% endif %}
                 </div>
             {% endfor %}

@@ -36,56 +36,86 @@ def create_app(config_class=Config):
     with app.app_context():
         db.create_all()
         init_cards()
+        migrate_cards_to_three_kingdoms()
         init_stages()
 
     return app
 
 def init_cards():
-    """初始化卡牌数据"""
+    """初始化三国武将卡牌数据"""
     from app.models import Card
 
     if Card.query.count() > 0:
         return  # 已有数据，跳过初始化
 
-    # 示例卡牌数据
+    # 三国武将卡牌数据（匹配 static/images/cards/ 中的原画）
     sample_cards = [
-        # N卡
-        {'name': '新手剑士', 'rarity': 'N', 'attack': 80, 'defense': 60, 'hp': 800,
-         'is_golden': False, 'skill_name': '普通斩击', 'skill_description': '造成150%攻击力的伤害'},
-        {'name': '见习法师', 'rarity': 'N', 'attack': 70, 'defense': 50, 'hp': 700,
-         'is_golden': False, 'skill_name': '火球术', 'skill_description': '造成160%攻击力的魔法伤害'},
-        {'name': '乡村猎人', 'rarity': 'N', 'attack': 75, 'defense': 55, 'hp': 750,
-         'is_golden': False, 'skill_name': '精准射击', 'skill_description': '造成155%攻击力的伤害'},
+        # N卡 — 普通兵种（无原画，使用占位）
+        {'name': '黄巾力士', 'rarity': 'N', 'attack': 80, 'defense': 60, 'hp': 800,
+         'element': '土', 'faction': '群', 'job_class': '步将',
+         'is_golden': False, 'skill_name': '奋力一击', 'skill_description': '造成150%攻击力的伤害'},
+        {'name': '义勇民兵', 'rarity': 'N', 'attack': 70, 'defense': 50, 'hp': 700,
+         'element': '木', 'faction': '群', 'job_class': '弓将',
+         'is_golden': False, 'skill_name': '齐射', 'skill_description': '造成160%攻击力的远程伤害'},
+        {'name': '游侠剑客', 'rarity': 'N', 'attack': 75, 'defense': 55, 'hp': 750,
+         'element': '金', 'faction': '群', 'job_class': '武将',
+         'is_golden': False, 'skill_name': '剑气斩', 'skill_description': '造成155%攻击力的伤害'},
 
-        # R卡
-        {'name': '精英骑士', 'rarity': 'R', 'attack': 120, 'defense': 100, 'hp': 1200,
-         'is_golden': False, 'skill_name': '冲锋', 'skill_description': '造成180%攻击力的伤害'},
-        {'name': '魔法学徒', 'rarity': 'R', 'attack': 110, 'defense': 90, 'hp': 1100,
-         'is_golden': False, 'skill_name': '冰霜箭', 'skill_description': '造成190%攻击力的冰冻伤害'},
-        {'name': '暗影刺客', 'rarity': 'R', 'attack': 130, 'defense': 80, 'hp': 1000,
-         'is_golden': False, 'skill_name': '背刺', 'skill_description': '造成200%攻击力的暴击伤害'},
+        # R卡 — 三国名将（有原画）
+        {'name': '张辽', 'rarity': 'R', 'attack': 130, 'defense': 100, 'hp': 1200,
+         'element': '金', 'faction': '魏', 'job_class': '骑将',
+         'image_url': '/static/images/cards/zhangliao.png',
+         'is_golden': False, 'skill_name': '突袭', 'skill_description': '造成180%攻击力的伤害，并降低目标防御'},
+        {'name': '孙策', 'rarity': 'R', 'attack': 125, 'defense': 90, 'hp': 1100,
+         'element': '火', 'faction': '吴', 'job_class': '武将',
+         'image_url': '/static/images/cards/sunce.png',
+         'is_golden': False, 'skill_name': '霸王之击', 'skill_description': '造成190%攻击力的伤害'},
+        {'name': '孙权', 'rarity': 'R', 'attack': 110, 'defense': 110, 'hp': 1150,
+         'element': '水', 'faction': '吴', 'job_class': '谋士',
+         'image_url': '/static/images/cards/sunquan.png',
+         'is_golden': False, 'skill_name': '制衡', 'skill_description': '造成170%攻击力的伤害，恢复少量生命'},
 
-        # SR卡
-        {'name': '圣骑士', 'rarity': 'SR', 'attack': 180, 'defense': 150, 'hp': 1800,
-         'is_golden': False, 'skill_name': '圣光审判', 'skill_description': '造成250%攻击力的神圣伤害'},
-        {'name': '大魔导师', 'rarity': 'SR', 'attack': 200, 'defense': 120, 'hp': 1600,
-         'is_golden': False, 'skill_name': '奥术轰炸', 'skill_description': '造成280%攻击力的范围伤害'},
-        {'name': '龙骑士', 'rarity': 'SR', 'attack': 190, 'defense': 140, 'hp': 1700,
-         'is_golden': False, 'skill_name': '龙之吐息', 'skill_description': '造成270%攻击力的火焰伤害'},
+        # SR卡 — 三国名将（有原画）
+        {'name': '赵云', 'rarity': 'SR', 'attack': 190, 'defense': 150, 'hp': 1800,
+         'element': '金', 'faction': '蜀', 'job_class': '骑将',
+         'image_url': '/static/images/cards/zhaoyun.png',
+         'is_golden': False, 'skill_name': '龙胆', 'skill_description': '造成250%攻击力的伤害，无视部分防御'},
+        {'name': '周瑜', 'rarity': 'SR', 'attack': 200, 'defense': 120, 'hp': 1600,
+         'element': '火', 'faction': '吴', 'job_class': '谋士',
+         'image_url': '/static/images/cards/zhouyu.png',
+         'is_golden': False, 'skill_name': '火攻', 'skill_description': '造成280%攻击力的火焰范围伤害'},
+        {'name': '诸葛亮', 'rarity': 'SR', 'attack': 210, 'defense': 130, 'hp': 1700,
+         'element': '火', 'faction': '蜀', 'job_class': '谋士',
+         'image_url': '/static/images/cards/zhugeliang.png',
+         'is_golden': False, 'skill_name': '八阵图', 'skill_description': '造成270%攻击力的伤害，有几率眩晕'},
 
-        # SSR卡（金色卡牌）
-        {'name': '堕落天使', 'rarity': 'SSR', 'attack': 280, 'defense': 200, 'hp': 2500,
-         'is_golden': True, 'skill_name': '暗黑审判', 'skill_description': '造成350%攻击力的暗黑伤害', 'skill_damage_multiplier': 3.5},
-        {'name': '炎之女皇', 'rarity': 'SSR', 'attack': 300, 'defense': 180, 'hp': 2400,
-         'is_golden': True, 'skill_name': '业火焚天', 'skill_description': '造成400%攻击力的终极火焰伤害', 'skill_damage_multiplier': 4.0},
-        {'name': '冰霜女神', 'rarity': 'SSR', 'attack': 290, 'defense': 190, 'hp': 2450,
-         'is_golden': True, 'skill_name': '极寒冰封', 'skill_description': '造成380%攻击力的冰冻伤害', 'skill_damage_multiplier': 3.8},
+        # SSR卡 — 三国名将（有原画，金色）
+        {'name': '关羽', 'rarity': 'SSR', 'attack': 300, 'defense': 200, 'hp': 2500,
+         'element': '金', 'faction': '蜀', 'job_class': '武将',
+         'image_url': '/static/images/cards/guanyu.png',
+         'is_golden': True, 'skill_name': '青龙偃月', 'skill_description': '造成350%攻击力的伤害，斩杀低血量目标',
+         'skill_damage_multiplier': 3.5},
+        {'name': '曹操', 'rarity': 'SSR', 'attack': 280, 'defense': 220, 'hp': 2600,
+         'element': '水', 'faction': '魏', 'job_class': '谋士',
+         'image_url': '/static/images/cards/caocao.png',
+         'is_golden': True, 'skill_name': '奸雄', 'skill_description': '造成320%攻击力的伤害，恢复造成伤害的30%生命',
+         'skill_damage_multiplier': 3.2},
+        {'name': '刘备', 'rarity': 'SSR', 'attack': 260, 'defense': 240, 'hp': 2800,
+         'element': '木', 'faction': '蜀', 'job_class': '武将',
+         'image_url': '/static/images/cards/liubei.png',
+         'is_golden': True, 'skill_name': '仁德', 'skill_description': '造成300%攻击力的伤害，同时恢复全体己方20%生命',
+         'skill_damage_multiplier': 3.0},
 
-        # UR卡（金色卡牌）
-        {'name': '创世神', 'rarity': 'UR', 'attack': 500, 'defense': 400, 'hp': 5000,
-         'is_golden': True, 'skill_name': '创世之光', 'skill_description': '造成600%攻击力的毁灭性伤害', 'skill_damage_multiplier': 6.0},
-        {'name': '混沌之主', 'rarity': 'UR', 'attack': 520, 'defense': 380, 'hp': 4800,
-         'is_golden': True, 'skill_name': '混沌湮灭', 'skill_description': '造成650%攻击力的混沌伤害', 'skill_damage_multiplier': 6.5},
+        # UR卡 — 最强武将（有原画，金色）
+        {'name': '吕布', 'rarity': 'UR', 'attack': 520, 'defense': 350, 'hp': 4800,
+         'element': '火', 'faction': '群', 'job_class': '武将',
+         'image_url': '/static/images/cards/lvbu.png',
+         'is_golden': True, 'skill_name': '天下无双', 'skill_description': '造成600%攻击力的毁灭性伤害，无视防御',
+         'skill_damage_multiplier': 6.0},
+        {'name': '貂蝉', 'rarity': 'UR', 'attack': 480, 'defense': 380, 'hp': 5000,
+         'element': '水', 'faction': '群', 'job_class': '谋士',
+         'is_golden': True, 'skill_name': '闭月羞花', 'skill_description': '造成550%攻击力的伤害，魅惑敌方全体降低攻击',
+         'skill_damage_multiplier': 5.5},
     ]
 
     for card_data in sample_cards:
@@ -93,7 +123,71 @@ def init_cards():
         db.session.add(card)
 
     db.session.commit()
-    print(f"已初始化 {len(sample_cards)} 张卡牌")
+    print(f"已初始化 {len(sample_cards)} 张三国武将卡牌")
+
+
+def migrate_cards_to_three_kingdoms():
+    """将旧版泛用卡牌迁移为三国武将（一次性迁移，检测旧名称触发）"""
+    from app.models import Card
+
+    # 旧名称→新数据的映射（按ID顺序对应）
+    old_to_new = {
+        '新手剑士': {'name': '黄巾力士', 'element': '土', 'faction': '群', 'job_class': '步将',
+                   'skill_name': '奋力一击', 'skill_description': '造成150%攻击力的伤害'},
+        '见习法师': {'name': '义勇民兵', 'element': '木', 'faction': '群', 'job_class': '弓将',
+                   'skill_name': '齐射', 'skill_description': '造成160%攻击力的远程伤害'},
+        '乡村猎人': {'name': '游侠剑客', 'element': '金', 'faction': '群', 'job_class': '武将',
+                   'skill_name': '剑气斩', 'skill_description': '造成155%攻击力的伤害'},
+        '精英骑士': {'name': '张辽', 'element': '金', 'faction': '魏', 'job_class': '骑将',
+                   'image_url': '/static/images/cards/zhangliao.png',
+                   'skill_name': '突袭', 'skill_description': '造成180%攻击力的伤害，并降低目标防御'},
+        '魔法学徒': {'name': '孙策', 'element': '火', 'faction': '吴', 'job_class': '武将',
+                   'image_url': '/static/images/cards/sunce.png',
+                   'skill_name': '霸王之击', 'skill_description': '造成190%攻击力的伤害'},
+        '暗影刺客': {'name': '孙权', 'element': '水', 'faction': '吴', 'job_class': '谋士',
+                   'image_url': '/static/images/cards/sunquan.png',
+                   'skill_name': '制衡', 'skill_description': '造成170%攻击力的伤害，恢复少量生命'},
+        '圣骑士':  {'name': '赵云', 'element': '金', 'faction': '蜀', 'job_class': '骑将',
+                   'image_url': '/static/images/cards/zhaoyun.png',
+                   'skill_name': '龙胆', 'skill_description': '造成250%攻击力的伤害，无视部分防御'},
+        '大魔导师': {'name': '周瑜', 'element': '火', 'faction': '吴', 'job_class': '谋士',
+                   'image_url': '/static/images/cards/zhouyu.png',
+                   'skill_name': '火攻', 'skill_description': '造成280%攻击力的火焰范围伤害'},
+        '龙骑士':  {'name': '诸葛亮', 'element': '火', 'faction': '蜀', 'job_class': '谋士',
+                   'image_url': '/static/images/cards/zhugeliang.png',
+                   'skill_name': '八阵图', 'skill_description': '造成270%攻击力的伤害，有几率眩晕'},
+        '堕落天使': {'name': '关羽', 'element': '金', 'faction': '蜀', 'job_class': '武将',
+                   'image_url': '/static/images/cards/guanyu.png',
+                   'skill_name': '青龙偃月', 'skill_description': '造成350%攻击力的伤害，斩杀低血量目标'},
+        '炎之女皇': {'name': '曹操', 'element': '水', 'faction': '魏', 'job_class': '谋士',
+                   'image_url': '/static/images/cards/caocao.png',
+                   'skill_name': '奸雄', 'skill_description': '造成320%攻击力的伤害，恢复造成伤害的30%生命'},
+        '冰霜女神': {'name': '刘备', 'element': '木', 'faction': '蜀', 'job_class': '武将',
+                   'image_url': '/static/images/cards/liubei.png',
+                   'skill_name': '仁德', 'skill_description': '造成300%攻击力的伤害，同时恢复全体己方20%生命'},
+        '创世神':  {'name': '吕布', 'element': '火', 'faction': '群', 'job_class': '武将',
+                   'image_url': '/static/images/cards/lvbu.png',
+                   'skill_name': '天下无双', 'skill_description': '造成600%攻击力的毁灭性伤害，无视防御'},
+        '混沌之主': {'name': '貂蝉', 'element': '水', 'faction': '群', 'job_class': '谋士',
+                   'skill_name': '闭月羞花', 'skill_description': '造成550%攻击力的伤害，魅惑敌方全体降低攻击'},
+    }
+
+    # 检测是否需要迁移（看第一张卡是否是旧名称）
+    first_card = Card.query.first()
+    if not first_card or first_card.name not in old_to_new:
+        return  # 已经是新数据或为空
+
+    print("[迁移] 检测到旧版卡牌数据，正在迁移为三国武将...")
+    migrated = 0
+    for card in Card.query.all():
+        new_data = old_to_new.get(card.name)
+        if new_data:
+            for key, value in new_data.items():
+                setattr(card, key, value)
+            migrated += 1
+
+    db.session.commit()
+    print(f"[迁移] 已将 {migrated} 张卡牌迁移为三国武将")
 
 
 def init_stages():

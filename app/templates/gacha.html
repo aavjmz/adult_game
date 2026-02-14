@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}抽卡 - 成人卡牌游戏{% endblock %}
+{% block title %}抽卡 - 三国卡牌游戏{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="card">
-        <h1 style="text-align: center;">🎲 抽卡系统</h1>
+        <h1 style="text-align: center;">抽卡系统</h1>
 
         <!-- 资源显示 -->
         <div class="resources">
@@ -64,13 +64,55 @@
 </div>
 
 <script>
+function getPlaceholderClass(rarity) {
+    return 'placeholder-' + rarity;
+}
+
+function renderGameCard(card) {
+    const artContent = card.image_url
+        ? `<img src="${card.image_url}" alt="${card.name}" loading="lazy">`
+        : `<div class="game-card-art-placeholder ${getPlaceholderClass(card.rarity)}">${card.name[0]}</div>`;
+
+    const tags = [];
+    if (card.element && card.element !== '无') tags.push(card.element);
+    if (card.faction) tags.push(card.faction);
+    if (card.job_class) tags.push(card.job_class);
+    const tagsHtml = tags.map(t => `<span class="game-card-tag">${t}</span>`).join('');
+
+    return `
+        <div class="game-card rarity-border-${card.rarity} ${card.is_golden ? 'golden-card' : ''}">
+            <div class="game-card-art">
+                <span class="game-card-rarity rarity-${card.rarity}">${card.rarity}</span>
+                ${artContent}
+            </div>
+            <div class="game-card-info">
+                <div class="game-card-name">${card.name}</div>
+                <div class="game-card-tags">${tagsHtml}</div>
+                <div class="game-card-stats">
+                    <div class="game-card-stat">
+                        <div class="game-card-stat-label">攻击</div>
+                        <div class="game-card-stat-value atk">${card.attack}</div>
+                    </div>
+                    <div class="game-card-stat">
+                        <div class="game-card-stat-label">防御</div>
+                        <div class="game-card-stat-value def">${card.defense}</div>
+                    </div>
+                    <div class="game-card-stat">
+                        <div class="game-card-stat-label">生命</div>
+                        <div class="game-card-stat-value hp">${card.hp}</div>
+                    </div>
+                </div>
+                <div class="game-card-footer">${card.skill_name || ''}</div>
+            </div>
+        </div>
+    `;
+}
+
 async function performGacha(type) {
     try {
         const response = await fetch('/gacha/pull', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: type })
         });
 
@@ -94,33 +136,7 @@ async function performGacha(type) {
         cardsDiv.innerHTML = '';
 
         data.cards.forEach(card => {
-            const cardElement = document.createElement('div');
-            cardElement.className = 'card-item' + (card.is_golden ? ' golden' : '');
-            cardElement.innerHTML = `
-                <span class="card-rarity rarity-${card.rarity}">${card.rarity}</span>
-                <div class="card-name">${card.name}</div>
-                <div class="card-stats">
-                    <div class="stat">
-                        <div class="stat-label">攻击</div>
-                        <div class="stat-value">${card.attack}</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">防御</div>
-                        <div class="stat-value">${card.defense}</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">生命</div>
-                        <div class="stat-value">${card.hp}</div>
-                    </div>
-                </div>
-                ${card.skill_name ? `
-                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-                        <strong>${card.skill_name}</strong>
-                        <p style="font-size: 12px; color: #666;">${card.skill_description}</p>
-                    </div>
-                ` : ''}
-            `;
-            cardsDiv.appendChild(cardElement);
+            cardsDiv.innerHTML += renderGameCard(card);
         });
 
         resultDiv.classList.add('show');

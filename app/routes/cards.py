@@ -29,6 +29,10 @@ def collection():
             'defense': card.defense,
             'hp': card.hp,
             'is_golden': card.is_golden,
+            'image_url': card.image_url,
+            'element': card.element,
+            'faction': card.faction,
+            'job_class': card.job_class,
             'owned': card.id in user_card_ids
         })
 
@@ -55,6 +59,10 @@ def api_all_cards():
         'defense': c.defense,
         'hp': c.hp,
         'is_golden': c.is_golden,
+        'image_url': c.image_url,
+        'element': c.element,
+        'faction': c.faction,
+        'job_class': c.job_class,
         'skill_name': c.skill_name,
         'skill_description': c.skill_description
     } for c in cards])
