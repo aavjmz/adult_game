@@ -11,7 +11,7 @@ PVE战斗引擎模块
 import json
 import random
 from datetime import datetime
-from app.models import db, Card, UserCard, Stage, UserStageProgress, BattleRecord
+from app.models import db, Card, UserCard, Stage, UserStageProgress, BattleRecord, UserItem
 from app.utils.stamina import StaminaSystem
 
 
@@ -145,9 +145,10 @@ class PVEBattle:
         # 保存战斗记录
         self._save_battle_record(result)
 
-        # 更新用户进度
+        # 更新用户进度并发放奖励
         if result['result'] == 'win':
             self._update_user_progress(result)
+            self._distribute_rewards(result)
 
         return result
 
@@ -467,6 +468,52 @@ class PVEBattle:
                 self.user.main_stage_progress,
                 self.stage.stage_number
             )
+
+        db.session.commit()
+
+
+    def _distribute_rewards(self, result):
+        """发放战斗奖励（金币+掉落物品）"""
+        rewards = result.get('rewards', {})
+
+        # 发放金币
+        coins = rewards.get('coins', 0)
+        if coins > 0:
+            self.user.coins += coins
+
+        # 发放首通奖励
+        first_clear = rewards.get('first_clear', {})
+        if first_clear:
+            self.user.coins += first_clear.get('coins', 0)
+            self.user.gems += first_clear.get('gems', 0)
+            self.user.tickets += first_clear.get('tickets', 0)
+
+        # 发放掉落物品
+        drops = result.get('drops', [])
+        for drop in drops:
+            item_type = drop.get('item_type')
+            item_subtype = drop.get('item_subtype')
+            quantity = drop.get('quantity', 0)
+
+            if not item_type or quantity <= 0:
+                continue
+
+            existing = UserItem.query.filter_by(
+                user_id=self.user.id,
+                item_type=item_type,
+                item_subtype=item_subtype
+            ).first()
+
+            if existing:
+                existing.quantity += quantity
+            else:
+                new_item = UserItem(
+                    user_id=self.user.id,
+                    item_type=item_type,
+                    item_subtype=item_subtype,
+                    quantity=quantity
+                )
+                db.session.add(new_item)
 
         db.session.commit()
 
