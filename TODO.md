@@ -463,12 +463,63 @@
 
 > 基于已完成的统一版战斗UI（`battle_ui_unified.html`），炉石传说风格：30张牌库、主公30HP、令旗出牌系统
 
+### 战场布局架构
+
+```
+┌──────────────────────────────────────────────────┐
+│  [敌牌库]        [回合 N] [天气]          [FPS]   │  ← 精简顶栏 (.top-bar, h=40px)
+├──────────────────────────────────────────────────┤
+│             [敌方手牌·背面·缩小]                   │  ← .enemy-hand-area (h=40px)
+│                                                  │
+│                魏·曹操                            │  ← .enemy-hero-area (圆形头像72px)
+│              (圆形头像)                            │     #enemyHeroPortrait
+│              ❤️30  💎0                      ┌──┐ │     #enemyHpCircle + #enemyManaCircle
+│                                            │结│ │
+│   ┌──────── 敌方随从区(最多10) ──────────┐   │束│ │  ← PixiJS layers.enemyZone (35%)
+│   └──────────────────────────────────────┘   │回│ │
+│   ═══════ 金色链条·菱形分界线 ═══════════    │合│ │  ← drawBackground() 中线装饰
+│   ┌──────── 我方随从区(最多10) ──────────┐   └──┘ │  ← PixiJS layers.playerZone (65%)
+│   └──────────────────────────────────────┘        │     .btn-end-turn (右侧中间圆形)
+│              💎0  ❤️30                            │
+│              (圆形头像)                            │  ← .player-hero-area
+│                蜀·刘备                            │     #playerHeroPortrait
+│                                                  │
+├──────────────────────────────────────────────────┤
+│  [牌库]  [我方手牌·扇形展开]    [💎水晶] [牌库]   │  ← .bottom-panel (h=130px)
+└──────────────────────────────────────────────────┘
+```
+
+### 核心技术要点
+
+| 模块 | 技术 | 说明 |
+|------|------|------|
+| 战场渲染 | PixiJS 7.x | 6层Container: background/enemyZone/centerZone/playerZone/ui/effects |
+| 动画 | GSAP 3.x | 攻击冲刺、伤害数字、受伤震动、死亡淡出 |
+| 英雄头像 | DOM叠加 | 绝对定位在canvas上方，圆形头像+HP/法力圆圈 |
+| 手牌 | DOM | .hand-card 76×105px，hover上浮放大，拖拽出牌 |
+| 战场随从 | PixiJS Sprite | 80×100px矩形，含原画/攻击圈/血量圈/稀有度光晕 |
+| 背景 | PixiJS Graphics | 木质纹理条纹 + 金色边框 + 链条分界线 + 菱形装饰 |
+
+### 关键DOM元素ID映射
+
+```
+顶栏:     #turnBadge, #weatherBtn, #fpsBadge, #enemyDeckBadge
+敌英雄:   #enemyHeroPortrait, #enemyHpCircle, #enemyManaCircle, #enemyNameTag
+我英雄:   #playerHeroPortrait, #playerHpCircle, #playerManaCircle, #playerNameTag
+底栏:     #handRow, #playerDeckIcon, #manaCrystals, #playerManaBadge, #playerDeckBadge
+结束回合: #btnEndTurn
+战斗日志: #battleLog, #battleLogBody
+结果面板: #battleResult, #resultTitle, #resultStars, #resultRewards
+换牌:     #mulliganOverlay, #mulliganCards, #mulliganBtn
+```
+
 ### 近期优化（体验打磨）
 
 | 优先级 | 任务 | 说明 | 状态 |
 |--------|------|------|------|
-| P0 | 起手换牌(Mulligan) | 开局可选择退换手牌，增加策略性 | [ ] |
-| P0 | 拖拽出牌交互 | 手牌拖到战场出牌，比点击更直观 | [ ] |
+| P0 | 起手换牌(Mulligan) | 开局可选择退换手牌，增加策略性 | [x] |
+| P0 | 拖拽出牌交互 | 手牌拖到战场出牌，比点击更直观 | [x] |
+| P0 | 炉石风格战场布局 | 圆形英雄头像+木质棋盘+金色分界线+右侧结束回合 | [x] |
 | P1 | 抓牌动画 | 牌库飞到手牌位置的过渡动画 | [ ] |
 | P1 | 出牌动画 | 手牌飞到战场的入场动画 | [ ] |
 | P1 | 随从死亡动画 | 缩小+淡出+碎裂效果 | [ ] |
@@ -499,7 +550,7 @@
 - [x] 主公HP系统（双方30HP，主公死亡=败北）
 - [x] 令旗(法力)系统（每回合+1，上限10，每回合回满）
 - [x] 手牌系统（先手3张/后手4张，每回合抓1张，上限10张）
-- [x] 战场随从系统（每方最多7个随从）
+- [x] 战场随从系统（每方最多10个随从）
 - [x] 四大关键词：突击(charge)、护卫(taunt)、登场(battlecry)、遗计(deathrattle)
 - [x] 8种登场/遗计效果（抓牌/伤害/治疗/AOE）
 - [x] 5兵种克制系统（骑克弓、弓克盾、盾克骑、步克谋、谋克弓）
@@ -510,6 +561,8 @@
 - [x] PixiJS GPU渲染 + GSAP动画
 - [x] 天气粒子特效系统
 - [x] 战斗日志 + 战斗结果 + 后端API对接
+- [x] 起手换牌(Mulligan) + 拖拽出牌
+- [x] 炉石风格战场布局（圆形英雄头像、木质棋盘、金色分界线、右侧结束回合按钮）
 
 ---
 
