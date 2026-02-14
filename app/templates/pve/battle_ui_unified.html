@@ -1107,8 +1107,8 @@ function playCard(handIndex) {
         addLog('令旗不足！', 'system');
         return;
     }
-    if (s.board.length >= 7) {
-        addLog('战场已满（最多7个随从）！', 'system');
+    if (s.board.length >= 10) {
+        addLog('战场已满（最多10个随从）！', 'system');
         return;
     }
 
@@ -1556,7 +1556,7 @@ function startDrag(pos) {
     const card = gameState.player.hand[dragState.cardIndex];
     if (!card) { cleanupDrag(); return; }
 
-    const canPlay = card.cost <= gameState.player.mana && gameState.player.board.length < 7;
+    const canPlay = card.cost <= gameState.player.mana && gameState.player.board.length < 10;
     const ghostArt = getCardArtHtml(card);
 
     const ghost = document.createElement('div');
@@ -1613,7 +1613,7 @@ function onDragPointerUp(e) {
 
     const pos = e.changedTouches ? { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY } : { x: e.clientX, y: e.clientY };
     const card = gameState.player.hand[dragState.cardIndex];
-    const canPlay = card && card.cost <= gameState.player.mana && gameState.player.board.length < 7 && !gameState.battleEnded && !animating;
+    const canPlay = card && card.cost <= gameState.player.mana && gameState.player.board.length < 10 && !gameState.battleEnded && !animating;
 
     if (isInDropZone(pos) && canPlay) {
         // Play the card with a fly-in animation
@@ -1709,14 +1709,14 @@ function enemyAI() {
     // Phase 1: Play cards (greedy, highest cost first)
     const playable = s.hand
         .map((c, i) => ({ card: c, idx: i }))
-        .filter(x => x.card.cost <= s.mana && s.board.length < 7)
+        .filter(x => x.card.cost <= s.mana && s.board.length < 10)
         .sort((a, b) => b.card.cost - a.card.cost);
 
     let manaLeft = s.mana;
     let boardCount = s.board.length;
     const toPlay = [];
     for (const p of playable) {
-        if (p.card.cost <= manaLeft && boardCount < 7) {
+        if (p.card.cost <= manaLeft && boardCount < 10) {
             toPlay.push(p);
             manaLeft -= p.card.cost;
             boardCount++;
@@ -1754,7 +1754,7 @@ function aiPlayCard(handIndex) {
     const s = gameState.enemy;
     if (handIndex < 0 || handIndex >= s.hand.length) return;
     const card = s.hand[handIndex];
-    if (card.cost > s.mana || s.board.length >= 7) return;
+    if (card.cost > s.mana || s.board.length >= 10) return;
 
     s.mana -= card.cost;
     s.hand.splice(handIndex, 1);
@@ -2045,7 +2045,7 @@ function renderHandCards() {
 
     gameState.player.hand.forEach((card, idx) => {
         const el = document.createElement('div');
-        const canPlay = gameState.isPlayerTurn && card.cost <= gameState.player.mana && gameState.player.board.length < 7 && !gameState.battleEnded && !animating;
+        const canPlay = gameState.isPlayerTurn && card.cost <= gameState.player.mana && gameState.player.board.length < 10 && !gameState.battleEnded && !animating;
         el.className = 'hand-card ' + (canPlay ? 'playable' : 'unplayable');
         el.onclick = () => onHandCardClick(idx);
 
