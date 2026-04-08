@@ -8,11 +8,11 @@ public class AppConfig : MonoBehaviour
 {
     // 后端URL配置
     #if UNITY_EDITOR
-        // 开发环境：本地测试
-        public const string BACKEND_URL = "http://localhost:8080";
+        // 开发环境：本地测试（如果需要在Unity Editor中测试，可改为VPS地址）
+        public const string BACKEND_URL = "http://45.32.85.66:8080";
     #else
-        // 生产环境：替换为你的VPS URL
-        public const string BACKEND_URL = "https://YOUR_VPS_URL_HERE";  // TODO: 替换为实际VPS URL
+        // 生产环境：VPS服务器地址
+        public const string BACKEND_URL = "http://45.32.85.66:8080";
     #endif
 
     // App基本信息
