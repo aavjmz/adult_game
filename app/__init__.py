@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_cors import CORS
 from flask_login import LoginManager
 from config import Config
 from app.models import db, User
@@ -14,6 +15,13 @@ def load_user(user_id):
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # 配置CORS支持（Unity WebView跨域）
+    CORS(app,
+         origins=["*"],  # 生产环境应限制具体域名
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization"],
+         expose_headers=["Set-Cookie"])
 
     # 初始化扩展
     db.init_app(app)
