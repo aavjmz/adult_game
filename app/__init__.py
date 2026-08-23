@@ -1,6 +1,10 @@
+import os
+
 from flask import Flask
 from flask_cors import CORS
 from flask_login import LoginManager
+from werkzeug.middleware.proxy_fix import ProxyFix
+
 from config import Config
 from app.models import db, User
 
@@ -15,6 +19,14 @@ def load_user(user_id):
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # 置于 nginx/Caddy 之后时，读取 X-Forwarded-* 还原真实协议与客户端IP，
+    # 否则 HTTPS 下 url_for(_external=True) 和重定向会生成 http:// 地址。
+    #
+    # 必须由环境变量显式开启：直连暴露时信任这些头等于让客户端随意伪造
+    # 来源IP和协议。仅在确实有反向代理时设置 BEHIND_PROXY=true。
+    if os.environ.get('BEHIND_PROXY', '').lower() in ('1', 'true', 'yes'):
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     # 配置CORS（Cocos客户端跨域访问 /api/*）
     # 客户端走Bearer Token而非Cookie，因此不开启credentials：

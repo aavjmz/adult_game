@@ -12,12 +12,18 @@ services:
       - FLASK_DEBUG=false
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
       - PYTHONUNBUFFERED=1
+      # 置于 nginx 之后时设为 true，让Flask读取 X-Forwarded-* 还原真实协议
+      - BEHIND_PROXY=${BEHIND_PROXY:-false}
+      # 仅在通过HTTPS访问时设为 true；纯HTTP下开启会导致Web端登录失效
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-false}
     volumes:
       # 挂载data目录，持久化数据库文件
       - game_data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8080')"]
+      # 用标准库而非 requests：requests 不在 requirements.txt 里，
+      # 容器中并不存在，之前这条检查永远失败、容器一直被标成 unhealthy
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/v1/config')"]
       interval: 30s
       timeout: 10s
       retries: 3
