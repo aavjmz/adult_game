@@ -3,16 +3,27 @@ import { AppConfig } from './core/AppConfig';
 import { GameApi } from './core/GameApi';
 const { ccclass } = _decorator;
 
+// 模块加载时立即打印。看不到这行 = 脚本根本没被引擎加载，
+// 问题出在挂载/保存/预览场景，与网络无关。
+console.log('[NetworkTest] 脚本已加载');
+
 /**
  * 后端连通性自检
  *
- * 用法：新建空场景 → 建个空节点 → 挂上本脚本 → 点预览 → 看浏览器Console
+ * 用法：新建空场景 → 建个空节点 → 挂上本脚本 → 保存场景(Ctrl+S) → 预览
+ *
+ * 浏览器预览时日志在 浏览器 DevTools 的 Console，
+ * 不在 Cocos Creator 自己的 Console 面板。
  *
  * 本文件必须放在 assets/scripts/ 下，否则 './core/AppConfig' 解析不到。
  * 验证完可以删除。
  */
 @ccclass('NetworkTest')
 export class NetworkTest extends Component {
+
+    onLoad() {
+        console.log('[NetworkTest] 组件已挂载，节点:', this.node.name);
+    }
 
     async start() {
         console.log('=== 后端连通性自检 ===');
