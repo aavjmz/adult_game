@@ -2,7 +2,31 @@
 
 脚本已在仓库里，本文档是编辑器里的手工部分：建场景、摆节点、连属性。
 
-前置：服务器 `/api/v1` 已部署，`git pull` 已拿到 `assets/scripts/` 下的脚本。
+前置：服务器 `/api/v1` 已部署，`git pull` 已拿到脚本。
+
+## 目录约定
+
+Cocos 项目在仓库的 `cocos/SanguoCardGame/`，脚本随之放在：
+
+```
+adult_game/
+└── cocos/
+    ├── .gitignore                    忽略 library/ temp/ build/ 等生成目录
+    └── SanguoCardGame/               ← Cocos 项目根目录
+        ├── assets/
+        │   └── scripts/
+        │       ├── NetworkTest.ts    连通性自检
+        │       ├── core/             配置、网络、接口封装
+        │       ├── ui/               登录、主菜单
+        │       └── gacha/            抽卡
+        ├── settings/
+        └── project.json
+```
+
+本文档里提到的 `assets/...` 都是相对 `cocos/SanguoCardGame/` 而言。
+
+脚本之间的相对导入按各自所在层级写：`scripts/ui/` 下用 `../core/GameApi`，
+`scripts/` 下用 `./core/GameApi`。放错目录会报 `Module not found`。
 
 ---
 

@@ -69,7 +69,7 @@ chmod +x CocosCreator-v3.8.x.AppImage
 2. 点击 **新建项目**
 3. 配置：
    - **项目名称**：`SanguoCardGame`
-   - **项目路径**：`/home/user/adult_game/cocos`
+   - **项目路径**：仓库下的 `cocos/SanguoCardGame`
    - **模板**：空白（2D）
    - **语言**：TypeScript
 4. 点击创建
