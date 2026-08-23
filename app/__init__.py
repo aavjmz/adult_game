@@ -16,20 +16,23 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # 配置CORS支持（Unity WebView跨域）
+    # 配置CORS（Cocos客户端跨域访问 /api/*）
+    # 客户端走Bearer Token而非Cookie，因此不开启credentials：
+    # 浏览器规范禁止 Access-Control-Allow-Origin: * 与凭证同时使用。
     CORS(app,
-         origins=["*"],  # 生产环境应限制具体域名
-         supports_credentials=True,
-         allow_headers=["Content-Type", "Authorization"],
-         expose_headers=["Set-Cookie"])
+         resources={r"/api/*": {"origins": "*"}},
+         supports_credentials=False,
+         allow_headers=["Content-Type", "Authorization"])
 
     # 初始化扩展
     db.init_app(app)
     login_manager.init_app(app)
 
     # 注册蓝图
-    from app.routes import auth, cards, gacha, battle, battle_v2, growth, equipment, main, pve, pve_frontend
+    from app.routes import (auth, cards, gacha, battle, battle_v2, growth,
+                            equipment, main, pve, pve_frontend, api_client)
     app.register_blueprint(auth.bp)
+    app.register_blueprint(api_client.bp)
     app.register_blueprint(cards.bp)
     app.register_blueprint(gacha.bp)
     app.register_blueprint(battle.bp)
