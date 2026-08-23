@@ -155,14 +155,212 @@ body {
     border: 1px solid #f5c6cb;
 }
 
-/* 卡牌网格 */
+/* ========== 卡牌网格 ========== */
 .card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 24px;
     margin-top: 20px;
+    justify-items: center;
 }
 
+/* ========== 游戏卡牌样式 ========== */
+.game-card {
+    width: 200px;
+    height: 300px;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+    border: 3px solid #555;
+    background: #1a1a2e;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.game-card:hover {
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+}
+
+/* 稀有度边框颜色 */
+.game-card.rarity-border-N  { border-color: #8E8E8E; }
+.game-card.rarity-border-R  { border-color: #5C9BD1; }
+.game-card.rarity-border-SR { border-color: #C77DD8; box-shadow: 0 4px 15px rgba(199,125,216,0.3); }
+.game-card.rarity-border-SSR { border-color: #FFD700; box-shadow: 0 4px 20px rgba(255,215,0,0.4); }
+.game-card.rarity-border-UR  { border-color: #FF1493; box-shadow: 0 4px 20px rgba(255,20,147,0.4); }
+
+.game-card.rarity-border-SSR:hover { box-shadow: 0 12px 35px rgba(255,215,0,0.5); }
+.game-card.rarity-border-UR:hover  { box-shadow: 0 12px 35px rgba(255,20,147,0.5); }
+
+/* 金色卡牌动画 */
+.game-card.golden-card {
+    animation: card-golden-glow 2s ease-in-out infinite;
+}
+
+@keyframes card-golden-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+    50% { box-shadow: 0 0 35px rgba(255, 215, 0, 0.8); }
+}
+
+/* 卡牌图片区域 */
+.game-card-art {
+    width: 100%;
+    height: 180px;
+    overflow: hidden;
+    position: relative;
+    background: #16213e;
+}
+
+.game-card-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* 无图片占位：渐变+首字 */
+.game-card-art-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 72px;
+    font-weight: bold;
+    color: rgba(255,255,255,0.8);
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.placeholder-N  { background: linear-gradient(135deg, #4a4a4a, #7a7a7a); }
+.placeholder-R  { background: linear-gradient(135deg, #2a5c8e, #5C9BD1); }
+.placeholder-SR { background: linear-gradient(135deg, #6a2d8e, #C77DD8); }
+.placeholder-SSR { background: linear-gradient(135deg, #8B6914, #FFD700, #DAA520); }
+.placeholder-UR  { background: linear-gradient(135deg, #8B0A50, #FF1493, #FF69B4); }
+
+/* 稀有度角标 */
+.game-card-rarity {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    padding: 2px 10px;
+    border-radius: 10px;
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 2;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* 卡牌信息区域 */
+.game-card-info {
+    padding: 8px 10px;
+    background: linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%);
+    height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.game-card-name {
+    font-size: 15px;
+    font-weight: bold;
+    color: #e0e0e0;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+}
+
+/* 卡牌属性标签 */
+.game-card-tags {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+.game-card-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    color: #ccc;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
+/* 卡牌战斗数值 */
+.game-card-stats {
+    display: flex;
+    justify-content: space-around;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 6px;
+}
+
+.game-card-stat {
+    text-align: center;
+}
+
+.game-card-stat-label {
+    font-size: 9px;
+    color: #888;
+    text-transform: uppercase;
+}
+
+.game-card-stat-value {
+    font-size: 14px;
+    font-weight: bold;
+    color: #e0e0e0;
+}
+
+.game-card-stat-value.atk { color: #ff6b6b; }
+.game-card-stat-value.def { color: #51cf66; }
+.game-card-stat-value.hp  { color: #4dabf7; }
+
+/* 卡牌底部信息（等级、技能） */
+.game-card-footer {
+    font-size: 10px;
+    color: #888;
+    text-align: center;
+    padding-top: 2px;
+}
+
+/* 未拥有卡牌蒙层 */
+.game-card.not-owned {
+    opacity: 0.5;
+    filter: grayscale(70%);
+}
+
+.game-card.not-owned:hover {
+    opacity: 0.7;
+    filter: grayscale(40%);
+}
+
+.game-card-owned-badge {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    z-index: 2;
+    font-weight: bold;
+}
+
+.game-card-owned-badge.owned {
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+}
+
+.game-card-owned-badge.not-owned-text {
+    background: rgba(0, 0, 0, 0.6);
+    color: #aaa;
+}
+
+/* 旧版兼容 - card-item 保留基础支持 */
 .card-item {
     background: white;
     border-radius: 10px;
@@ -182,16 +380,11 @@ body {
 
 .card-item.golden {
     background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
-    animation: golden-glow 2s ease-in-out infinite;
-}
-
-@keyframes golden-glow {
-    0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
-    50% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.8); }
+    animation: card-golden-glow 2s ease-in-out infinite;
 }
 
 .card-item.golden::before {
-    content: '★ 金色 ★';
+    content: '\2605 金色 \2605';
     position: absolute;
     top: 10px;
     right: 10px;
@@ -245,7 +438,7 @@ body {
 .rarity-N { background: #8E8E8E; }
 .rarity-R { background: #5C9BD1; }
 .rarity-SR { background: #C77DD8; }
-.rarity-SSR { background: #FFD700; }
+.rarity-SSR { background: #FFD700; color: #333; }
 .rarity-UR { background: #FF1493; }
 
 /* 资源显示 */
@@ -349,7 +542,26 @@ body {
 /* 响应式 */
 @media (max-width: 768px) {
     .card-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 16px;
+    }
+
+    .game-card {
+        width: 160px;
+        height: 250px;
+    }
+
+    .game-card-art {
+        height: 145px;
+    }
+
+    .game-card-info {
+        height: 105px;
+        padding: 6px 8px;
+    }
+
+    .game-card-art-placeholder {
+        font-size: 56px;
     }
 
     .gacha-buttons {

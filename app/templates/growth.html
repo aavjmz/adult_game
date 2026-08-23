@@ -1,0 +1,1216 @@
+{% extends "base.html" %}
+
+{% block title %}武将养成 - 三国卡牌游戏{% endblock %}
+
+{% block extra_css %}
+<style>
+    .growth-layout {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 20px;
+        min-height: 600px;
+    }
+
+    /* 左侧卡牌列表 */
+    .card-list-panel {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .card-list-panel h3 {
+        margin-bottom: 15px;
+        color: #333;
+        font-size: 16px;
+    }
+
+    .card-list-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-bottom: 6px;
+        border: 2px solid transparent;
+    }
+
+    .card-list-item:hover {
+        background: #f3f4f6;
+    }
+
+    .card-list-item.selected {
+        background: #eef2ff;
+        border-color: #667eea;
+    }
+
+    .card-list-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: bold;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .card-list-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .card-list-name {
+        font-weight: bold;
+        font-size: 14px;
+        color: #333;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .card-list-meta {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-top: 2px;
+    }
+
+    .rarity-badge {
+        font-size: 11px;
+        font-weight: bold;
+        padding: 2px 8px;
+        border-radius: 8px;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    /* 右侧详情面板 */
+    .detail-panel {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .detail-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 400px;
+        color: #9ca3af;
+    }
+
+    .detail-empty-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+    }
+
+    /* 卡牌头部 */
+    .detail-header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 25px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f3f4f6;
+    }
+
+    .detail-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .detail-title-area {
+        flex: 1;
+    }
+
+    .detail-name {
+        font-size: 24px;
+        font-weight: bold;
+        color: #1f2937;
+    }
+
+    .detail-tags {
+        display: flex;
+        gap: 8px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+    }
+
+    .detail-tag {
+        font-size: 12px;
+        padding: 3px 10px;
+        border-radius: 10px;
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .detail-tag.element { background: #dbeafe; color: #1e40af; }
+    .detail-tag.faction { background: #fef3c7; color: #92400e; }
+    .detail-tag.job { background: #d1fae5; color: #065f46; }
+
+    /* 属性面板 */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .stat-box {
+        background: #f9fafb;
+        border-radius: 12px;
+        padding: 14px;
+        text-align: center;
+    }
+
+    .stat-box-label {
+        font-size: 12px;
+        color: #9ca3af;
+        margin-bottom: 4px;
+    }
+
+    .stat-box-value {
+        font-size: 20px;
+        font-weight: bold;
+        color: #1f2937;
+    }
+
+    /* 经验条 */
+    .exp-section {
+        margin-bottom: 20px;
+    }
+
+    .exp-bar-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .exp-level {
+        font-size: 28px;
+        font-weight: bold;
+        color: #667eea;
+        white-space: nowrap;
+    }
+
+    .exp-bar-wrapper {
+        flex: 1;
+    }
+
+    .exp-bar-bg {
+        background: #e5e7eb;
+        height: 20px;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .exp-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 10px;
+        transition: width 0.5s ease;
+    }
+
+    .exp-text {
+        font-size: 12px;
+        color: #9ca3af;
+        margin-top: 4px;
+        text-align: right;
+    }
+
+    /* 升星 */
+    .star-section {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .star-display {
+        font-size: 24px;
+        letter-spacing: 2px;
+    }
+
+    .star-label {
+        font-size: 14px;
+        color: #6b7280;
+    }
+
+    /* 标签页 */
+    .growth-tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 0;
+    }
+
+    .growth-tab {
+        padding: 10px 18px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        color: #9ca3af;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s;
+    }
+
+    .growth-tab:hover { color: #667eea; }
+    .growth-tab.active { color: #667eea; border-bottom-color: #667eea; }
+
+    /* 标签页内容 */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* 材料选择 */
+    .material-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: #f9fafb;
+        border-radius: 10px;
+        margin-bottom: 8px;
+    }
+
+    .material-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .material-icon {
+        font-size: 24px;
+    }
+
+    .material-name {
+        font-weight: 600;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .material-desc {
+        font-size: 11px;
+        color: #9ca3af;
+    }
+
+    .material-count {
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .material-qty {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .qty-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        background: white;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        color: #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .qty-btn:hover {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+
+    .qty-input {
+        width: 40px;
+        text-align: center;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 4px;
+        font-size: 14px;
+    }
+
+    /* 操作按钮 */
+    .action-btn-primary {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-top: 16px;
+    }
+
+    .action-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .action-btn-primary:disabled {
+        background: #d1d5db;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* 消耗提示 */
+    .cost-summary {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: #fef3c7;
+        border-radius: 10px;
+        margin-top: 12px;
+        font-size: 14px;
+        color: #92400e;
+    }
+
+    /* 技能区域 */
+    .skill-card {
+        background: #f9fafb;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        border: 2px solid #e5e7eb;
+    }
+
+    .skill-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .skill-name {
+        font-weight: bold;
+        font-size: 16px;
+        color: #1f2937;
+    }
+
+    .skill-level {
+        font-size: 14px;
+        font-weight: bold;
+        color: #667eea;
+    }
+
+    .skill-desc {
+        font-size: 13px;
+        color: #6b7280;
+        line-height: 1.5;
+    }
+
+    /* 觉醒/突破信息 */
+    .advanced-section {
+        padding: 16px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+    }
+
+    .advanced-section.locked {
+        background: #f3f4f6;
+        border: 2px dashed #d1d5db;
+    }
+
+    .advanced-section.available {
+        background: #fef3c7;
+        border: 2px solid #f59e0b;
+    }
+
+    .advanced-section.done {
+        background: #d1fae5;
+        border: 2px solid #10b981;
+    }
+
+    .advanced-title {
+        font-weight: bold;
+        font-size: 15px;
+        margin-bottom: 6px;
+    }
+
+    .advanced-desc {
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    .advanced-reqs {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #9ca3af;
+    }
+
+    .req-met { color: #059669; }
+    .req-unmet { color: #dc2626; }
+
+    /* 资源栏 */
+    .resource-bar {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+
+    .resource-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 16px;
+        font-size: 13px;
+        font-weight: bold;
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+        .growth-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .card-list-panel {
+            max-height: 200px;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    /* toast */
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 14px 24px;
+        border-radius: 12px;
+        color: white;
+        font-weight: bold;
+        font-size: 14px;
+        z-index: 10000;
+        animation: toastIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .toast.success { background: #10b981; }
+    .toast.error { background: #ef4444; }
+
+    @keyframes toastIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- 返回 + 资源栏 -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+        <button onclick="window.location.href='/dashboard'" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+            ← 返回仪表盘
+        </button>
+        <div class="resource-bar">
+            <div class="resource-badge">💰 金币: <span id="res-coins">0</span></div>
+            <div class="resource-badge">🧪 经验药水: <span id="res-exp-potions">0</span></div>
+            <div class="resource-badge">📖 技能书: <span id="res-skill-books">0</span></div>
+            <div class="resource-badge">⭐ 星石: <span id="res-star-stones">0</span></div>
+        </div>
+    </div>
+
+    <div class="growth-layout">
+        <!-- 左侧卡牌列表 -->
+        <div class="card-list-panel">
+            <h3>选择武将 ({{ user_cards|length }})</h3>
+            <div id="cardList">
+                {% for uc in user_cards %}
+                <div class="card-list-item" data-ucid="{{ uc.id }}" onclick="selectCard({{ uc.id }})">
+                    <div class="card-list-avatar" style="background: {{ rarities[uc.card.rarity].color }};">
+                        {{ uc.card.name[0] }}
+                    </div>
+                    <div class="card-list-info">
+                        <div class="card-list-name">{{ uc.card.name }}</div>
+                        <div class="card-list-meta">Lv.{{ uc.level }} {{ '★' * uc.star_level }}</div>
+                    </div>
+                    <span class="rarity-badge" style="background: {{ rarities[uc.card.rarity].color }};">{{ uc.card.rarity }}</span>
+                </div>
+                {% endfor %}
+
+                {% if not user_cards %}
+                <div style="text-align: center; color: #9ca3af; padding: 40px 0;">
+                    <p>还没有卡牌</p>
+                    <a href="{{ url_for('gacha.index') }}" style="color: #667eea;">去抽卡</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 右侧详情面板 -->
+        <div class="detail-panel">
+            <!-- 空状态 -->
+            <div id="detailEmpty" class="detail-empty">
+                <div class="detail-empty-icon">🏯</div>
+                <p style="font-size: 18px; margin-bottom: 8px;">选择一名武将</p>
+                <p style="font-size: 14px;">从左侧选择武将进行升级、升星、技能升级</p>
+            </div>
+
+            <!-- 详情内容（默认隐藏） -->
+            <div id="detailContent" style="display:none;">
+                <!-- 头部 -->
+                <div class="detail-header">
+                    <div id="detailAvatar" class="detail-avatar"></div>
+                    <div class="detail-title-area">
+                        <div id="detailName" class="detail-name"></div>
+                        <div id="detailTags" class="detail-tags"></div>
+                    </div>
+                </div>
+
+                <!-- 经验/等级 -->
+                <div class="exp-section">
+                    <div class="exp-bar-container">
+                        <div class="exp-level">Lv.<span id="detailLevel">1</span></div>
+                        <div class="exp-bar-wrapper">
+                            <div class="exp-bar-bg">
+                                <div id="expBarFill" class="exp-bar-fill" style="width: 0%;"></div>
+                            </div>
+                            <div class="exp-text"><span id="expCurrent">0</span> / <span id="expRequired">100</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 星级 -->
+                <div class="star-section">
+                    <div id="starDisplay" class="star-display"></div>
+                    <span class="star-label">(<span id="starLevel">1</span>/5)</span>
+                    <span id="awakenBadge" style="display:none; background:#10b981; color:white; padding:2px 10px; border-radius:8px; font-size:12px; font-weight:bold;">已觉醒</span>
+                    <span id="breakthroughBadge" style="display:none; background:#f59e0b; color:white; padding:2px 10px; border-radius:8px; font-size:12px; font-weight:bold;"></span>
+                </div>
+
+                <!-- 属性 -->
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-box-label">攻击力</div>
+                        <div class="stat-box-value" id="statAttack">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-label">防御力</div>
+                        <div class="stat-box-value" id="statDefense">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-label">生命值</div>
+                        <div class="stat-box-value" id="statHp">0</div>
+                    </div>
+                </div>
+
+                <!-- 成长标签页 -->
+                <div class="growth-tabs">
+                    <button class="growth-tab active" onclick="switchGrowthTab('levelup')">升级</button>
+                    <button class="growth-tab" onclick="switchGrowthTab('starup')">升星</button>
+                    <button class="growth-tab" onclick="switchGrowthTab('skill')">技能</button>
+                    <button class="growth-tab" onclick="switchGrowthTab('advanced')">觉醒/突破</button>
+                </div>
+
+                <!-- 升级面板 -->
+                <div id="tab-levelup" class="tab-content active">
+                    <h4 style="margin-bottom:12px;">使用经验药水升级</h4>
+                    <div id="expItemList"></div>
+                    <div id="levelupCost" class="cost-summary" style="display:none;">
+                        <span>获得经验:</span>
+                        <span id="totalExpGain">0</span>
+                    </div>
+                    <button id="btnLevelUp" class="action-btn-primary" onclick="doLevelUp()" disabled>
+                        升级
+                    </button>
+                </div>
+
+                <!-- 升星面板 -->
+                <div id="tab-starup" class="tab-content">
+                    <h4 style="margin-bottom:12px;">升星 (当前 <span id="starUpCurrent">★1</span> → <span id="starUpNext">★2</span>)</h4>
+                    <div id="starUpReqs"></div>
+                    <div id="starUpMaxed" style="display:none; text-align:center; padding:30px; color:#9ca3af;">
+                        已达最高星级 ★5
+                    </div>
+                    <div id="starUpActions" style="display:none;">
+                        <div style="display:flex; gap:10px;">
+                            <button class="action-btn-primary" style="flex:1" onclick="doStarUp('star_stone')">
+                                ⭐ 使用星石升星
+                            </button>
+                            <button class="action-btn-primary" style="flex:1; background:linear-gradient(135deg, #f59e0b, #d97706);" onclick="doStarUp('duplicate')">
+                                🃏 使用同名卡升星
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 技能面板 -->
+                <div id="tab-skill" class="tab-content">
+                    <div id="mainSkillCard" class="skill-card">
+                        <div class="skill-header">
+                            <span class="skill-name" id="mainSkillName">-</span>
+                            <span class="skill-level">Lv.<span id="mainSkillLv">1</span>/10</span>
+                        </div>
+                        <div class="skill-desc" id="mainSkillDesc"></div>
+                        <button class="action-btn-primary" style="margin-top:10px;" onclick="doSkillUpgrade('main')" id="btnMainSkill">
+                            升级主技能
+                        </button>
+                    </div>
+
+                    <div id="passiveSkillCard" class="skill-card">
+                        <div class="skill-header">
+                            <span class="skill-name" id="passiveSkillName">-</span>
+                            <span class="skill-level">Lv.<span id="passiveSkillLv">1</span>/10</span>
+                        </div>
+                        <div class="skill-desc" id="passiveSkillDesc"></div>
+                        <button class="action-btn-primary" style="margin-top:10px;" onclick="doSkillUpgrade('passive')" id="btnPassiveSkill">
+                            升级被动技能
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 觉醒/突破面板 -->
+                <div id="tab-advanced" class="tab-content">
+                    <div id="awakenSection"></div>
+                    <div id="breakthroughSection" style="margin-top:12px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentCardId = null;
+let cardData = null;
+let materialsData = {};
+let userCoins = 0;
+
+// 经验药水配置
+const EXP_ITEMS = [
+    { type: 'exp_potion', subtype: 'small',  name: '小经验药水', exp: 1000,   icon: '🧪' },
+    { type: 'exp_potion', subtype: 'medium', name: '中经验药水', exp: 5000,   icon: '🧫' },
+    { type: 'exp_potion', subtype: 'large',  name: '大经验药水', exp: 20000,  icon: '🧬' },
+    { type: 'exp_potion', subtype: 'xlarge', name: '超级经验药水', exp: 100000, icon: '💎' },
+];
+
+// 页面加载
+document.addEventListener('DOMContentLoaded', function() {
+    loadResources();
+});
+
+// 加载资源信息
+async function loadResources() {
+    try {
+        const [matRes, userRes] = await Promise.all([
+            fetch('/growth/materials'),
+            fetch('/api/user/info')
+        ]);
+        const matData = await matRes.json();
+        const userData = await userRes.json();
+
+        if (matData.success) materialsData = matData.materials;
+        if (userData.coins !== undefined) userCoins = userData.coins;
+
+        updateResourceDisplay();
+    } catch(e) {
+        console.error('加载资源失败:', e);
+    }
+}
+
+function updateResourceDisplay() {
+    document.getElementById('res-coins').textContent = userCoins.toLocaleString();
+
+    let totalPotions = 0;
+    EXP_ITEMS.forEach(item => {
+        totalPotions += (materialsData[`${item.type}:${item.subtype}`] || 0);
+    });
+    document.getElementById('res-exp-potions').textContent = totalPotions;
+
+    let totalBooks = 0;
+    ['small', 'medium', 'large'].forEach(t => {
+        totalBooks += (materialsData[`skill_book:${t}`] || 0);
+    });
+    document.getElementById('res-skill-books').textContent = totalBooks;
+    document.getElementById('res-star-stones').textContent = materialsData['star_stone'] || 0;
+}
+
+// 选择卡牌
+async function selectCard(userCardId) {
+    // 高亮
+    document.querySelectorAll('.card-list-item').forEach(el => el.classList.remove('selected'));
+    const item = document.querySelector(`.card-list-item[data-ucid="${userCardId}"]`);
+    if (item) item.classList.add('selected');
+
+    currentCardId = userCardId;
+
+    try {
+        const res = await fetch(`/growth/card-stats/${userCardId}`);
+        const data = await res.json();
+        if (!data.success) {
+            showToast(data.error || '加载失败', 'error');
+            return;
+        }
+        cardData = data;
+        renderDetail(data);
+    } catch(e) {
+        showToast('加载卡牌信息失败', 'error');
+    }
+}
+
+// 渲染详情
+function renderDetail(d) {
+    document.getElementById('detailEmpty').style.display = 'none';
+    document.getElementById('detailContent').style.display = 'block';
+
+    // 头像
+    const rarityColors = {
+        'N': '#8E8E8E', 'R': '#5C9BD1', 'SR': '#C77DD8', 'SSR': '#FFD700', 'UR': '#FF1493'
+    };
+    const avatar = document.getElementById('detailAvatar');
+    avatar.style.background = rarityColors[d.rarity] || '#8E8E8E';
+    avatar.textContent = d.card_name[0];
+
+    document.getElementById('detailName').textContent = d.card_name;
+
+    // 标签
+    const tags = document.getElementById('detailTags');
+    tags.innerHTML = `
+        <span class="rarity-badge" style="background:${rarityColors[d.rarity]}">${d.rarity}</span>
+    `;
+
+    // 等级和经验条
+    document.getElementById('detailLevel').textContent = d.level;
+    document.getElementById('expCurrent').textContent = d.exp.toLocaleString();
+    document.getElementById('expRequired').textContent = d.exp_required.toLocaleString();
+    const pct = d.exp_required > 0 ? Math.min(100, (d.exp / d.exp_required) * 100) : 100;
+    document.getElementById('expBarFill').style.width = pct + '%';
+
+    if (d.level >= d.max_level) {
+        document.getElementById('expBarFill').style.width = '100%';
+        document.getElementById('expCurrent').textContent = 'MAX';
+        document.getElementById('expRequired').textContent = d.max_level;
+    }
+
+    // 星级
+    document.getElementById('starLevel').textContent = d.star_level;
+    const stars = '★'.repeat(d.star_level) + '☆'.repeat(5 - d.star_level);
+    document.getElementById('starDisplay').textContent = stars;
+
+    // 觉醒/突破标记
+    const ab = document.getElementById('awakenBadge');
+    ab.style.display = d.awaken_level > 0 ? 'inline' : 'none';
+    const bb = document.getElementById('breakthroughBadge');
+    if (d.breakthrough_level > 0) {
+        bb.style.display = 'inline';
+        bb.textContent = `突破 ${d.breakthrough_level}`;
+    } else {
+        bb.style.display = 'none';
+    }
+
+    // 属性
+    document.getElementById('statAttack').textContent = d.final_stats.attack.toLocaleString();
+    document.getElementById('statDefense').textContent = d.final_stats.defense.toLocaleString();
+    document.getElementById('statHp').textContent = d.final_stats.hp.toLocaleString();
+
+    // 升级面板 - 经验药水列表
+    renderExpItems();
+
+    // 升星面板
+    renderStarUp(d);
+
+    // 技能面板
+    renderSkills(d);
+
+    // 觉醒/突破面板
+    renderAdvanced(d);
+}
+
+// 渲染经验药水选择
+function renderExpItems() {
+    const container = document.getElementById('expItemList');
+    container.innerHTML = '';
+
+    EXP_ITEMS.forEach((item, idx) => {
+        const key = `${item.type}:${item.subtype}`;
+        const owned = materialsData[key] || 0;
+
+        container.innerHTML += `
+            <div class="material-row">
+                <div class="material-info">
+                    <span class="material-icon">${item.icon}</span>
+                    <div>
+                        <div class="material-name">${item.name}</div>
+                        <div class="material-desc">经验 +${item.exp.toLocaleString()}</div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <span class="material-count">持有: ${owned}</span>
+                    <div class="material-qty">
+                        <button class="qty-btn" onclick="changeQty(${idx}, -1)">-</button>
+                        <input class="qty-input" type="number" id="qty-${idx}" value="0" min="0" max="${owned}" onchange="calcExpGain()">
+                        <button class="qty-btn" onclick="changeQty(${idx}, 1)">+</button>
+                        <button class="qty-btn" onclick="setMaxQty(${idx}, ${owned})" style="font-size:11px; width:36px;">MAX</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    calcExpGain();
+}
+
+function changeQty(idx, delta) {
+    const input = document.getElementById(`qty-${idx}`);
+    const max = parseInt(input.max);
+    let val = parseInt(input.value) + delta;
+    if (val < 0) val = 0;
+    if (val > max) val = max;
+    input.value = val;
+    calcExpGain();
+}
+
+function setMaxQty(idx, max) {
+    document.getElementById(`qty-${idx}`).value = max;
+    calcExpGain();
+}
+
+function calcExpGain() {
+    let total = 0;
+    EXP_ITEMS.forEach((item, idx) => {
+        const qty = parseInt(document.getElementById(`qty-${idx}`).value) || 0;
+        total += qty * item.exp;
+    });
+
+    const costEl = document.getElementById('levelupCost');
+    const btn = document.getElementById('btnLevelUp');
+
+    if (total > 0) {
+        costEl.style.display = 'flex';
+        document.getElementById('totalExpGain').textContent = `+${total.toLocaleString()} EXP`;
+        btn.disabled = false;
+    } else {
+        costEl.style.display = 'none';
+        btn.disabled = true;
+    }
+}
+
+// 升级
+async function doLevelUp() {
+    if (!currentCardId) return;
+
+    const expItems = [];
+    EXP_ITEMS.forEach((item, idx) => {
+        const qty = parseInt(document.getElementById(`qty-${idx}`).value) || 0;
+        if (qty > 0) {
+            expItems.push({
+                item_type: item.type,
+                item_subtype: item.subtype,
+                quantity: qty
+            });
+        }
+    });
+
+    if (expItems.length === 0) return;
+
+    try {
+        const res = await fetch('/growth/level-up', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_card_id: currentCardId, exp_items: expItems })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, 'success');
+            await loadResources();
+            await selectCard(currentCardId);
+            updateCardListItem();
+        } else {
+            showToast(data.error || '升级失败', 'error');
+        }
+    } catch(e) {
+        showToast('请求失败', 'error');
+    }
+}
+
+// 升星渲染
+function renderStarUp(d) {
+    document.getElementById('starUpCurrent').textContent = '★' + d.star_level;
+    document.getElementById('starUpNext').textContent = '★' + (d.star_level + 1);
+
+    const reqs = document.getElementById('starUpReqs');
+    const maxed = document.getElementById('starUpMaxed');
+    const actions = document.getElementById('starUpActions');
+
+    if (d.star_level >= 5) {
+        reqs.style.display = 'none';
+        maxed.style.display = 'block';
+        actions.style.display = 'none';
+        return;
+    }
+
+    maxed.style.display = 'none';
+    actions.style.display = 'block';
+
+    // 升星需求表
+    const reqTable = {
+        1: { duplicates: 1, star_stones: 10, coins: 50000 },
+        2: { duplicates: 2, star_stones: 30, coins: 150000 },
+        3: { duplicates: 3, star_stones: 60, coins: 500000 },
+        4: { duplicates: 5, star_stones: 100, coins: 1500000 },
+    };
+
+    const req = reqTable[d.star_level];
+    if (!req) {
+        reqs.innerHTML = '';
+        actions.style.display = 'none';
+        return;
+    }
+
+    const hasStones = (materialsData['star_stone'] || 0) >= req.star_stones;
+    const hasCoins = userCoins >= req.coins;
+
+    reqs.innerHTML = `
+        <div class="material-row">
+            <div class="material-info">
+                <span class="material-icon">💰</span>
+                <div><div class="material-name">金币</div></div>
+            </div>
+            <span class="${hasCoins ? 'req-met' : 'req-unmet'}">${userCoins.toLocaleString()} / ${req.coins.toLocaleString()}</span>
+        </div>
+        <div class="material-row">
+            <div class="material-info">
+                <span class="material-icon">⭐</span>
+                <div><div class="material-name">万能星石 (方式一)</div></div>
+            </div>
+            <span class="${hasStones ? 'req-met' : 'req-unmet'}">${materialsData['star_stone'] || 0} / ${req.star_stones}</span>
+        </div>
+        <div class="material-row">
+            <div class="material-info">
+                <span class="material-icon">🃏</span>
+                <div><div class="material-name">同名卡 (方式二)</div></div>
+            </div>
+            <span>需要 ${req.duplicates} 张</span>
+        </div>
+    `;
+}
+
+async function doStarUp(materialType) {
+    if (!currentCardId) return;
+    if (!confirm(`确定要使用${materialType === 'star_stone' ? '星石' : '同名卡'}升星吗？`)) return;
+
+    try {
+        const res = await fetch('/growth/star-up', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_card_id: currentCardId, material_type: materialType })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, 'success');
+            await loadResources();
+            await selectCard(currentCardId);
+            updateCardListItem();
+        } else {
+            showToast(data.error || '升星失败', 'error');
+        }
+    } catch(e) {
+        showToast('请求失败', 'error');
+    }
+}
+
+// 技能渲染
+function renderSkills(d) {
+    // 主技能（从页面数据中获取卡牌信息）
+    const cardEl = document.querySelector(`.card-list-item[data-ucid="${currentCardId}"]`);
+
+    document.getElementById('mainSkillLv').textContent = d.main_skill_level;
+    document.getElementById('passiveSkillLv').textContent = d.passive_skill_level;
+
+    // 技能名由card-stats API返回时没有，使用通用标签
+    document.getElementById('mainSkillName').textContent = '主动技能';
+    document.getElementById('mainSkillDesc').textContent = `当前等级 Lv.${d.main_skill_level}，每级提升10%效果`;
+    document.getElementById('passiveSkillName').textContent = '被动技能';
+    document.getElementById('passiveSkillDesc').textContent = `当前等级 Lv.${d.passive_skill_level}，每级提升10%效果`;
+
+    const mainBtn = document.getElementById('btnMainSkill');
+    const passiveBtn = document.getElementById('btnPassiveSkill');
+    mainBtn.disabled = d.main_skill_level >= 10;
+    passiveBtn.disabled = d.passive_skill_level >= 10;
+    mainBtn.textContent = d.main_skill_level >= 10 ? '已满级' : '升级主技能';
+    passiveBtn.textContent = d.passive_skill_level >= 10 ? '已满级' : '升级被动技能';
+}
+
+async function doSkillUpgrade(skillType) {
+    if (!currentCardId) return;
+
+    try {
+        const res = await fetch('/growth/skill-upgrade', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_card_id: currentCardId, skill_type: skillType })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, 'success');
+            await loadResources();
+            await selectCard(currentCardId);
+        } else {
+            showToast(data.error || '升级失败', 'error');
+        }
+    } catch(e) {
+        showToast('请求失败', 'error');
+    }
+}
+
+// 觉醒/突破渲染
+function renderAdvanced(d) {
+    const awakenEl = document.getElementById('awakenSection');
+    const btEl = document.getElementById('breakthroughSection');
+
+    // 觉醒
+    if (d.awaken_level >= 1) {
+        awakenEl.innerHTML = `
+            <div class="advanced-section done">
+                <div class="advanced-title">✨ 觉醒 - 已完成</div>
+                <div class="advanced-desc">全属性+30%，已解锁第二主动技能</div>
+            </div>
+        `;
+    } else {
+        const canAwaken = d.level >= 50 && d.star_level >= 3;
+        awakenEl.innerHTML = `
+            <div class="advanced-section ${canAwaken ? 'available' : 'locked'}">
+                <div class="advanced-title">✨ 觉醒</div>
+                <div class="advanced-desc">觉醒后全属性+30%，解锁第二主动技能</div>
+                <div class="advanced-reqs">
+                    <span class="${d.level >= 50 ? 'req-met' : 'req-unmet'}">等级 ≥ Lv.50 (当前 Lv.${d.level})</span> ·
+                    <span class="${d.star_level >= 3 ? 'req-met' : 'req-unmet'}">星级 ≥ ★3 (当前 ★${d.star_level})</span> ·
+                    <span>觉醒石 x50 · 同名卡 x1 · 金币 1,000,000</span>
+                </div>
+                ${canAwaken ? '<button class="action-btn-primary" onclick="doAwaken()">觉醒</button>' : ''}
+            </div>
+        `;
+    }
+
+    // 突破
+    if (d.breakthrough_level >= 3) {
+        btEl.innerHTML = `
+            <div class="advanced-section done">
+                <div class="advanced-title">🔥 突破 Lv.3 - 已满</div>
+                <div class="advanced-desc">等级上限 Lv.${d.max_level}，全属性突破加成已满</div>
+            </div>
+        `;
+    } else {
+        const canBreakthrough = d.level >= d.max_level && d.star_level >= 5 && d.awaken_level >= 1;
+        btEl.innerHTML = `
+            <div class="advanced-section ${canBreakthrough ? 'available' : 'locked'}">
+                <div class="advanced-title">🔥 突破 (当前 Lv.${d.breakthrough_level}/3)</div>
+                <div class="advanced-desc">突破后等级上限提升20级，全属性+20%</div>
+                <div class="advanced-reqs">
+                    <span class="${d.level >= d.max_level ? 'req-met' : 'req-unmet'}">达到等级上限 Lv.${d.max_level}</span> ·
+                    <span class="${d.star_level >= 5 ? 'req-met' : 'req-unmet'}">星级 ★5</span> ·
+                    <span class="${d.awaken_level >= 1 ? 'req-met' : 'req-unmet'}">已觉醒</span>
+                </div>
+                ${canBreakthrough ? '<button class="action-btn-primary" onclick="doBreakthrough()">突破</button>' : ''}
+            </div>
+        `;
+    }
+}
+
+async function doAwaken() {
+    if (!currentCardId) return;
+    if (!confirm('觉醒需要觉醒石x50、同名卡x1、金币1,000,000，确定继续？')) return;
+
+    try {
+        const res = await fetch('/growth/awaken', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_card_id: currentCardId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, 'success');
+            await loadResources();
+            await selectCard(currentCardId);
+        } else {
+            showToast(data.error || '觉醒失败', 'error');
+        }
+    } catch(e) {
+        showToast('请求失败', 'error');
+    }
+}
+
+async function doBreakthrough() {
+    if (!currentCardId) return;
+    if (!confirm('确定要进行突破吗？需要大量突破石、同名卡和金币')) return;
+
+    try {
+        const res = await fetch('/growth/breakthrough', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_card_id: currentCardId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, 'success');
+            await loadResources();
+            await selectCard(currentCardId);
+        } else {
+            showToast(data.error || '突破失败', 'error');
+        }
+    } catch(e) {
+        showToast('请求失败', 'error');
+    }
+}
+
+// 标签页切换
+function switchGrowthTab(tabName) {
+    document.querySelectorAll('.growth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+    event.target.classList.add('active');
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+}
+
+// 更新左侧列表中的等级显示
+function updateCardListItem() {
+    if (!currentCardId || !cardData) return;
+    const item = document.querySelector(`.card-list-item[data-ucid="${currentCardId}"] .card-list-meta`);
+    if (item) {
+        item.textContent = `Lv.${cardData.level} ${'★'.repeat(cardData.star_level)}`;
+    }
+}
+
+// Toast 通知
+function showToast(msg, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+</script>
+{% endblock %}

@@ -437,14 +437,12 @@
 
     <!-- 战斗按钮 -->
     <div class="battle-buttons">
-        <button class="btn btn-success" onclick="startBattle()" id="battleBtn">
-            ⚔️ 开始战斗
+        <a href="{{ url_for('pve_frontend.battle_unified_stage', stage_id=stage.id) }}" class="btn btn-success" id="battleBtnCard" style="padding: 15px 40px; font-size: 18px; font-weight: bold; text-decoration: none;">
+            🃏 卡牌对战
+        </a>
+        <button class="btn btn-success" onclick="startBattle()" id="battleBtn" style="background: #28a745;">
+            ⚔️ 快速战斗
         </button>
-        {% if user_cards %}
-        <button class="btn btn-secondary" onclick="autoSelect()">
-            🤖 自动选择
-        </button>
-        {% endif %}
     </div>
 
     <!-- 扫荡区域（已通关才显示） -->
@@ -631,16 +629,45 @@ function showBattleResult(result) {
 
     // 显示奖励
     if (result.result === 'win') {
-        rewards.innerHTML = `
+        let rewardsHtml = `
             <div class="reward-item">
                 <span>💰 金币</span>
-                <span style="color: #ffc107; font-weight: bold;">+${result.total_coins || 0}</span>
+                <span style="color: #ffc107; font-weight: bold;">+${(result.rewards && result.rewards.coins) || 0}</span>
             </div>
             <div class="reward-item">
                 <span>⭐ 经验</span>
-                <span style="color: #17a2b8; font-weight: bold;">+${result.total_exp || 0}</span>
+                <span style="color: #17a2b8; font-weight: bold;">+${(result.rewards && result.rewards.exp) || 0}</span>
             </div>
         `;
+
+        // 首通奖励
+        if (result.rewards && result.rewards.first_clear) {
+            const fc = result.rewards.first_clear;
+            rewardsHtml += '<div style="margin-top:10px; padding-top:10px; border-top:2px solid #ffd700;"><strong style="color:#d4a017;">🏆 首通奖励</strong></div>';
+            if (fc.coins) rewardsHtml += `<div class="reward-item"><span>💰 金币</span><span style="color:#ffc107;font-weight:bold;">+${fc.coins}</span></div>`;
+            if (fc.gems) rewardsHtml += `<div class="reward-item"><span>💎 宝石</span><span style="color:#667eea;font-weight:bold;">+${fc.gems}</span></div>`;
+            if (fc.tickets) rewardsHtml += `<div class="reward-item"><span>🎫 抽卡券</span><span style="color:#C77DD8;font-weight:bold;">+${fc.tickets}</span></div>`;
+        }
+
+        // 掉落物品
+        if (result.drops && result.drops.length > 0) {
+            rewardsHtml += '<div style="margin-top:10px; padding-top:10px; border-top:1px solid #e0e0e0;"><strong>📦 掉落物品</strong></div>';
+            result.drops.forEach(drop => {
+                const name = getDropName(drop.item_type, drop.item_subtype);
+                rewardsHtml += `<div class="reward-item"><span>${name}</span><span style="color:#059669;font-weight:bold;">x${drop.quantity}</span></div>`;
+            });
+        }
+
+        // 战斗统计
+        rewardsHtml += `
+            <div style="margin-top:10px; padding-top:10px; border-top:1px solid #e0e0e0; font-size:13px; color:#666;">
+                <div class="reward-item"><span>回合数</span><span>${result.turns}</span></div>
+                <div class="reward-item"><span>造成伤害</span><span>${(result.damage_dealt || 0).toLocaleString()}</span></div>
+                <div class="reward-item"><span>承受伤害</span><span>${(result.damage_taken || 0).toLocaleString()}</span></div>
+            </div>
+        `;
+
+        rewards.innerHTML = rewardsHtml;
     } else {
         rewards.innerHTML = '<p style="text-align: center; color: #666;">未获得奖励</p>';
     }
@@ -697,10 +724,35 @@ async function sweepStage() {
     }
 }
 
+// 掉落物品名称映射
+function getDropName(itemType, itemSubtype) {
+    const names = {
+        'exp_potion:small': '🧪 小经验药水',
+        'exp_potion:medium': '🧫 中经验药水',
+        'exp_potion:large': '🧬 大经验药水',
+        'exp_potion:xlarge': '💎 超级经验药水',
+        'skill_book:small': '📖 初级技能书',
+        'skill_book:medium': '📗 中级技能书',
+        'skill_book:large': '📘 高级技能书',
+        'star_stone': '⭐ 万能星石',
+        'enhance_stone': '🔮 强化石',
+        'equipment_fragment:universal': '⚙️ 万能碎片',
+    };
+    const key = itemSubtype ? `${itemType}:${itemSubtype}` : itemType;
+    return names[key] || `📦 ${itemType}`;
+}
+
 // 页面加载时检查是否已通关（显示扫荡区域）
-document.addEventListener('DOMContentLoaded', function() {
-    // TODO: 从API获取通关状态
-    // 这里可以通过AJAX调用来检查
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const res = await fetch(`/api/pve/stage/${stageId}`);
+        const data = await res.json();
+        if (data.success && data.user_progress && data.user_progress.is_cleared) {
+            document.getElementById('sweepSection').style.display = 'block';
+        }
+    } catch(e) {
+        console.error('检查通关状态失败:', e);
+    }
 });
 </script>
 {% endblock %}

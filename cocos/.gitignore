@@ -1,0 +1,24 @@
+# ===== Cocos Creator 3.x 生成目录 =====
+# 导入缓存，可由 assets/ + *.meta 重新生成
+library/
+# 编辑器临时文件
+temp/
+# 本地编辑器状态（布局、最近打开等）
+local/
+# 构建产物（iOS/Android/Web）
+build/
+# 本地构建配置（含机器相关路径）
+profiles/
+# 原生引擎构建缓存
+native/
+# 控制台日志
+.consolelog/
+
+# ===== 注意 =====
+# assets/ 下的 *.meta 文件必须提交！
+# meta 文件保存资源 UUID，丢失会导致场景/预制体引用全部断裂。
+
+# ===== 编辑器 / 系统 =====
+.DS_Store
+Thumbs.db
+*.swp

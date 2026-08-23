@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>三国战斗 - 炉石风格</title>
+    <title>{% if battle_mode|default('pve') == 'pvp' %}PVP对战{% else %}三国战斗{% endif %} - 炉石风格</title>
     <!-- PixiJS with fallback -->
     <script src="https://unpkg.com/pixi.js@7.3.2/dist/pixi.min.js"
             onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js'"></script>
@@ -22,23 +22,38 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .loading-text { font-size: 16px; color: #FFD700; }
 
-        /* Top Bar */
-        .top-bar { position: absolute; top: 0; left: 0; right: 0; height: 50px; background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 100%); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; z-index: 100; backdrop-filter: blur(5px); }
+        /* Top Bar (simplified: turn + weather + FPS only) */
+        .top-bar { position: absolute; top: 0; left: 0; right: 0; height: 40px; background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 100%); display: flex; align-items: center; justify-content: center; padding: 0 12px; z-index: 100; backdrop-filter: blur(5px); }
         .top-bar-left, .top-bar-center, .top-bar-right { display: flex; align-items: center; gap: 8px; }
-        .top-bar-center { position: absolute; left: 50%; transform: translateX(-50%); }
-        .turn-badge { background: linear-gradient(135deg, #b8944d, #d4af37); padding: 3px 12px; border-radius: 12px; font-size: 13px; font-weight: bold; }
+        .top-bar-left { position: absolute; left: 12px; }
+        .top-bar-right { position: absolute; right: 12px; }
+        .turn-badge { background: linear-gradient(135deg, #b8944d, #d4af37); padding: 3px 14px; border-radius: 12px; font-size: 13px; font-weight: bold; }
         .weather-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 2px 8px; font-size: 16px; cursor: pointer; color: #fff; }
         .weather-btn:active { background: rgba(255,255,255,0.25); }
         .fps-badge { font-size: 11px; opacity: 0.6; }
-        .hero-hp-badge { font-size: 12px; font-weight: bold; padding: 2px 8px; border-radius: 8px; }
-        .hero-hp-badge.enemy { background: rgba(200,50,50,0.4); color: #ff6b6b; }
-        .hero-hp-badge.player { background: rgba(50,150,50,0.4); color: #69db7c; }
-        .mana-badge { font-size: 12px; color: #4facfe; padding: 2px 6px; background: rgba(79,172,254,0.15); border-radius: 6px; }
         .deck-badge { font-size: 11px; color: #aaa; padding: 2px 6px; background: rgba(255,255,255,0.08); border-radius: 6px; }
+        .mana-badge { font-size: 12px; color: #4facfe; padding: 2px 6px; background: rgba(79,172,254,0.15); border-radius: 6px; }
 
-        /* Enemy Hand (card backs) */
-        .enemy-hand-area { position: absolute; top: 50px; left: 0; right: 0; height: 45px; display: flex; align-items: center; justify-content: center; gap: 4px; z-index: 90; pointer-events: none; }
-        .enemy-card-back { width: 30px; height: 40px; background: linear-gradient(135deg, #3a2a1a, #5a3a2a); border: 1px solid #8b6914; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+        /* ====== Hero Portrait Areas (Hearthstone-style) ====== */
+        .hero-area { position: absolute; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; z-index: 95; pointer-events: auto; }
+        .enemy-hero-area { top: 52px; }
+        .player-hero-area { bottom: 138px; }
+        .hero-portrait { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; border: 3px solid #8b7355; box-shadow: 0 0 15px rgba(0,0,0,0.6), inset 0 0 10px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative; }
+        .hero-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+        .hero-portrait::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,0.1); }
+        .hero-portrait.enemy { border-color: #8b2020; box-shadow: 0 0 15px rgba(139,32,32,0.4), inset 0 0 10px rgba(0,0,0,0.3); }
+        .hero-portrait.player { border-color: #2d6a4f; box-shadow: 0 0 15px rgba(45,106,79,0.4), inset 0 0 10px rgba(0,0,0,0.3); }
+        .hero-portrait.targetable { box-shadow: 0 0 20px 6px rgba(255,60,60,0.7); transform: scale(1.12); border-color: #ff4444; }
+        .hero-info { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+        .hero-hp-circle { width: 32px; height: 32px; background: linear-gradient(135deg, #cc2222, #991111); border: 2px solid #ff4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #fff; text-shadow: 0 1px 3px #000; position: relative; margin-top: -10px; }
+        .hero-hp-circle::before { content: ''; position: absolute; top: -1px; left: -1px; right: -1px; bottom: -1px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); }
+        .hero-mana-circle { width: 28px; height: 28px; background: linear-gradient(135deg, #4facfe, #0077cc); border: 2px solid #66bbff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #fff; text-shadow: 0 1px 3px #000; margin-top: -8px; }
+        .hero-deck-count { font-size: 10px; color: #aaa; margin-top: 2px; }
+        .hero-name-tag { font-size: 10px; color: #d4af37; font-weight: bold; margin-top: 2px; text-shadow: 0 1px 3px #000; }
+
+        /* Enemy Hand (card backs) - shifted right to not overlap hero */
+        .enemy-hand-area { position: absolute; top: 42px; left: 0; right: 0; height: 40px; display: flex; align-items: center; justify-content: center; gap: 3px; z-index: 90; pointer-events: none; }
+        .enemy-card-back { width: 26px; height: 36px; background: linear-gradient(135deg, #3a2a1a, #5a3a2a); border: 1px solid #8b6914; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
 
         /* Bottom Panel */
         .bottom-panel { position: absolute; bottom: 0; left: 0; right: 0; height: 130px; background: linear-gradient(0deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 80%, transparent 100%); z-index: 100; display: flex; flex-direction: column; padding: 0; backdrop-filter: blur(5px); }
@@ -48,27 +63,29 @@
         .info-row-right { display: flex; align-items: center; gap: 8px; }
 
         /* Hand Cards (DOM) */
-        .hand-card { width: 76px; height: 105px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 2px solid #5a5a6f; border-radius: 8px; cursor: pointer; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; position: relative; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+        .hand-card { width: 76px; height: 105px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 2px solid #5a5a6f; border-radius: 8px; cursor: pointer; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; flex-shrink: 0; }
         .hand-card:hover { transform: translateY(-30px) scale(1.3); z-index: 200; box-shadow: 0 8px 25px rgba(0,0,0,0.6); }
         .hand-card.playable { border-color: #28a745; box-shadow: 0 0 8px rgba(40,167,69,0.5); }
         .hand-card.unplayable { border-color: #555; opacity: 0.6; }
-        .hand-card .card-cost { position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 1; }
-        .hand-card .card-art { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-top: 8px; overflow: hidden; border-radius: 4px; }
-        .hand-card .card-name { font-size: 9px; font-weight: bold; margin-top: 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; }
-        .hand-card .card-stats { display: flex; justify-content: space-between; width: 100%; padding: 0 6px; margin-top: auto; margin-bottom: 4px; }
-        .hand-card .card-atk { font-size: 11px; font-weight: bold; color: #ff6b6b; }
-        .hand-card .card-hp { font-size: 11px; font-weight: bold; color: #69db7c; }
-        .hand-card .card-keywords { font-size: 7px; color: #ffd43b; text-align: center; margin-top: 1px; }
+        .hand-card .card-cost { position: absolute; top: -2px; left: -2px; width: 22px; height: 22px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 2; }
+        .hand-card .card-art { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border-radius: 6px; }
+        .hand-card .card-art img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+        .hand-card .card-name { position: absolute; bottom: 18px; left: 0; width: 100%; font-size: 9px; font-weight: bold; text-align: center; color: #fff; text-shadow: 0 0 4px #000, 0 0 4px #000; z-index: 1; background: linear-gradient(transparent, rgba(0,0,0,0.7)); padding: 4px 0 1px; }
+        .hand-card .card-stats { position: absolute; bottom: 2px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 6px; z-index: 1; }
+        .hand-card .card-atk { font-size: 12px; font-weight: bold; color: #ff6b6b; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+        .hand-card .card-hp { font-size: 12px; font-weight: bold; color: #69db7c; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+        .hand-card .card-keywords { position: absolute; bottom: 30px; left: 0; width: 100%; font-size: 7px; color: #ffd43b; text-align: center; z-index: 1; text-shadow: 0 0 3px #000; }
         .hand-card .card-desc { display: none; position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.95); border: 1px solid #b8944d; border-radius: 8px; padding: 8px 10px; font-size: 11px; width: 160px; text-align: center; z-index: 300; pointer-events: none; white-space: normal; }
         .hand-card:hover .card-desc { display: block; }
 
         /* Deck icon */
         .deck-icon { width: 40px; height: 55px; background: linear-gradient(135deg, #3a2a1a, #5a3a2a); border: 2px solid #8b6914; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #d4af37; position: absolute; left: 10px; bottom: 5px; cursor: default; }
 
-        /* End Turn Button */
-        .btn-end-turn { position: absolute; right: 10px; bottom: 20px; padding: 10px 18px; border: none; border-radius: 10px; font-size: 13px; font-weight: bold; cursor: pointer; color: #fff; background: linear-gradient(135deg, #d4af37, #b8944d); z-index: 101; transition: all 0.2s; }
-        .btn-end-turn:active { transform: scale(0.95); }
-        .btn-end-turn:disabled { opacity: 0.4; cursor: not-allowed; }
+        /* End Turn Button — right side, vertically centered */
+        .btn-end-turn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 52px; height: 52px; padding: 0; border: 2px solid #b8944d; border-radius: 50%; font-size: 11px; font-weight: bold; cursor: pointer; color: #fff; background: linear-gradient(135deg, #28a745, #20c997); box-shadow: 0 0 14px rgba(40,167,69,0.5); z-index: 101; transition: all 0.2s; line-height: 1.2; }
+        .btn-end-turn:hover { box-shadow: 0 0 22px rgba(40,167,69,0.7); }
+        .btn-end-turn:active { transform: translateY(-50%) scale(0.92); }
+        .btn-end-turn:disabled { opacity: 0.4; cursor: not-allowed; background: linear-gradient(135deg, #555, #444); box-shadow: none; }
 
         /* Mana crystals */
         .mana-crystals { display: flex; gap: 2px; align-items: center; }
@@ -123,17 +140,23 @@
 
         /* Mobile Responsive */
         @media (max-width: 600px) {
-            .battle-log { width: calc(100% - 16px); bottom: 135px; }
+            .battle-log { width: calc(100% - 16px); bottom: 120px; }
             .battle-log.collapsed { max-height: 28px; }
-            .hand-card { width: 64px; height: 90px; }
-            .hand-card .card-art { font-size: 22px; height: 40px; }
-            .hand-card .card-cost { width: 18px; height: 18px; font-size: 10px; top: -4px; left: -4px; }
-            .bottom-panel { height: 115px; }
-            .top-bar { height: 44px; }
-            .enemy-hand-area { top: 44px; height: 38px; }
-            .enemy-card-back { width: 24px; height: 32px; font-size: 10px; }
+            .hand-card { width: 58px; height: 82px; }
+            .hand-card .card-cost { width: 17px; height: 17px; font-size: 9px; top: -2px; left: -2px; }
+            .hand-card .card-name { font-size: 8px; bottom: 14px; }
+            .hand-card .card-atk, .hand-card .card-hp { font-size: 10px; }
+            .bottom-panel { height: 110px; }
+            .top-bar { height: 36px; }
+            .enemy-hand-area { top: 36px; height: 34px; }
+            .enemy-card-back { width: 22px; height: 30px; font-size: 9px; }
             .mulligan-card { width: 100px; height: 140px; }
-            .mulligan-card .mc-art { font-size: 32px; height: 45px; }
+            .hero-portrait { width: 56px; height: 56px; }
+            .hero-hp-circle { width: 26px; height: 26px; font-size: 12px; margin-top: -8px; }
+            .hero-mana-circle { width: 22px; height: 22px; font-size: 10px; }
+            .enemy-hero-area { top: 38px; }
+            .player-hero-area { bottom: 118px; }
+            .btn-end-turn { width: 44px; height: 44px; font-size: 10px; right: 4px; }
         }
 
         /* ====== Mulligan Overlay ====== */
@@ -142,30 +165,32 @@
         .mulligan-title { font-size: 22px; font-weight: bold; color: #FFD700; margin-bottom: 8px; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
         .mulligan-subtitle { font-size: 13px; color: #aaa; margin-bottom: 24px; }
         .mulligan-cards { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; padding: 0 16px; }
-        .mulligan-card { width: 120px; height: 170px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 3px solid #5a5a6f; border-radius: 10px; cursor: pointer; position: relative; display: flex; flex-direction: column; align-items: center; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; }
+        .mulligan-card { width: 120px; height: 170px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 3px solid #5a5a6f; border-radius: 10px; cursor: pointer; position: relative; overflow: hidden; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; }
         .mulligan-card:hover { transform: translateY(-8px); box-shadow: 0 8px 25px rgba(0,0,0,0.5); }
         .mulligan-card.selected { border-color: #ff4444; box-shadow: 0 0 15px rgba(255,68,68,0.5); }
-        .mulligan-card.selected::after { content: '✕'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 48px; color: #ff4444; font-weight: bold; text-shadow: 0 0 10px rgba(255,0,0,0.8); pointer-events: none; z-index: 1; }
-        .mulligan-card .mc-cost { position: absolute; top: -8px; left: -8px; width: 28px; height: 28px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 2; }
-        .mulligan-card .mc-art { width: 100%; height: 55px; display: flex; align-items: center; justify-content: center; font-size: 36px; margin-top: 12px; overflow: hidden; border-radius: 4px; }
-        .mulligan-card .mc-name { font-size: 12px; font-weight: bold; margin-top: 4px; text-align: center; }
-        .mulligan-card .mc-desc { font-size: 10px; color: #aaa; text-align: center; margin-top: 2px; padding: 0 6px; }
-        .mulligan-card .mc-stats { display: flex; justify-content: space-between; width: 100%; padding: 0 10px; margin-top: auto; margin-bottom: 6px; }
-        .mulligan-card .mc-atk { font-size: 13px; font-weight: bold; color: #ff6b6b; }
-        .mulligan-card .mc-hp { font-size: 13px; font-weight: bold; color: #69db7c; }
+        .mulligan-card.selected::after { content: '✕'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 48px; color: #ff4444; font-weight: bold; text-shadow: 0 0 10px rgba(255,0,0,0.8); pointer-events: none; z-index: 3; }
+        .mulligan-card .mc-cost { position: absolute; top: -4px; left: -4px; width: 28px; height: 28px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 2; }
+        .mulligan-card .mc-art { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border-radius: 8px; }
+        .mulligan-card .mc-art img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+        .mulligan-card .mc-name { position: absolute; bottom: 28px; left: 0; width: 100%; font-size: 12px; font-weight: bold; text-align: center; color: #fff; text-shadow: 0 0 4px #000, 0 0 4px #000; z-index: 1; background: linear-gradient(transparent, rgba(0,0,0,0.7)); padding: 6px 0 1px; }
+        .mulligan-card .mc-desc { position: absolute; bottom: 16px; left: 0; width: 100%; font-size: 10px; color: #ddd; text-align: center; z-index: 1; text-shadow: 0 0 3px #000; }
+        .mulligan-card .mc-stats { position: absolute; bottom: 2px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 10px; z-index: 1; }
+        .mulligan-card .mc-atk { font-size: 13px; font-weight: bold; color: #ff6b6b; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+        .mulligan-card .mc-hp { font-size: 13px; font-weight: bold; color: #69db7c; text-shadow: 0 0 3px #000, 0 0 3px #000; }
         .mulligan-btn { margin-top: 24px; padding: 12px 40px; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; color: #fff; background: linear-gradient(135deg, #d4af37, #b8944d); transition: transform 0.2s, box-shadow 0.2s; }
         .mulligan-btn:hover { transform: scale(1.05); box-shadow: 0 4px 15px rgba(212,175,55,0.4); }
         .mulligan-btn:active { transform: scale(0.95); }
 
         /* ====== Drag-to-Play ====== */
         .hand-card.dragging-source { opacity: 0.35; transform: none !important; pointer-events: none; }
-        .drag-ghost { position: fixed; z-index: 10000; pointer-events: none; width: 76px; height: 105px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 2px solid #28a745; border-radius: 8px; box-shadow: 0 8px 30px rgba(40,167,69,0.5); display: flex; flex-direction: column; align-items: center; transform: scale(1.15); transition: none; }
-        .drag-ghost .card-cost { position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 1; }
-        .drag-ghost .card-art { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-top: 8px; overflow: hidden; border-radius: 4px; }
-        .drag-ghost .card-name { font-size: 9px; font-weight: bold; margin-top: 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; }
-        .drag-ghost .card-stats { display: flex; justify-content: space-between; width: 100%; padding: 0 6px; margin-top: auto; margin-bottom: 4px; }
-        .drag-ghost .card-atk { font-size: 11px; font-weight: bold; color: #ff6b6b; }
-        .drag-ghost .card-hp { font-size: 11px; font-weight: bold; color: #69db7c; }
+        .drag-ghost { position: fixed; z-index: 10000; pointer-events: none; width: 76px; height: 105px; background: linear-gradient(135deg, #2a2a3e, #3a3a52); border: 2px solid #28a745; border-radius: 8px; box-shadow: 0 8px 30px rgba(40,167,69,0.5); overflow: hidden; transform: scale(1.15); transition: none; }
+        .drag-ghost .card-cost { position: absolute; top: -2px; left: -2px; width: 22px; height: 22px; background: linear-gradient(135deg, #4facfe, #00a0ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; border: 2px solid #0077cc; z-index: 2; }
+        .drag-ghost .card-art { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border-radius: 6px; }
+        .drag-ghost .card-art img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+        .drag-ghost .card-name { position: absolute; bottom: 18px; left: 0; width: 100%; font-size: 9px; font-weight: bold; text-align: center; color: #fff; text-shadow: 0 0 4px #000, 0 0 4px #000; z-index: 1; }
+        .drag-ghost .card-stats { position: absolute; bottom: 2px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 6px; z-index: 1; }
+        .drag-ghost .card-atk { font-size: 11px; font-weight: bold; color: #ff6b6b; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+        .drag-ghost .card-hp { font-size: 11px; font-weight: bold; color: #69db7c; text-shadow: 0 0 3px #000, 0 0 3px #000; }
         .drag-ghost.unplayable { border-color: #ff4444; box-shadow: 0 8px 30px rgba(255,68,68,0.3); }
         .drop-zone-indicator { position: absolute; top: 0; left: 0; right: 0; bottom: 130px; z-index: 99; display: none; pointer-events: none; }
         .drop-zone-indicator.show { display: block; }
@@ -195,20 +220,16 @@
         <div class="menu-item" onclick="toggleEffects(); closeMenu();">特效开关</div>
         <div class="menu-item" onclick="toggleBattleLog(); closeMenu();">日志开关</div>
         <div class="menu-item" onclick="resetBattle(); closeMenu();">重置战斗</div>
-        <div class="menu-item" onclick="window.location.href='/pve/battle-ui-comparison'">返回对比页</div>
+        <div class="menu-item" onclick="goBack()">{% if battle_mode|default('pve') == 'pvp' %}返回大厅{% else %}返回关卡{% endif %}</div>
     </div>
 
-    <!-- Top Bar -->
+    <!-- Top Bar (simplified) -->
     <div class="top-bar" id="topBar">
         <div class="top-bar-left">
-            <span class="hero-hp-badge enemy" id="enemyHpBadge">敌主公 30</span>
-            <span class="mana-badge" id="enemyManaBadge">令旗 0/0</span>
-            <span class="deck-badge" id="enemyDeckBadge">牌库 30</span>
+            <span class="deck-badge" id="enemyDeckBadge">敌牌库 30</span>
         </div>
-        <div class="top-bar-center">
-            <span class="turn-badge" id="turnBadge">回合 1</span>
-            <button class="weather-btn" id="weatherBtn" onclick="cycleWeather()" title="切换天气"></button>
-        </div>
+        <span class="turn-badge" id="turnBadge">回合 1</span>
+        <button class="weather-btn" id="weatherBtn" onclick="cycleWeather()" title="切换天气"></button>
         <div class="top-bar-right">
             <span class="fps-badge" id="fpsBadge">60 FPS</span>
         </div>
@@ -216,6 +237,30 @@
 
     <!-- Enemy Hand (card backs) -->
     <div class="enemy-hand-area" id="enemyHandArea"></div>
+
+    <!-- Enemy Hero Area -->
+    <div class="hero-area enemy-hero-area" id="enemyHeroArea">
+        <div class="hero-name-tag" id="enemyNameTag">魏·曹操</div>
+        <div class="hero-portrait enemy" id="enemyHeroPortrait">
+            <img src="/static/images/cards/caocao.png" alt="曹操">
+        </div>
+        <div class="hero-info">
+            <div class="hero-hp-circle" id="enemyHpCircle">30</div>
+            <div class="hero-mana-circle" id="enemyManaCircle">0</div>
+        </div>
+    </div>
+
+    <!-- Player Hero Area -->
+    <div class="hero-area player-hero-area" id="playerHeroArea">
+        <div class="hero-info">
+            <div class="hero-mana-circle" id="playerManaCircle">0</div>
+            <div class="hero-hp-circle" id="playerHpCircle">30</div>
+        </div>
+        <div class="hero-portrait player" id="playerHeroPortrait">
+            <img src="/static/images/cards/liubei.png" alt="刘备">
+        </div>
+        <div class="hero-name-tag" id="playerNameTag">蜀·刘备</div>
+    </div>
 
     <!-- Battle Log -->
     <div class="battle-log collapsed" id="battleLog">
@@ -234,11 +279,11 @@
         </div>
         <div class="info-row">
             <div class="info-row-left">
-                <span class="hero-hp-badge player" id="playerHpBadge">我方主公 30</span>
                 <div class="mana-crystals" id="manaCrystals"></div>
                 <span class="mana-badge" id="playerManaBadge">0/0</span>
             </div>
             <div class="info-row-right">
+                <span class="deck-badge" id="playerDeckBadge">牌库 30</span>
             </div>
         </div>
     </div>
@@ -252,7 +297,7 @@
             <div class="result-rewards" id="resultRewards"></div>
             <div class="result-buttons">
                 <button class="result-btn secondary" onclick="resetBattle()">再战一次</button>
-                <button class="result-btn primary" onclick="window.location.href='/pve/battle-ui-comparison'">返回</button>
+                <button class="result-btn primary" onclick="goBack()">返回</button>
             </div>
         </div>
     </div>
@@ -276,7 +321,9 @@
 <script>
 // ====== Constants & Config ======
 const STAGE_ID = {{ stage_id if stage_id is not none else 'null' }};
-const IS_DEMO = STAGE_ID === null;
+const BATTLE_MODE = '{{ battle_mode|default("pve") }}';
+const IS_PVP = BATTLE_MODE === 'pvp';
+const IS_DEMO = STAGE_ID === null && !IS_PVP;
 
 const FACTION_COLORS = {
     WEI: { primary: 0x2c3e67, label: '魏', css: '#4a6fa5' },
@@ -326,13 +373,13 @@ const CARD_ART_MAP = {
     '孙权': '/static/images/cards/sunquan.png',
 };
 
-function getCardArtHtml(card, height) {
+function getCardArtHtml(card) {
     const artUrl = CARD_ART_MAP[card.name];
     if (artUrl) {
-        return `<img src="${artUrl}" alt="${card.name}" style="width:100%;height:${height}px;object-fit:cover;border-radius:4px;">`;
+        return `<img src="${artUrl}" alt="${card.name}">`;
     }
     const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
-    return unitIcon;
+    return `<span style="font-size:36px;display:flex;align-items:center;justify-content:center;width:100%;height:100%">${unitIcon}</span>`;
 }
 
 // ====== Card Definitions ======
@@ -467,10 +514,13 @@ let dragState = {
 };
 
 // ====== Game State Factory ======
+let customPlayerDeckDefs = null; // Set by loadStageData for real battles
+let customEnemyDeckDefs = null;
+
 function createGameState() {
     nextCardId = 1;
-    const playerDeck = buildDeck(makeShuDeck());
-    const enemyDeck = buildDeck(makeWeiDeck());
+    const playerDeck = buildDeck(customPlayerDeckDefs || makeShuDeck());
+    const enemyDeck = buildDeck(customEnemyDeckDefs || makeWeiDeck());
     return {
         turn: 1,
         isPlayerTurn: true,
@@ -539,37 +589,92 @@ function initApp() {
 }
 
 function drawBackground() {
+    const W = app.screen.width, H = app.screen.height;
+    const topH = 82, bottomH = 130;
+
+    // Base dark fill
     const bg = new PIXI.Graphics();
     bg.beginFill(0x0a0a14);
-    bg.drawRect(0, 0, app.screen.width, app.screen.height);
+    bg.drawRect(0, 0, W, H);
     bg.endFill();
 
-    const grad = new PIXI.Graphics();
-    grad.beginFill(0x1a1a2e, 0.6);
-    grad.drawRect(0, 50, app.screen.width, app.screen.height - 180);
-    grad.endFill();
-
-    // Center divider line
-    const divider = new PIXI.Graphics();
-    divider.lineStyle(2, 0x333355, 0.6);
-    const cy = app.screen.height * 0.44;
-    for (let x = 20; x < app.screen.width - 20; x += 12) {
-        divider.moveTo(x, cy);
-        divider.lineTo(x + 6, cy);
+    // Board area — dark wood texture (simulated with stripes)
+    const board = new PIXI.Graphics();
+    const boardTop = topH, boardBot = H - bottomH;
+    const boardH = boardBot - boardTop;
+    // Base board color
+    board.beginFill(0x1a1510, 0.95);
+    board.drawRect(0, boardTop, W, boardH);
+    board.endFill();
+    // Horizontal wood grain lines
+    for (let y = boardTop; y < boardBot; y += 18) {
+        const alpha = 0.03 + Math.random() * 0.04;
+        board.lineStyle(1, 0x8b7355, alpha);
+        board.moveTo(0, y);
+        board.lineTo(W, y);
     }
+    // Subtle vertical panels
+    for (let x = 0; x < W; x += 80) {
+        board.lineStyle(1, 0x5a4a3a, 0.04);
+        board.moveTo(x, boardTop);
+        board.lineTo(x, boardBot);
+    }
+    // Edge vignette — darkened borders
+    const edgeTop = new PIXI.Graphics();
+    edgeTop.beginFill(0x000000, 0.4);
+    edgeTop.drawRect(0, boardTop, W, 30);
+    edgeTop.endFill();
+    const edgeBot = new PIXI.Graphics();
+    edgeBot.beginFill(0x000000, 0.4);
+    edgeBot.drawRect(0, boardBot - 30, W, 30);
+    edgeBot.endFill();
 
-    layers.background.addChild(bg, grad, divider);
+    // Side borders — gold trim
+    const borderL = new PIXI.Graphics();
+    borderL.lineStyle(2, 0xb8944d, 0.15);
+    borderL.moveTo(4, boardTop);
+    borderL.lineTo(4, boardBot);
+    const borderR = new PIXI.Graphics();
+    borderR.lineStyle(2, 0xb8944d, 0.15);
+    borderR.moveTo(W - 4, boardTop);
+    borderR.lineTo(W - 4, boardBot);
+
+    // Center divider — ornate chain/rope style
+    const cy = boardTop + boardH * 0.5;
+    const divider = new PIXI.Graphics();
+    // Main line
+    divider.lineStyle(2, 0xb8944d, 0.35);
+    divider.moveTo(20, cy);
+    divider.lineTo(W - 20, cy);
+    // Decorative dots along the line
+    divider.lineStyle(0);
+    for (let x = 30; x < W - 30; x += 24) {
+        divider.beginFill(0xb8944d, 0.25);
+        divider.drawCircle(x, cy, 3);
+        divider.endFill();
+    }
+    // Center diamond ornament
+    divider.beginFill(0xd4af37, 0.4);
+    divider.moveTo(W/2, cy - 8);
+    divider.lineTo(W/2 + 8, cy);
+    divider.lineTo(W/2, cy + 8);
+    divider.lineTo(W/2 - 8, cy);
+    divider.closePath();
+    divider.endFill();
+
+    layers.background.addChild(bg, board, edgeTop, edgeBot, borderL, borderR, divider);
 }
 
 function layoutZones() {
     const w = app.screen.width;
     const h = app.screen.height;
-    const topH = 95; // top bar + enemy hand
+    const topH = 82; // top bar + enemy hand + enemy hero
     const bottomH = 130;
     const battleH = h - topH - bottomH;
 
-    layers.enemyZone.position.set(w / 2, topH + battleH * 0.28);
-    layers.playerZone.position.set(w / 2, topH + battleH * 0.72);
+    // Push minion zones toward center, leaving room for hero portraits
+    layers.enemyZone.position.set(w / 2, topH + battleH * 0.35);
+    layers.playerZone.position.set(w / 2, topH + battleH * 0.65);
     layers.centerZone.position.set(w / 2, topH + battleH * 0.5);
     layers.effects.position.set(0, 0);
 }
@@ -621,50 +726,62 @@ function createBoardMinion(card, isEnemy) {
         gsap.to(glow, { alpha: 0.3, duration: 1.5, repeat: -1, yoyo: true, ease: 'sine.inOut' });
     }
 
-    // Unit art (center) - use artwork image if available, otherwise emoji
+    // Unit art - full card background, or emoji fallback
     const artUrl = CARD_ART_MAP[card.name];
     if (artUrl) {
-        try {
-            const texture = PIXI.Texture.from(artUrl);
-            const artSprite = new PIXI.Sprite(texture);
-            artSprite.anchor.set(0.5);
-            artSprite.position.set(0, -15);
-            // Fit art within card bounds
-            const artW = mW - 8, artH = 50;
-            artSprite.width = artW;
-            artSprite.height = artH;
-            // Apply rounded mask
-            const artMask = new PIXI.Graphics();
-            artMask.beginFill(0xffffff);
-            artMask.drawRoundedRect(-artW/2, -artH/2, artW, artH, 6);
-            artMask.endFill();
-            artMask.position.set(0, -15);
-            container.addChild(artMask);
-            artSprite.mask = artMask;
-            container.addChild(artSprite);
-        } catch(e) {
-            // Fallback to emoji
-            const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
-            const emoji = new PIXI.Text(unitIcon, { fontSize: 30 });
-            emoji.anchor.set(0.5);
-            emoji.position.set(0, -15);
-            container.addChild(emoji);
+        const artW = mW - 4, artH = mH - 4;
+        // Create mask covering full card
+        const artMask = new PIXI.Graphics();
+        artMask.beginFill(0xffffff);
+        artMask.drawRoundedRect(-artW/2, -artH/2, artW, artH, 8);
+        artMask.endFill();
+        container.addChild(artMask);
+
+        const texture = PIXI.Texture.from(artUrl);
+        const artSprite = new PIXI.Sprite(texture);
+        artSprite.anchor.set(0.5, 0.5);
+        artSprite.mask = artMask;
+        container.addChild(artSprite);
+
+        // Cover-style scaling to fill full card, shift down to show face
+        const fitArt = () => {
+            const scaleX = artW / texture.width;
+            const scaleY = artH / texture.height;
+            const scale = Math.max(scaleX, scaleY);
+            artSprite.scale.set(scale);
+            // Shift sprite down so top of image (face) is visible
+            const scaledH = texture.height * scale;
+            const excess = scaledH - artH;
+            if (excess > 0) {
+                artSprite.position.y = Math.min(excess * 0.4, excess / 2);
+            }
+        };
+        if (texture.baseTexture.valid) {
+            fitArt();
+        } else {
+            texture.baseTexture.on('loaded', fitArt);
         }
+
+        // Semi-transparent gradient overlay at bottom for text readability
+        const overlay = new PIXI.Graphics();
+        overlay.beginFill(0x000000, 0.5);
+        overlay.drawRect(-mW/2, mH/2 - 30, mW, 30);
+        overlay.endFill();
+        container.addChild(overlay);
     } else {
         const unitIcon = UnitType[card.unitType]?.icon || '⚔️';
-        const emoji = new PIXI.Text(unitIcon, { fontSize: 30 });
+        const emoji = new PIXI.Text(unitIcon, { fontSize: 36 });
         emoji.anchor.set(0.5);
-        emoji.position.set(0, -15);
         container.addChild(emoji);
     }
 
-    // Name
+    // Name (positioned in bottom overlay area)
     const nameText = new PIXI.Text(card.name, {
         fontFamily: 'Arial, Microsoft YaHei', fontSize: 11, fill: 0xFFFFFF,
-        fontWeight: 'bold', stroke: 0x000000, strokeThickness: 2
+        fontWeight: 'bold', stroke: 0x000000, strokeThickness: 3
     });
     nameText.anchor.set(0.5);
-    nameText.position.set(0, 12);
+    nameText.position.set(0, mH/2 - 22);
     container.addChild(nameText);
 
     // Attack circle (bottom-left)
@@ -776,18 +893,29 @@ function renderBoard() {
 }
 
 function renderHeroTargets() {
-    // Remove old hero targets from centerZone
+    // Use hero portrait elements as click targets
     layers.centerZone.removeChildren();
 
-    // Enemy hero target (above center line)
-    const enemyHero = new PIXI.Graphics();
-    enemyHero.beginFill(0x882222, 0.01); // Nearly invisible click target
-    enemyHero.drawRoundedRect(-50, -120, 100, 40, 8);
-    enemyHero.endFill();
-    enemyHero.eventMode = 'static';
-    enemyHero.cursor = 'pointer';
-    enemyHero.on('pointerdown', () => onHeroClick('enemy'));
-    layers.centerZone.addChild(enemyHero);
+    const enemyPortrait = document.getElementById('enemyHeroPortrait');
+    const playerPortrait = document.getElementById('playerHeroPortrait');
+    if (enemyPortrait) {
+        enemyPortrait.onclick = () => onHeroClick('enemy');
+    }
+    if (playerPortrait) {
+        playerPortrait.onclick = () => onHeroClick('player');
+    }
+    updateHeroPortraitTargetable(!!selectedAttacker);
+}
+
+function updateHeroPortraitTargetable(targetable) {
+    const enemyPortrait = document.getElementById('enemyHeroPortrait');
+    if (enemyPortrait) {
+        if (targetable) {
+            enemyPortrait.classList.add('targetable');
+        } else {
+            enemyPortrait.classList.remove('targetable');
+        }
+    }
 }
 
 function highlightAttackable() {
@@ -871,7 +999,7 @@ function showMulligan() {
         el.dataset.index = idx;
         el.onclick = () => toggleMulliganCard(idx, el);
 
-        const mulliganArt = getCardArtHtml(card, 55);
+        const mulliganArt = getCardArtHtml(card);
         const keywordText = [];
         if (card.keywords.includes('taunt')) keywordText.push('护卫');
         if (card.keywords.includes('charge')) keywordText.push('突击');
@@ -1081,8 +1209,8 @@ function playCard(handIndex) {
         addLog('令旗不足！', 'system');
         return;
     }
-    if (s.board.length >= 7) {
-        addLog('战场已满（最多7个随从）！', 'system');
+    if (s.board.length >= 10) {
+        addLog('战场已满（最多10个随从）！', 'system');
         return;
     }
 
@@ -1110,6 +1238,7 @@ function playCard(handIndex) {
     // Trigger battlecry
     if (card.keywords.includes('battlecry') && card.battlecryFn) {
         triggerBattlecry(card, 'player');
+        processDeaths();
     }
 
     selectedAttacker = null;
@@ -1122,17 +1251,32 @@ function playCard(handIndex) {
 }
 
 function performAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero) {
-    if (animating || gameState.battleEnded) return;
+    if (animating) {
+        console.warn('[Attack blocked] animating=true');
+        return;
+    }
+    if (gameState.battleEnded) return;
 
     const attackerBoard = gameState[attackerSide].board;
     const attacker = attackerBoard[attackerIdx];
-    if (!attacker || !attacker.canAttack) return;
+    if (!attacker) {
+        console.warn('[Attack blocked] attacker not found at index', attackerIdx);
+        return;
+    }
+    if (!attacker.canAttack) {
+        console.warn('[Attack blocked] attacker canAttack=false', attacker.name);
+        addLog(`${attacker.name} 本回合已攻击过`, 'system');
+        return;
+    }
 
     // Check taunt
     if (!isHero) {
         const targetBoard = gameState[targetSide].board;
         const target = targetBoard[targetIdx];
-        if (!target) return;
+        if (!target) {
+            console.warn('[Attack blocked] target not found at index', targetIdx, 'board size', targetBoard.length);
+            return;
+        }
 
         const hasTaunters = targetBoard.some(m => m.keywords.includes('taunt') && !isWeatherFogActive());
         if (hasTaunters && !(target.keywords.includes('taunt') && !isWeatherFogActive())) {
@@ -1183,13 +1327,16 @@ function performAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero)
 
         attacker.canAttack = false;
 
-        // Process deaths after animation
+        // Process deaths after animation (600ms = 400ms animation + 200ms for HP update to be visible)
         setTimeout(() => {
             processDeaths();
             selectedAttacker = null;
-            renderAll();
-            checkGameOver();
-        }, 500);
+            // Extra delay for death flash to show before sprites are rebuilt
+            setTimeout(() => {
+                renderAll();
+                checkGameOver();
+            }, 300);
+        }, 600);
     } else {
         // Attack hero
         const targetState = gameState[targetSide];
@@ -1212,27 +1359,51 @@ function performAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero)
             selectedAttacker = null;
             renderAll();
             checkGameOver();
-        }, 500);
+        }, 600);
     }
 }
 
 function processDeaths() {
-    ['player', 'enemy'].forEach(side => {
-        const board = gameState[side].board;
-        for (let i = board.length - 1; i >= 0; i--) {
-            if (board[i].currentHp <= 0) {
-                const dead = board[i];
-                addLog(`${dead.name} 阵亡！`, 'critical');
+    // Loop until no more deaths (handles deathrattle chain kills)
+    let hadDeaths = true;
+    while (hadDeaths) {
+        hadDeaths = false;
+        ['player', 'enemy'].forEach(side => {
+            const board = gameState[side].board;
+            for (let i = board.length - 1; i >= 0; i--) {
+                if (board[i].currentHp <= 0) {
+                    hadDeaths = true;
+                    const dead = board[i];
+                    addLog(`${dead.name} 阵亡！`, 'critical');
 
-                // Trigger deathrattle
-                if (dead.keywords.includes('deathrattle') && dead.deathrattleFn) {
-                    triggerDeathrattle(dead, side);
+                    // Death flash effect on sprite
+                    const sprites = boardSprites[side];
+                    const sprite = sprites[i];
+                    if (sprite && sprite.parent) {
+                        // Brief red flash before removal
+                        const flash = new PIXI.Graphics();
+                        flash.beginFill(0xff0000, 0.6);
+                        flash.drawRoundedRect(-40, -50, 80, 100, 10);
+                        flash.endFill();
+                        sprite.addChild(flash);
+                        gsap.to(flash, { alpha: 0, duration: 0.4, onComplete: () => {
+                            if (flash.parent) flash.parent.removeChild(flash);
+                        }});
+                    }
+
+                    // Show toast for deaths
+                    showToast(`${dead.name} 阵亡！`);
+
+                    // Trigger deathrattle
+                    if (dead.keywords.includes('deathrattle') && dead.deathrattleFn) {
+                        triggerDeathrattle(dead, side);
+                    }
+
+                    board.splice(i, 1);
                 }
-
-                board.splice(i, 1);
             }
-        }
-    });
+        });
+    }
 }
 
 function endTurn() {
@@ -1372,7 +1543,11 @@ function onBoardMinionClick(card, isEnemy) {
     if (!isEnemy && gameState.isPlayerTurn) {
         // Select our minion as attacker
         if (!card.canAttack || card.hasSummonSickness) {
-            if (card.hasSummonSickness) addLog(`${card.name} 刚上场，不能攻击`, 'system');
+            if (card.hasSummonSickness) {
+                addLog(`${card.name} 刚上场，不能攻击`, 'system');
+            } else {
+                addLog(`${card.name} 本回合已攻击过`, 'system');
+            }
             return;
         }
         const idx = gameState.player.board.indexOf(card);
@@ -1390,10 +1565,18 @@ function onBoardMinionClick(card, isEnemy) {
         boardSprites.enemy.forEach(s => {
             setBoardMinionState(s, 'targetable');
         });
+        // Highlight enemy hero badge as targetable
+        updateHeroPortraitTargetable(true);
     } else if (isEnemy && gameState.isPlayerTurn && selectedAttacker) {
         // Attack enemy minion
         const targetIdx = gameState.enemy.board.indexOf(card);
+        if (targetIdx < 0) {
+            console.warn('[Click] enemy card not found in board', card.name);
+            return;
+        }
         performAttack(selectedAttacker.side, selectedAttacker.index, 'enemy', targetIdx, false);
+    } else if (isEnemy && gameState.isPlayerTurn && !selectedAttacker) {
+        addLog('请先选择我方随从再攻击', 'system');
     }
 }
 
@@ -1402,6 +1585,8 @@ function onHeroClick(side) {
 
     if (side === 'enemy' && gameState.isPlayerTurn && selectedAttacker) {
         performAttack(selectedAttacker.side, selectedAttacker.index, 'enemy', -1, true);
+    } else if (side === 'enemy' && gameState.isPlayerTurn && !selectedAttacker) {
+        addLog('请先选择我方随从再攻击', 'system');
     }
 }
 
@@ -1473,8 +1658,8 @@ function startDrag(pos) {
     const card = gameState.player.hand[dragState.cardIndex];
     if (!card) { cleanupDrag(); return; }
 
-    const canPlay = card.cost <= gameState.player.mana && gameState.player.board.length < 7;
-    const ghostArt = getCardArtHtml(card, 50);
+    const canPlay = card.cost <= gameState.player.mana && gameState.player.board.length < 10;
+    const ghostArt = getCardArtHtml(card);
 
     const ghost = document.createElement('div');
     ghost.className = 'drag-ghost' + (canPlay ? '' : ' unplayable');
@@ -1530,7 +1715,7 @@ function onDragPointerUp(e) {
 
     const pos = e.changedTouches ? { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY } : { x: e.clientX, y: e.clientY };
     const card = gameState.player.hand[dragState.cardIndex];
-    const canPlay = card && card.cost <= gameState.player.mana && gameState.player.board.length < 7 && !gameState.battleEnded && !animating;
+    const canPlay = card && card.cost <= gameState.player.mana && gameState.player.board.length < 10 && !gameState.battleEnded && !animating;
 
     if (isInDropZone(pos) && canPlay) {
         // Play the card with a fly-in animation
@@ -1626,14 +1811,14 @@ function enemyAI() {
     // Phase 1: Play cards (greedy, highest cost first)
     const playable = s.hand
         .map((c, i) => ({ card: c, idx: i }))
-        .filter(x => x.card.cost <= s.mana && s.board.length < 7)
+        .filter(x => x.card.cost <= s.mana && s.board.length < 10)
         .sort((a, b) => b.card.cost - a.card.cost);
 
     let manaLeft = s.mana;
     let boardCount = s.board.length;
     const toPlay = [];
     for (const p of playable) {
-        if (p.card.cost <= manaLeft && boardCount < 7) {
+        if (p.card.cost <= manaLeft && boardCount < 10) {
             toPlay.push(p);
             manaLeft -= p.card.cost;
             boardCount++;
@@ -1671,7 +1856,7 @@ function aiPlayCard(handIndex) {
     const s = gameState.enemy;
     if (handIndex < 0 || handIndex >= s.hand.length) return;
     const card = s.hand[handIndex];
-    if (card.cost > s.mana || s.board.length >= 7) return;
+    if (card.cost > s.mana || s.board.length >= 10) return;
 
     s.mana -= card.cost;
     s.hand.splice(handIndex, 1);
@@ -1773,7 +1958,7 @@ function aiAttackPhase() {
                     atkIndex++;
                     setTimeout(doAttack, 500);
                 }
-            }, 500);
+            }, 600);
         } else if (target) {
             // Attack minion
             const atkMultiplier = getCounterMultiplier(attacker, target);
@@ -1791,12 +1976,14 @@ function aiAttackPhase() {
 
             setTimeout(() => {
                 processDeaths();
-                renderAll();
-                if (!checkGameOver()) {
-                    atkIndex++;
-                    setTimeout(doAttack, 500);
-                }
-            }, 500);
+                setTimeout(() => {
+                    renderAll();
+                    if (!checkGameOver()) {
+                        atkIndex++;
+                        setTimeout(doAttack, 500);
+                    }
+                }, 300);
+            }, 600);
         } else {
             atkIndex++;
             doAttack();
@@ -1809,10 +1996,16 @@ function aiAttackPhase() {
 function getCounterMultiplier(attacker, target) {
     const at = UnitType[attacker.unitType];
     const tt = UnitType[target.unitType];
-    if (at && tt && at.counters === target.unitType) return 1.3;
-    if (at && tt && at.weakness === target.unitType) return 0.8;
-    if (currentWeather === 'wind' && attacker.unitType === 'ARCHER') return 1.3;
-    return 1.0;
+    let multiplier = 1.0;
+    if (at && tt && at.counters === target.unitType) {
+        multiplier = 1.3;
+    } else if (at && tt && at.weakness === target.unitType) {
+        multiplier = 0.8;
+    }
+    if (currentWeather === 'wind' && attacker.unitType === 'ARCHER') {
+        multiplier *= 1.3;
+    }
+    return multiplier;
 }
 
 function aiEndTurn() {
@@ -1857,26 +2050,47 @@ function animateAttack(attackerSide, attackerIdx, targetSide, targetIdx, isHero,
         .to(attackerSprite, { x: origX + localDx, y: origY + localDy, duration: 0.15, ease: 'power2.in' })
         .to(attackerSprite, { x: origX, y: origY, duration: 0.25, ease: 'back.out(2)' })
         .call(() => {
-            // Show damage numbers
-            if (!isHero) {
-                const targetSprite = targetSprites[targetIdx];
-                if (targetSprite) {
-                    showDamageNumber(targetSprite, atkDamage, false);
-                    showDamageNumber(attackerSprite, defDamage, false);
-                    // Shake target
-                    gsap.to(targetSprite, { x: targetSprite.position.x + 8, duration: 0.05, repeat: 5, yoyo: true, onComplete: () => {
-                        targetSprite.x = targetSprite.originalX || 0;
-                    }});
+            try {
+                // Show damage numbers and update HP visuals immediately
+                if (!isHero) {
+                    const targetSprite = targetSprites[targetIdx];
+                    // Update HP text on sprites immediately so damage is visible
+                    const targetCard = gameState[targetSide]?.board[targetIdx];
+                    const attackerCard = gameState[attackerSide]?.board[attackerIdx];
+                    if (targetSprite && targetSprite.parent) {
+                        if (targetCard) updateMinionVisual(targetSprite, targetCard);
+                        showDamageNumber(targetSprite, atkDamage, false);
+                        // Shake target
+                        gsap.to(targetSprite, { x: targetSprite.position.x + 8, duration: 0.05, repeat: 5, yoyo: true, onComplete: () => {
+                            targetSprite.x = targetSprite.originalX || 0;
+                        }});
+                    }
+                    if (attackerSprite && attackerSprite.parent) {
+                        if (attackerCard) updateMinionVisual(attackerSprite, attackerCard);
+                        showDamageNumber(attackerSprite, defDamage, false);
+                    }
+                } else {
+                    // Hero damage flash on portrait
+                    const portraitId = targetSide === 'player' ? 'playerHeroPortrait' : 'enemyHeroPortrait';
+                    const hpCircleId = targetSide === 'player' ? 'playerHpCircle' : 'enemyHpCircle';
+                    const portrait = document.getElementById(portraitId);
+                    const hpCircle = document.getElementById(hpCircleId);
+                    portrait.style.transform = 'scale(1.15)';
+                    portrait.style.boxShadow = '0 0 25px 8px rgba(255,0,0,0.8)';
+                    hpCircle.style.transform = 'scale(1.3)';
+                    hpCircle.style.background = 'linear-gradient(135deg, #ff0000, #cc0000)';
+                    setTimeout(() => {
+                        portrait.style.transform = '';
+                        portrait.style.boxShadow = '';
+                        hpCircle.style.transform = '';
+                        hpCircle.style.background = '';
+                    }, 400);
+                    // Update hero HP
+                    renderHeroAreas();
                 }
-            } else {
-                // Hero damage flash
-                const heroId = targetSide === 'player' ? 'playerHpBadge' : 'enemyHpBadge';
-                const badge = document.getElementById(heroId);
-                badge.style.transform = 'scale(1.3)';
-                badge.style.color = '#ff0000';
-                setTimeout(() => { badge.style.transform = ''; badge.style.color = ''; }, 400);
+            } finally {
+                animating = false;
             }
-            animating = false;
         });
 }
 
@@ -1886,6 +2100,7 @@ function animateCardPlay() {
 
 function showDamageNumber(sprite, damage, isCritical) {
     if (!damage || damage <= 0) return;
+    if (!sprite || !sprite.parent) return;
     const globalPos = sprite.parent.toGlobal(sprite.position);
     const style = {
         fontSize: isCritical ? 36 : 24,
@@ -1923,6 +2138,7 @@ function renderAll() {
     renderHandCards();
     renderEnemyHand();
     renderTopBar();
+    renderHeroAreas();
     renderBottomInfo();
 }
 
@@ -1941,7 +2157,7 @@ function renderHandCards() {
 
     gameState.player.hand.forEach((card, idx) => {
         const el = document.createElement('div');
-        const canPlay = gameState.isPlayerTurn && card.cost <= gameState.player.mana && gameState.player.board.length < 7 && !gameState.battleEnded && !animating;
+        const canPlay = gameState.isPlayerTurn && card.cost <= gameState.player.mana && gameState.player.board.length < 10 && !gameState.battleEnded && !animating;
         el.className = 'hand-card ' + (canPlay ? 'playable' : 'unplayable');
         el.onclick = () => onHandCardClick(idx);
 
@@ -1956,7 +2172,7 @@ function renderHandCards() {
         if (card.keywords.includes('deathrattle')) keywordText.push('遗计');
 
         const factionLabel = FACTION_COLORS[card.faction]?.label || '?';
-        const cardArt = getCardArtHtml(card, 50);
+        const cardArt = getCardArtHtml(card);
 
         el.innerHTML = `
             <span class="card-cost">${card.cost}</span>
@@ -1989,22 +2205,21 @@ function renderEnemyHand() {
 }
 
 function renderTopBar() {
-    // Enemy hero HP
-    const eHp = document.getElementById('enemyHpBadge');
-    eHp.textContent = `敌主公 ${Math.max(0, gameState.enemy.heroHp)}`;
+    // Enemy deck count in top bar
+    document.getElementById('enemyDeckBadge').textContent = `敌牌库 ${gameState.enemy.deck.length}`;
+}
 
-    // Enemy mana
-    document.getElementById('enemyManaBadge').textContent = `令旗 ${gameState.enemy.mana}/${gameState.enemy.maxMana}`;
+function renderHeroAreas() {
+    // Enemy hero
+    document.getElementById('enemyHpCircle').textContent = Math.max(0, gameState.enemy.heroHp);
+    document.getElementById('enemyManaCircle').textContent = `${gameState.enemy.mana}`;
 
-    // Enemy deck
-    document.getElementById('enemyDeckBadge').textContent = `牌库 ${gameState.enemy.deck.length}`;
+    // Player hero
+    document.getElementById('playerHpCircle').textContent = Math.max(0, gameState.player.heroHp);
+    document.getElementById('playerManaCircle').textContent = `${gameState.player.mana}`;
 }
 
 function renderBottomInfo() {
-    // Player hero HP
-    const pHp = document.getElementById('playerHpBadge');
-    pHp.textContent = `我方主公 ${Math.max(0, gameState.player.heroHp)}`;
-
     // Mana crystals
     const crystals = document.getElementById('manaCrystals');
     crystals.innerHTML = '';
@@ -2016,6 +2231,9 @@ function renderBottomInfo() {
 
     // Mana text
     document.getElementById('playerManaBadge').textContent = `${gameState.player.mana}/${gameState.player.maxMana}`;
+
+    // Player deck count
+    document.getElementById('playerDeckBadge').textContent = `牌库 ${gameState.player.deck.length}`;
 }
 
 // ====== Weather Particle System ======
@@ -2186,6 +2404,16 @@ function closeMenu() {
     document.getElementById('menuOverlay').classList.remove('show');
 }
 
+function goBack() {
+    if (IS_PVP) {
+        window.location.href = '/';
+    } else if (STAGE_ID) {
+        window.location.href = `/pve/stage/${STAGE_ID}`;
+    } else {
+        window.location.href = '/pve/';
+    }
+}
+
 // ====== Battle Result & API ======
 function showBattleResult(isWin) {
     const overlay = document.getElementById('battleResult');
@@ -2216,7 +2444,7 @@ function showBattleResult(isWin) {
 
     overlay.classList.add('show');
 
-    if (!IS_DEMO && isWin) {
+    if (!IS_DEMO) {
         submitBattleResult(isWin);
     }
 }
@@ -2240,7 +2468,9 @@ function resetBattle() {
     boardSprites.player = [];
     boardSprites.enemy = [];
 
-    if (IS_DEMO) {
+    if (IS_PVP) {
+        loadPvpData();
+    } else if (IS_DEMO) {
         initGame();
     } else {
         loadStageData(STAGE_ID);
@@ -2260,18 +2490,19 @@ const APIClient = {
             return null;
         }
     },
-    async getStamina() {
+    async getUserDeck() {
         try {
-            const resp = await fetch('/api/pve/stamina');
+            const resp = await fetch('/api/pve/user-deck');
             if (!resp.ok) throw new Error('API error');
             return await resp.json();
         } catch (e) {
+            console.warn('Failed to load user deck', e);
             return null;
         }
     },
-    async submitBattle(stageId, result, stars, turns) {
+    async settleBattle(stageId, result, stars, turns) {
         try {
-            const resp = await fetch('/api/pve/battle/start', {
+            const resp = await fetch('/api/pve/battle/settle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ stage_id: stageId, result, stars, turns })
@@ -2279,45 +2510,297 @@ const APIClient = {
             if (!resp.ok) throw new Error('API error');
             return await resp.json();
         } catch (e) {
-            console.warn('Failed to submit battle result', e);
+            console.warn('Failed to settle battle', e);
+            return null;
+        }
+    },
+    async getOpponentDeck() {
+        try {
+            const resp = await fetch('/battle/opponent-deck');
+            if (!resp.ok) throw new Error('API error');
+            return await resp.json();
+        } catch (e) {
+            console.warn('Failed to load opponent deck', e);
+            return null;
+        }
+    },
+    async settlePvpBattle(result, turns) {
+        try {
+            const resp = await fetch('/battle/settle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ result, turns })
+            });
+            if (!resp.ok) throw new Error('API error');
+            return await resp.json();
+        } catch (e) {
+            console.warn('Failed to settle PVP battle', e);
             return null;
         }
     }
 };
 
+// 将用户卡牌转换为30张战斗牌组（不足则用低费填充卡补齐）
+function buildDeckFromUserCards(userCards) {
+    const TARGET_SIZE = 30;
+    const deckDefs = [];
+
+    // 每张用户卡牌生成1-3张牌，稀有度越高张数越少
+    const copies = { 'N': 3, 'R': 2, 'SR': 2, 'SSR': 1, 'UR': 1 };
+
+    for (const card of userCards) {
+        const count = copies[card.rarity] || 1;
+        for (let i = 0; i < count && deckDefs.length < TARGET_SIZE; i++) {
+            const def = {
+                name: card.name,
+                faction: card.faction || 'QUN',
+                rarity: card.rarity,
+                unitType: card.unitType || 'INFANTRY',
+                cost: card.cost,
+                attack: card.attack,
+                hp: card.hp,
+                keywords: card.keywords || [],
+                desc: card.desc || '',
+            };
+            // 为有battlecry关键词的卡牌设定效果
+            if (def.keywords.includes('battlecry') && !def.battlecryFn) {
+                def.battlecryFn = 'damage1';
+            }
+            deckDefs.push(def);
+        }
+    }
+
+    // 不足30张则用通用填充卡补齐
+    const filler = [
+        { name:'征召兵', faction:'QUN', rarity:'N', unitType:'INFANTRY', cost:1, attack:1, hp:2, keywords:[], desc:'' },
+        { name:'民兵', faction:'QUN', rarity:'N', unitType:'SHIELD', cost:1, attack:1, hp:3, keywords:['taunt'], desc:'护卫' },
+        { name:'游侠', faction:'QUN', rarity:'N', unitType:'ARCHER', cost:2, attack:2, hp:2, keywords:[], desc:'' },
+        { name:'老兵', faction:'QUN', rarity:'N', unitType:'INFANTRY', cost:2, attack:2, hp:3, keywords:[], desc:'' },
+    ];
+    let fi = 0;
+    while (deckDefs.length < TARGET_SIZE) {
+        deckDefs.push({ ...filler[fi % filler.length] });
+        fi++;
+    }
+
+    return deckDefs;
+}
+
+// 根据关卡敌人配置生成敌方牌组
+function buildEnemyDeckFromConfig(enemyConfig) {
+    const TARGET_SIZE = 30;
+    const deckDefs = [];
+    const enemies = enemyConfig.enemies || [];
+
+    // 为每个敌方单位生成对应卡牌（每个敌人3-5张）
+    for (const enemy of enemies) {
+        const name = enemy.name || '敌兵';
+        const level = enemy.level || 1;
+        const baseCost = Math.max(1, Math.min(8, Math.floor(level / 3) + 1));
+
+        // 生成不同费用的变体
+        const variants = [
+            { cost: Math.max(1, baseCost - 1), atk: Math.max(1, Math.floor(level * 0.4)), hp: Math.max(1, Math.floor(level * 0.5) + 1), kw: [], desc: '' },
+            { cost: baseCost, atk: Math.max(1, Math.floor(level * 0.5)), hp: Math.max(1, Math.floor(level * 0.6) + 1), kw: ['taunt'], desc: '护卫' },
+            { cost: baseCost, atk: Math.max(2, Math.floor(level * 0.6)), hp: Math.max(1, Math.floor(level * 0.4)), kw: ['charge'], desc: '突击' },
+            { cost: Math.min(8, baseCost + 1), atk: Math.max(2, Math.floor(level * 0.6) + 1), hp: Math.max(2, Math.floor(level * 0.6) + 1), kw: [], desc: '' },
+            { cost: Math.min(8, baseCost + 2), atk: Math.max(3, Math.floor(level * 0.8)), hp: Math.max(3, Math.floor(level * 0.8)), kw: ['taunt'], desc: '护卫' },
+        ];
+
+        for (const v of variants) {
+            if (deckDefs.length >= TARGET_SIZE) break;
+            deckDefs.push({
+                name: name, faction: 'QUN', rarity: level > 5 ? 'SR' : level > 3 ? 'R' : 'N',
+                unitType: v.kw.includes('taunt') ? 'SHIELD' : v.kw.includes('charge') ? 'CAVALRY' : 'INFANTRY',
+                cost: v.cost, attack: v.atk, hp: v.hp, keywords: v.kw, desc: v.desc,
+            });
+        }
+    }
+
+    // 补齐
+    const filler = [
+        { name:'黄巾兵', faction:'QUN', rarity:'N', unitType:'INFANTRY', cost:1, attack:2, hp:1, keywords:[], desc:'' },
+        { name:'贼寇', faction:'QUN', rarity:'N', unitType:'INFANTRY', cost:1, attack:1, hp:2, keywords:[], desc:'' },
+        { name:'山贼', faction:'QUN', rarity:'N', unitType:'ARCHER', cost:2, attack:2, hp:2, keywords:[], desc:'' },
+        { name:'盾兵', faction:'QUN', rarity:'N', unitType:'SHIELD', cost:2, attack:1, hp:3, keywords:['taunt'], desc:'护卫' },
+        { name:'流寇头目', faction:'QUN', rarity:'R', unitType:'CAVALRY', cost:3, attack:3, hp:3, keywords:[], desc:'' },
+    ];
+    let fi = 0;
+    while (deckDefs.length < TARGET_SIZE) {
+        deckDefs.push({ ...filler[fi % filler.length] });
+        fi++;
+    }
+
+    return deckDefs;
+}
+
 async function loadStageData(stageId) {
-    const stageResp = await APIClient.getStage(stageId);
+    addLog('加载关卡数据...', 'system');
+
+    const [stageResp, deckResp] = await Promise.all([
+        APIClient.getStage(stageId),
+        APIClient.getUserDeck()
+    ]);
+
     if (!stageResp || !stageResp.success) {
-        addLog('API不可用，使用Demo数据', 'system');
+        addLog('关卡数据加载失败，使用演示模式', 'system');
+        customPlayerDeckDefs = null;
+        customEnemyDeckDefs = null;
         initGame();
         return;
     }
-    // For now, use demo deck in stage mode too
-    addLog('关卡模式加载中...', 'system');
+
+    // 构建玩家牌组
+    if (deckResp && deckResp.success && deckResp.deck.length > 0) {
+        customPlayerDeckDefs = buildDeckFromUserCards(deckResp.deck);
+        addLog(`已加载 ${deckResp.deck.length} 张卡牌构建牌组`, 'info');
+    } else {
+        customPlayerDeckDefs = null;
+        addLog('未找到卡牌，使用默认蜀国牌组', 'system');
+    }
+
+    // 构建敌方牌组
+    const stageData = stageResp.stage;
+    if (stageData.enemy_config && stageData.enemy_config.enemies) {
+        customEnemyDeckDefs = buildEnemyDeckFromConfig(stageData.enemy_config);
+        addLog(`关卡: ${stageData.name}`, 'system');
+    } else {
+        customEnemyDeckDefs = null;
+        addLog('敌方配置缺失，使用默认魏国牌组', 'system');
+    }
+
+    initGame();
+}
+
+async function loadPvpData() {
+    addLog('匹配对手中...', 'system');
+
+    const [deckResp, opponentResp] = await Promise.all([
+        APIClient.getUserDeck(),
+        APIClient.getOpponentDeck()
+    ]);
+
+    // 构建玩家牌组
+    if (deckResp && deckResp.success && deckResp.deck.length > 0) {
+        customPlayerDeckDefs = buildDeckFromUserCards(deckResp.deck);
+        addLog(`已加载 ${deckResp.deck.length} 张卡牌构建牌组`, 'info');
+    } else {
+        customPlayerDeckDefs = null;
+        addLog('未找到卡牌，使用默认蜀国牌组', 'system');
+    }
+
+    // 构建对手牌组
+    if (opponentResp && opponentResp.success && opponentResp.deck.length > 0) {
+        customEnemyDeckDefs = buildDeckFromUserCards(opponentResp.deck);
+        const opponentName = opponentResp.opponent_name || '对手';
+        addLog(`对手: ${opponentName}`, 'system');
+
+        // 更新敌方英雄显示
+        const enemyNameTag = document.getElementById('enemyNameTag');
+        if (enemyNameTag) {
+            const factionLabel = { WEI: '魏', SHU: '蜀', WU: '吴', QUN: '群' };
+            const fl = factionLabel[opponentResp.opponent_faction] || '群';
+            enemyNameTag.textContent = `${fl}·${opponentName}`;
+        }
+    } else {
+        customEnemyDeckDefs = null;
+        addLog('对手数据加载失败，使用默认魏国牌组', 'system');
+    }
+
     initGame();
 }
 
 async function submitBattleResult(isWin) {
-    if (!STAGE_ID) return;
-    const result = await APIClient.submitBattle(STAGE_ID, isWin ? 'win' : 'lose', calcStars(), gameState.turn);
-    if (result && result.success && result.rewards) {
-        const rewardsDiv = document.getElementById('resultRewards');
+    if (!STAGE_ID && !IS_PVP) return;
+
+    const rewardsDiv = document.getElementById('resultRewards');
+    rewardsDiv.innerHTML = '<div class="result-reward-item" style="color:#aaa;">结算中...</div>';
+
+    let result;
+    if (IS_PVP) {
+        result = await APIClient.settlePvpBattle(
+            isWin ? 'win' : 'lose',
+            gameState.turn
+        );
+    } else {
+        result = await APIClient.settleBattle(
+            STAGE_ID,
+            isWin ? 'win' : 'lose',
+            calcStars(),
+            gameState.turn
+        );
+    }
+
+    if (result && result.success) {
         rewardsDiv.innerHTML = '';
-        if (result.rewards.coins) {
-            rewardsDiv.innerHTML += `<div class="result-reward-item">金币: +${result.rewards.coins}</div>`;
+        const rewards = result.rewards || {};
+
+        if (rewards.coins) {
+            rewardsDiv.innerHTML += `<div class="result-reward-item">💰 金币: +${rewards.coins}</div>`;
         }
-        if (result.rewards.exp) {
-            rewardsDiv.innerHTML += `<div class="result-reward-item">经验: +${result.rewards.exp}</div>`;
+        if (rewards.tickets) {
+            rewardsDiv.innerHTML += `<div class="result-reward-item">🎫 抽卡券: +${rewards.tickets}</div>`;
         }
-        if (result.drops) {
+        if (rewards.gems) {
+            rewardsDiv.innerHTML += `<div class="result-reward-item">💎 宝石: +${rewards.gems}</div>`;
+        }
+        if (rewards.exp) {
+            rewardsDiv.innerHTML += `<div class="result-reward-item">⭐ 经验: +${rewards.exp}</div>`;
+        }
+
+        // 首通奖励（PVE only）
+        if (rewards.first_clear) {
+            const fc = rewards.first_clear;
+            rewardsDiv.innerHTML += '<div class="result-reward-item" style="color:#FFD700;font-weight:bold;border-top:1px solid #FFD700;padding-top:8px;margin-top:4px;">🏆 首通奖励</div>';
+            if (fc.coins) rewardsDiv.innerHTML += `<div class="result-reward-item">💰 金币: +${fc.coins}</div>`;
+            if (fc.gems) rewardsDiv.innerHTML += `<div class="result-reward-item">💎 宝石: +${fc.gems}</div>`;
+            if (fc.tickets) rewardsDiv.innerHTML += `<div class="result-reward-item">🎫 抽卡券: +${fc.tickets}</div>`;
+        }
+
+        // 掉落物品（PVE only）
+        if (result.drops && result.drops.length > 0) {
+            rewardsDiv.innerHTML += '<div class="result-reward-item" style="border-top:1px solid rgba(255,255,255,0.2);padding-top:8px;margin-top:4px;">📦 掉落物品</div>';
             result.drops.forEach(d => {
-                rewardsDiv.innerHTML += `<div class="result-reward-item">${d.item_type}: +${d.quantity}</div>`;
+                const name = d.item_subtype ? `${d.item_type}:${d.item_subtype}` : d.item_type;
+                rewardsDiv.innerHTML += `<div class="result-reward-item">${name}: x${d.quantity}</div>`;
             });
         }
+    } else {
+        rewardsDiv.innerHTML = '<div class="result-reward-item" style="color:#ff6b6b;">结算失败</div>';
     }
 }
 
 // ====== Initialization ======
+// Preload all card artwork images
+function preloadCardArt() {
+    const urls = Object.values(CARD_ART_MAP);
+    if (urls.length === 0) return Promise.resolve();
+
+    const loadingText = document.querySelector('.loading-text');
+    let loaded = 0;
+
+    return new Promise((resolve) => {
+        let pending = urls.length;
+        const onDone = () => {
+            loaded++;
+            if (loadingText) loadingText.textContent = `加载原画中... (${loaded}/${urls.length})`;
+            pending--;
+            if (pending <= 0) resolve();
+        };
+
+        urls.forEach(url => {
+            // Preload for DOM (img cache)
+            const img = new Image();
+            img.onload = onDone;
+            img.onerror = onDone; // Don't block on failed loads
+            img.src = url;
+        });
+
+        // Timeout fallback: don't wait forever
+        setTimeout(resolve, 8000);
+    });
+}
+
 window.addEventListener('load', function() {
     if (typeof PIXI === 'undefined' || typeof gsap === 'undefined') {
         document.getElementById('loading').innerHTML = '<div class="loading-text" style="color:#ff4444">加载失败，请检查网络连接</div>';
@@ -2328,11 +2811,21 @@ window.addEventListener('load', function() {
         initApp();
         updateWeatherDisplay();
 
-        if (IS_DEMO) {
-            initGame();
-        } else {
-            loadStageData(STAGE_ID);
-        }
+        // Preload card art, then start game
+        preloadCardArt().then(() => {
+            // Also preload into PixiJS texture cache
+            Object.values(CARD_ART_MAP).forEach(url => {
+                try { PIXI.Texture.from(url); } catch(e) {}
+            });
+
+            if (IS_PVP) {
+                loadPvpData();
+            } else if (IS_DEMO) {
+                initGame();
+            } else {
+                loadStageData(STAGE_ID);
+            }
+        });
     } catch (error) {
         console.error('初始化失败:', error);
         document.getElementById('loading').innerHTML = '<div class="loading-text" style="color:#ff4444">初始化失败: ' + error.message + '</div>';

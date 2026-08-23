@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}我的卡牌 - 成人卡牌游戏{% endblock %}
+{% block title %}我的卡牌 - 三国卡牌游戏{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -12,34 +12,50 @@
             <div class="card-grid">
                 {% for user_card in user_cards %}
                     {% set card = user_card.card %}
-                    <div class="card-item {% if card.is_golden %}golden{% endif %}">
-                        <span class="card-rarity rarity-{{ card.rarity }}">{{ card.rarity }}</span>
-                        <div class="card-name">{{ card.name }}</div>
-
-                        <div class="card-stats">
-                            <div class="stat">
-                                <div class="stat-label">攻击</div>
-                                <div class="stat-value">{{ card.attack }}</div>
-                            </div>
-                            <div class="stat">
-                                <div class="stat-label">防御</div>
-                                <div class="stat-value">{{ card.defense }}</div>
-                            </div>
-                            <div class="stat">
-                                <div class="stat-label">生命</div>
-                                <div class="stat-value">{{ card.hp }}</div>
-                            </div>
+                    <div class="game-card rarity-border-{{ card.rarity }} {% if card.is_golden %}golden-card{% endif %}"
+                         onclick="window.location.href='{{ url_for('cards.detail', card_id=card.id) }}'">
+                        <!-- 卡牌原画 -->
+                        <div class="game-card-art">
+                            <span class="game-card-rarity rarity-{{ card.rarity }}">{{ card.rarity }}</span>
+                            {% if card.image_url %}
+                                <img src="{{ card.image_url }}" alt="{{ card.name }}" loading="lazy">
+                            {% else %}
+                                <div class="game-card-art-placeholder placeholder-{{ card.rarity }}">
+                                    {{ card.name[0] }}
+                                </div>
+                            {% endif %}
                         </div>
-
-                        {% if card.skill_name %}
-                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-                                <strong>{{ card.skill_name }}</strong>
-                                <p style="font-size: 12px; color: #666;">{{ card.skill_description }}</p>
+                        <!-- 卡牌信息 -->
+                        <div class="game-card-info">
+                            <div class="game-card-name">{{ card.name }}</div>
+                            <div class="game-card-tags">
+                                {% if card.element and card.element != '无' %}
+                                    <span class="game-card-tag">{{ card.element }}</span>
+                                {% endif %}
+                                {% if card.faction %}
+                                    <span class="game-card-tag">{{ card.faction }}</span>
+                                {% endif %}
+                                {% if card.job_class %}
+                                    <span class="game-card-tag">{{ card.job_class }}</span>
+                                {% endif %}
                             </div>
-                        {% endif %}
-
-                        <div style="margin-top: 10px; font-size: 12px; color: #999;">
-                            等级: {{ user_card.level }} | 经验: {{ user_card.exp }}
+                            <div class="game-card-stats">
+                                <div class="game-card-stat">
+                                    <div class="game-card-stat-label">攻击</div>
+                                    <div class="game-card-stat-value atk">{{ card.attack }}</div>
+                                </div>
+                                <div class="game-card-stat">
+                                    <div class="game-card-stat-label">防御</div>
+                                    <div class="game-card-stat-value def">{{ card.defense }}</div>
+                                </div>
+                                <div class="game-card-stat">
+                                    <div class="game-card-stat-label">生命</div>
+                                    <div class="game-card-stat-value hp">{{ card.hp }}</div>
+                                </div>
+                            </div>
+                            <div class="game-card-footer">
+                                Lv.{{ user_card.level }} | ★{{ user_card.star_level }}
+                            </div>
                         </div>
                     </div>
                 {% endfor %}

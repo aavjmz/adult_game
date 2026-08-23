@@ -3,7 +3,7 @@
 包含升级、升星、技能升级、觉醒、装备等功能
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 from flask_login import login_required, current_user
 from app.models import db, UserCard, User, Card, UserItem, Equipment, EquipmentStat
 from app.growth_utils import (
@@ -11,8 +11,17 @@ from app.growth_utils import (
     get_skill_upgrade_cost, get_item_exp_value, get_card_sacrifice_exp,
     get_breakthrough_requirements, get_max_level
 )
+from config import Config
 
 bp = Blueprint('growth', __name__, url_prefix='/growth')
+
+
+@bp.route('/')
+@login_required
+def index():
+    """成长系统主页面"""
+    user_cards = UserCard.query.filter_by(user_id=current_user.id).all()
+    return render_template('growth.html', user_cards=user_cards, rarities=Config.CARD_RARITIES)
 
 
 @bp.route('/level-up', methods=['POST'])
