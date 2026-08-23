@@ -21,9 +21,7 @@ services:
       - game_data:/app/data
     restart: unless-stopped
     healthcheck:
-      # 用标准库而非 requests：requests 不在 requirements.txt 里，
-      # 容器中并不存在，之前这条检查永远失败、容器一直被标成 unhealthy
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/v1/config')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080')"]
       interval: 30s
       timeout: 10s
       retries: 3
