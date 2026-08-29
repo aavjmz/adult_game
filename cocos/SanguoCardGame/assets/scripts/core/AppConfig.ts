@@ -5,25 +5,15 @@
  */
 export class AppConfig {
     /**
-     * 开发期是否走 SSH 隧道
+     * 后端服务地址（末尾不要带斜杠）
      *
-     * 国内直连 VPS 的 8080 端口可能被本地代理软件或网络中间设备拦截，
-     * 表现为 502 或 curl 52 (empty reply)，而服务器本机访问一切正常。
-     * 此时在 Mac 上开一条隧道，把请求经 SSH 转发到服务器：
+     * 走 HTTPS 子域名，由 nginx 反代到内网的 gunicorn。
+     * 服务器的 8080 端口只绑定回环地址，不再对公网开放。
      *
-     *     ssh -N -L 8080:127.0.0.1:8080 root@45.32.85.66
-     *
-     * 隧道保持运行期间把这里设为 true。
-     *
-     * 注意：真机(iOS)测试时必须设回 false —— 手机上没有这条隧道，
-     * localhost 指向手机自己。
+     * HTTPS 同时解决了三件事：国内直连非标端口被拦截、iOS 的 ATS 限制
+     * （不需要 NSAllowsArbitraryLoads）、令牌明文传输。
      */
-    static readonly USE_LOCAL_TUNNEL = false;
-
-    /** 后端服务地址（末尾不要带斜杠） */
-    static readonly BACKEND_URL = AppConfig.USE_LOCAL_TUNNEL
-        ? 'http://localhost:8080'
-        : 'http://45.32.85.66:8080';
+    static readonly BACKEND_URL = 'https://api.dengw.xyz';
 
     /** 客户端API前缀 */
     static readonly API_PREFIX = '/api/v1';

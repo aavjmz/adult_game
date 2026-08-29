@@ -1,5 +1,10 @@
 # 用子域名给游戏后端配 HTTPS
 
+> **已完成（2026-08-29）**：线上已是 `https://api.dengw.xyz`。
+> 实际落地方案与本文档不同（反代 nginx 在 `/root/xray-deploy/` 容器栈里，
+> 不是系统 nginx）。**当前拓扑见 [`deploy/README.md`](../deploy/README.md)**，
+> 本文档作为通用方案参考保留。
+
 现状：VPS 上已有 nginx 托管一个网站，游戏后端跑在 Docker 里监听 8080。
 
 做法：加一个子域名（如 `api.你的域名.com`）指向同一台 VPS，
