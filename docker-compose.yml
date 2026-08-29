@@ -5,12 +5,15 @@ services:
       dockerfile: Dockerfile
     container_name: adult_game
     ports:
-      - "8080:8080"
+      # 仅绑定回环地址：外部流量一律经 nginx 反代走 HTTPS，
+      # 直接发布到 0.0.0.0 会绕过 ufw（Docker 的 DNAT 先于 INPUT 链生效）。
+      - "127.0.0.1:8080:8080"
     environment:
       - FLASK_HOST=0.0.0.0
       - FLASK_PORT=8080
       - FLASK_DEBUG=false
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      # 不设默认值：缺失时直接拒绝启动，避免静默使用仓库里公开的弱密钥
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY 未设置，请在 .env 中配置}
       - PYTHONUNBUFFERED=1
       # 置于 nginx 之后时设为 true，让Flask读取 X-Forwarded-* 还原真实协议
       - BEHIND_PROXY=${BEHIND_PROXY:-false}
@@ -26,6 +29,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+networks:
+  default:
+    # 显式固定网络名（否则由项目名/目录名推导）。
+    # /root/xray-deploy 的 nginx 以 external 方式接入此网络反代 api.dengw.xyz，
+    # 改名会导致 nginx 解析不到 adult_game，务必同步修改两侧。
+    name: adult_game_default
 
 volumes:
   game_data:
