@@ -5,6 +5,10 @@
 目标服务器：`45.32.85.66:8080`
 代码分支：`claude/mvp-requirements-checklist-NnoLJ`
 
+> **已过时（2026-08-29）**：服务已迁至 `https://api.dengw.xyz`，8080 端口
+> 不再对公网开放，下文所有 `http://45.32.85.66:8080/...` 的验证命令均需替换为
+> `https://api.dengw.xyz/...`。当前拓扑与重建步骤见 [`deploy/README.md`](../deploy/README.md)。
+
 ---
 
 ## 一、更新代码
