@@ -9,3 +9,6 @@ Pillow>=10.0.0
 python-engineio==4.9.0
 redis==5.0.1
 eventlet==0.35.2
+
+# WSGI 服务器（生产环境替代 Werkzeug 开发服务器）
+gunicorn==23.0.0
