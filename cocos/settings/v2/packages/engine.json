@@ -1,0 +1,15 @@
+{
+  "__version__": "1.0.3",
+  "modules": {
+    "cache": {},
+    "includeModules": [
+      "2d",
+      "audio",
+      "gfx-webgl2",
+      "ui",
+      "tween",
+      "intersection-2d"
+    ]
+  },
+  "macroConfig": {}
+}
