@@ -1,5 +1,6 @@
-import { _decorator, Component, Button, Label, director } from 'cc';
+import { _decorator, Component, Button, Label } from 'cc';
 import { GameApi } from '../core/GameApi';
+import { SceneNav } from '../core/SceneNav';
 const { ccclass, property } = _decorator;
 
 /**
@@ -38,7 +39,7 @@ export class MainMenuController extends Component {
             this.render();
         } else {
             // 令牌失效，退回登录界面
-            director.loadScene('Login');
+            SceneNav.go(SceneNav.LOGIN);
         }
     }
 
@@ -52,12 +53,12 @@ export class MainMenuController extends Component {
     }
 
     private onGacha() {
-        director.loadScene('Gacha');
+        SceneNav.go(SceneNav.GACHA);
     }
 
     private async onLogout() {
         this.logoutButton.interactable = false;
         await GameApi.logout();
-        director.loadScene('Login');
+        SceneNav.go(SceneNav.LOGIN);
     }
 }

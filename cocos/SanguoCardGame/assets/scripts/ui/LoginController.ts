@@ -1,6 +1,7 @@
-import { _decorator, Component, EditBox, Button, Label, director } from 'cc';
+import { _decorator, Component, EditBox, Button, Label } from 'cc';
 import { AppConfig } from '../core/AppConfig';
 import { GameApi } from '../core/GameApi';
+import { SceneNav } from '../core/SceneNav';
 const { ccclass, property } = _decorator;
 
 /**
@@ -108,15 +109,29 @@ export class LoginController extends Component {
     }
 
     private enterGame() {
-        AppConfig.log('进入主菜单');
-        director.loadScene('MainMenu');
+        AppConfig.log('认证成功，进入主菜单');
+        this.setStatus('加载中...');
+
+        SceneNav.go(SceneNav.MAIN_MENU, (reason) => {
+            // 跳转失败时界面会停在原地，必须给出可见反馈，
+            // 否则表现为"卡在加载中"而看不出原因。
+            // 先解除busy再写提示：setBusy(false) 会清空状态文本
+            this.setBusy(false);
+            this.setStatus(`${reason}，请检查场景是否已加入构建列表`);
+        });
     }
 
     private setBusy(busy: boolean, message = '') {
         this.busy = busy;
         this.loginButton.interactable = !busy;
         this.registerButton.interactable = !busy;
-        if (message) this.setStatus(message);
+
+        if (message) {
+            this.setStatus(message);
+        } else if (!busy) {
+            // 清掉上一次的"登录中/注册中"，避免残留成误导性提示
+            this.setStatus('');
+        }
     }
 
     private setStatus(message: string) {

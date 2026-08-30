@@ -1,8 +1,9 @@
 import { _decorator, Component, Button, Label, Node, Prefab, instantiate,
-         ParticleSystem2D, director } from 'cc';
+         ParticleSystem2D } from 'cc';
 import { AppConfig } from '../core/AppConfig';
 import { GameApi, CardData } from '../core/GameApi';
 import { rarityWeight } from '../core/GameData';
+import { SceneNav } from '../core/SceneNav';
 import { CardSlot } from './CardSlot';
 const { ccclass, property } = _decorator;
 
@@ -153,6 +154,6 @@ export class GachaController extends Component {
     }
 
     private onBack() {
-        director.loadScene('MainMenu');
+        SceneNav.go(SceneNav.MAIN_MENU);
     }
 }
