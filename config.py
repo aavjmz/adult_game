@@ -30,3 +30,10 @@ class Config:
     # 初始资源
     INITIAL_TICKETS = 10
     INITIAL_COINS = 1000
+
+    # WebView兼容性配置（iOS Session Cookie）
+    SESSION_COOKIE_SAMESITE = 'None'
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    PERMANENT_SESSION_LIFETIME = 86400 * 7  # 7天会话
+    SESSION_COOKIE_NAME = 'game_session'
