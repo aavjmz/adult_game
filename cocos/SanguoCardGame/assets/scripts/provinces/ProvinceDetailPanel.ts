@@ -1,7 +1,6 @@
 import { _decorator, Component, Label, Node, UIOpacity, UITransform, tween, v3 } from 'cc';
-import { FactionName, Theme } from '../config/Theme';
-import { ProvinceInfo } from '../config/ProvinceConfig';
-import { API_BASE } from '../net/GameApi';
+import { FactionName, Theme } from '../core/UiTheme';
+import { ProvinceInfo } from './ProvinceConfig';
 import { ImageSlot } from '../core/ImageSlot';
 import {
     createButton, createDivider, createLabel, createNode, drawPanel, labelOf,
@@ -203,8 +202,8 @@ export class ProvinceDetailPanel extends Component {
             const slot = this._garrisonSlots[i].getComponent(ImageSlot)!;
 
             if (general) {
-                // 直接复用 Flask 端已有的武将原画
-                slot.loadFromUrl(`${API_BASE}/static/images/cards/${general.avatar}.png`);
+                // 直接复用后端已有的武将原画，AppConfig 会补上服务器前缀
+                slot.loadRemote(`/static/images/cards/${general.avatar}.png`);
                 this._garrisonNames[i].string = `${general.name}·${general.rarity}`;
                 this._garrisonNames[i].color = Theme.color.text;
             } else {

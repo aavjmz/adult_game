@@ -25,9 +25,15 @@ export class MainMenuController extends Component {
     @property(Button)
     logoutButton: Button = null!;
 
+    @property({ type: Button, tooltip: '进入十三州战略地图，未绑定时不显示入口' })
+    provincesButton: Button = null!;
+
     onLoad() {
         this.gachaButton.node.on(Button.EventType.CLICK, this.onGacha, this);
         this.logoutButton.node.on(Button.EventType.CLICK, this.onLogout, this);
+
+        // 十三州入口是后加的，老场景没绑这个按钮也要能正常进主菜单
+        this.provincesButton?.node.on(Button.EventType.CLICK, this.onProvinces, this);
 
         // 先用缓存渲染，避免进场时数值闪一下空白
         this.render();
@@ -54,6 +60,10 @@ export class MainMenuController extends Component {
 
     private onGacha() {
         SceneNav.go(SceneNav.GACHA);
+    }
+
+    private onProvinces() {
+        SceneNav.go(SceneNav.PROVINCES);
     }
 
     private async onLogout() {

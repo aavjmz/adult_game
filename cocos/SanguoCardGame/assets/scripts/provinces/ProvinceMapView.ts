@@ -1,6 +1,6 @@
 import { _decorator, Component, Node, Vec2 } from 'cc';
-import { Theme } from '../config/Theme';
-import { PROVINCES, ProvinceInfo, getRoutes } from '../config/ProvinceConfig';
+import { Theme } from '../core/UiTheme';
+import { PROVINCES, ProvinceInfo, getRoutes } from './ProvinceConfig';
 import { createLabel, createNode, drawPanel, graphicsOf, withAlpha } from '../core/UIFactory';
 import { ProvinceMarker } from './ProvinceMarker';
 

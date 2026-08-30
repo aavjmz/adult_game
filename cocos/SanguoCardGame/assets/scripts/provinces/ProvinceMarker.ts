@@ -1,6 +1,6 @@
 import { _decorator, Color, Component, Node, UIOpacity, tween, v3 } from 'cc';
-import { FactionName, Theme } from '../config/Theme';
-import { ProvinceInfo } from '../config/ProvinceConfig';
+import { FactionName, Theme } from '../core/UiTheme';
+import { ProvinceInfo } from './ProvinceConfig';
 import { createLabel, createNode, graphicsOf, withAlpha } from '../core/UIFactory';
 
 const { ccclass } = _decorator;

@@ -13,6 +13,8 @@ export class SceneNav {
     static readonly MAIN_MENU = 'MainMenu';
     static readonly GACHA = 'Gacha';
     static readonly BATTLE = 'Battle';
+    /** 十三州战略地图 */
+    static readonly PROVINCES = 'ThirteenProvinces';
 
     /**
      * 跳转到指定场景

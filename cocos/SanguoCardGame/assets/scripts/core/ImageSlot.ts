@@ -1,5 +1,6 @@
-import { _decorator, Color, Component, Node, Sprite, SpriteFrame, UITransform, assetManager, ImageAsset, Texture2D, resources } from 'cc';
-import { Theme } from '../config/Theme';
+import { _decorator, Color, Component, Node, Sprite, SpriteFrame, UITransform, resources } from 'cc';
+import { Theme } from './UiTheme';
+import { RemoteImage } from './GameData';
 import { createLabel, createNode, drawPanel, withAlpha } from './UIFactory';
 
 const { ccclass } = _decorator;
@@ -12,7 +13,7 @@ const { ccclass } = _decorator;
  *
  * 图片来源支持两种：
  *  - resources 目录下的相对路径（打包进客户端的美术资源）
- *  - 远程 URL（直接复用 Flask 端 app/static/images/cards/ 的原画）
+ *  - 后端的相对路径（走 RemoteImage，复用它的下载与内存缓存）
  */
 @ccclass('ImageSlot')
 export class ImageSlot extends Component {
@@ -63,16 +64,15 @@ export class ImageSlot extends Component {
         });
     }
 
-    /** 从远程 URL 加载，例如 http://localhost:8080/static/images/cards/guanyu.png */
-    loadFromUrl(url: string): void {
-        assetManager.loadRemote<ImageAsset>(url, { ext: '.png' }, (err, imageAsset) => {
-            if (err || !imageAsset) return;
-
-            const texture = new Texture2D();
-            texture.image = imageAsset;
-
-            const frame = new SpriteFrame();
-            frame.texture = texture;
+    /**
+     * 从后端加载，传相对路径即可（如 /static/images/cards/guanyu.png）
+     *
+     * 走 RemoteImage 而不是自己 loadRemote：同一张原画在不同界面复用时不会重复下载。
+     */
+    loadRemote(imageUrl: string | null): void {
+        RemoteImage.load(imageUrl, (frame) => {
+            // 槽位可能已随界面销毁（快速切换州府）
+            if (!this.isValid || !frame) return;
             this.applyFrame(frame);
         });
     }

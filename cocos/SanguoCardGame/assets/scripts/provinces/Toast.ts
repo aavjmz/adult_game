@@ -1,5 +1,5 @@
 import { Node, UIOpacity, tween, v3 } from 'cc';
-import { Theme } from '../config/Theme';
+import { Theme } from '../core/UiTheme';
 import { createLabel, createNode, drawPanel, withAlpha } from '../core/UIFactory';
 
 /**

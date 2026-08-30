@@ -1,5 +1,5 @@
 import { Color, Graphics, Label, Layers, Node, UIOpacity, UITransform, Vec2 } from 'cc';
-import { Theme } from '../config/Theme';
+import { Theme } from './UiTheme';
 
 /**
  * 界面基础构件工厂

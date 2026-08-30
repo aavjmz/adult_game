@@ -16,9 +16,10 @@ adult_game/
         ├── assets/
         │   └── scripts/
         │       ├── NetworkTest.ts    连通性自检
-        │       ├── core/             配置、网络、接口封装
+        │       ├── core/             配置、网络、接口封装、界面基础构件
         │       ├── ui/               登录、主菜单
-        │       └── gacha/            抽卡
+        │       ├── gacha/            抽卡
+        │       └── provinces/        十三州战略地图
         ├── settings/
         └── project.json
 ```
@@ -258,6 +259,53 @@ Card Slot Prefab 是拖**资源文件**，不是场景里的节点。
 4. 十连 → 10 张卡逐张翻开，出 SR 以上放粒子
 
 抽完退出重进，应该自动登录（令牌存在 localStorage）。
+
+---
+
+## 七、十三州场景（ThirteenProvinces.scene）
+
+这一屏和前面三屏不一样：**编辑器里几乎不用摆节点**。
+
+十三枚州府标记、州与州之间的行军路线，都由 `scripts/provinces/ProvinceConfig.ts`
+的数据算出来，手工摆既繁琐又容易和数据脱节，所以整屏由代码构建。
+
+### 编辑器里要做的
+
+1. `assets/scenes` 右键 → 创建 → 场景，命名 **ThirteenProvinces**；
+2. 选中 Canvas 节点，添加组件 → 自定义脚本 → **ThirteenProvincesController**；
+3. 项目设置 → 场景管理器，把这个场景加进构建列表（否则 `SceneNav.go` 会报「找不到场景」）；
+4. 主菜单要加入口的话：在 MainMenu 场景加一个按钮，拖到 MainMenuController 的
+   `provincesButton` 槽位。这个槽位允许不绑，老场景不改也能正常跑。
+
+Canvas 的设计分辨率按 **1280 x 720**、宽高双适配即可，界面会按 Canvas 实际尺寸重新排布。
+
+### 界面结构
+
+| 区域 | 内容 | 交互 |
+|------|------|------|
+| 顶部资源条 | 主公名号、主线进度，体力/铜钱/元宝/招募券 | 进场拉 `/api/v1/user/info`，令牌失效自动退回登录 |
+| 中间舆图 | 十三州标记 + 相邻州的虚线行军路线 + 舆图底纹 | 点州府 → 金色光环 + 右侧详情刷新；可攻打的州带呼吸光晕 |
+| 右侧详情 | 州名/治所、势力与状态、等级/战力/产出/体力、三个驻守武将槽 | 「出征」跳战斗场景；已归附的州按钮变「驻守」 |
+| 底部状态条 | 全部/魏/蜀/吴/群 筛选、已定 N/13 进度 | 切换势力 → 非该势力的州压暗 |
+
+州府三态：`owned` 已归附（势力色实心）、`attackable` 可出征（描边 + 呼吸）、
+`locked` 尚未接壤（压暗，点击给提示）。
+
+### 改起来动哪里
+
+| 想改什么 | 改哪个文件 |
+|----------|------------|
+| 配色、字号、圆角、区域高度 | `scripts/core/UiTheme.ts` |
+| 某个州的位置、势力、驻守武将、战力 | `scripts/provinces/ProvinceConfig.ts`（`pos` 是 0~1 归一化坐标，与地图实际尺寸无关） |
+| 四个区域的尺寸和留白 | `ThirteenProvincesController.buildLayout()` |
+| 单个控件的外观 | 对应的 `scripts/provinces/Province*.ts` 的 `build()` |
+
+### 已知边界
+
+- 州府归属目前只存在客户端配置里，后端 `/api/v1` 还没有领土接口，
+  出征只做状态校验并跳转战斗场景，战果不回写；
+- 界面不依赖任何图片资源（面板、圆盘、路线都是 Graphics 画的），
+  只有驻守武将头像走后端 `/static/images/cards/`，取不到时保留占位框。
 
 ---
 

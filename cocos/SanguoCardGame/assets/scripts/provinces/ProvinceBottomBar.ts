@@ -1,6 +1,6 @@
 import { _decorator, Color, Component, Label, Node, UITransform } from 'cc';
-import { Theme } from '../config/Theme';
-import { PROVINCES } from '../config/ProvinceConfig';
+import { Theme } from '../core/UiTheme';
+import { PROVINCES } from './ProvinceConfig';
 import {
     createLabel, createNode, drawPanel, graphicsOf, labelOf, withAlpha,
 } from '../core/UIFactory';
@@ -18,8 +18,8 @@ const FILTERS: Array<{ key: string; label: string }> = [
 /**
  * 底部状态条：左侧势力筛选页签，右侧占领进度。
  */
-@ccclass('BottomBar')
-export class BottomBar extends Component {
+@ccclass('ProvinceBottomBar')
+export class ProvinceBottomBar extends Component {
     private _tabs = new Map<string, Node>();
     private _active = '';
     private _onFilter: ((faction: string) => void) | null = null;
@@ -28,8 +28,8 @@ export class BottomBar extends Component {
     private _progressWidth = 200;
 
     static create(width: number, onFilter: (faction: string) => void): Node {
-        const node = createNode('BottomBar', width, Theme.size.bottomBarHeight);
-        const bar = node.addComponent(BottomBar);
+        const node = createNode('ProvinceBottomBar', width, Theme.size.bottomBarHeight);
+        const bar = node.addComponent(ProvinceBottomBar);
         bar._onFilter = onFilter;
         bar.build(width);
         return node;

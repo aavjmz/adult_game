@@ -1,6 +1,6 @@
 import { _decorator, Color, Component, Label, Node, UITransform } from 'cc';
-import { Theme } from '../config/Theme';
-import { GameApi, StaminaInfo, UserInfo } from '../net/GameApi';
+import { Theme } from '../core/UiTheme';
+import { GameApi, UserInfo } from '../core/GameApi';
 import { ImageSlot } from '../core/ImageSlot';
 import {
     createLabel, createNode, drawPanel, graphicsOf, labelOf, withAlpha,
@@ -16,15 +16,15 @@ interface ResourceChip {
 /**
  * 顶部资源条：左侧主公信息，右侧体力 / 铜钱 / 元宝 / 招募券。
  */
-@ccclass('TopResourceBar')
-export class TopResourceBar extends Component {
+@ccclass('ProvinceTopBar')
+export class ProvinceTopBar extends Component {
     private _chips: Record<string, ResourceChip> = {};
     private _nameLabel: Label | null = null;
     private _levelLabel: Label | null = null;
 
     static create(width: number): Node {
-        const node = createNode('TopResourceBar', width, Theme.size.topBarHeight);
-        node.addComponent(TopResourceBar).build(width);
+        const node = createNode('ProvinceTopBar', width, Theme.size.topBarHeight);
+        node.addComponent(ProvinceTopBar).build(width);
         return node;
     }
 
@@ -65,7 +65,7 @@ export class TopResourceBar extends Component {
         this.node.addChild(name);
         this._nameLabel = labelOf(name);
 
-        const level = createLabel('等级 --', {
+        const level = createLabel('主线 --', {
             fontSize: Theme.font.caption,
             color: Theme.color.textMuted,
             width: 140,
@@ -133,23 +133,33 @@ export class TopResourceBar extends Component {
         return { node, value: labelOf(value) };
     }
 
-    /** 拉取后端数据并刷新 */
-    async refresh(): Promise<void> {
-        const [user, stamina] = await Promise.all([
-            GameApi.getUserInfo(),
-            GameApi.getStamina(),
-        ]);
-        this.apply(user, stamina);
+    /**
+     * 拉取后端数据并刷新
+     *
+     * @returns 令牌是否仍然有效，false 时调用方应退回登录界面
+     */
+    async refresh(): Promise<boolean> {
+        // 先用缓存渲染一次，避免进场时数值闪空白
+        if (GameApi.user) {
+            this.apply(GameApi.user);
+        }
+
+        const res = await GameApi.fetchUserInfo();
+        if (res.success && res.data) {
+            this.apply(res.data);
+            return true;
+        }
+        return false;
     }
 
-    apply(user: UserInfo, stamina: StaminaInfo): void {
+    apply(user: UserInfo): void {
         if (this._nameLabel) this._nameLabel.string = user.username;
-        if (this._levelLabel) this._levelLabel.string = `等级 ${user.level}`;
+        if (this._levelLabel) this._levelLabel.string = `主线 ${user.main_stage_progress} 关`;
 
         this.setChip('coins', formatNumber(user.coins));
         this.setChip('gems', formatNumber(user.gems));
         this.setChip('tickets', `${user.tickets}`);
-        this.setChip('stamina', `${stamina.current}/${stamina.max}`);
+        this.setChip('stamina', `${user.stamina}/${user.max_stamina}`);
     }
 
     private setChip(key: string, text: string): void {
