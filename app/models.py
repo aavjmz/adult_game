@@ -55,6 +55,64 @@ class User(UserMixin, db.Model):
         return f'<User {self.username}>'
 
 
+class ApiToken(db.Model):
+    """客户端API访问令牌
+
+    游戏客户端（Cocos iOS/Android）无法可靠使用Session Cookie：
+    原生平台的XMLHttpRequest不管理Cookie，浏览器预览时又禁止JS设置Cookie头。
+    因此客户端走Bearer Token认证，Web端继续使用Flask-Login的Session。
+    """
+    __tablename__ = 'api_tokens'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+
+    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    device = db.Column(db.String(64))  # 设备标识，便于多端登录管理
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    last_used_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 关系
+    user = db.relationship('User', backref=db.backref('api_tokens', lazy='dynamic',
+                                                      cascade='all, delete-orphan'))
+
+    # 令牌有效期（天）
+    TTL_DAYS = 30
+
+    @staticmethod
+    def generate(user, device=None):
+        """为用户签发新令牌"""
+        import secrets
+        from datetime import timedelta
+
+        token = ApiToken(
+            user_id=user.id,
+            token=secrets.token_urlsafe(32),
+            device=device,
+            expires_at=datetime.utcnow() + timedelta(days=ApiToken.TTL_DAYS)
+        )
+        db.session.add(token)
+        return token
+
+    def is_valid(self):
+        """令牌是否仍在有效期内"""
+        return datetime.utcnow() < self.expires_at
+
+    def touch(self):
+        """更新最后使用时间，并在临近过期时自动续期"""
+        from datetime import timedelta
+
+        self.last_used_at = datetime.utcnow()
+        # 剩余有效期不足一半时滑动续期，避免活跃玩家被强制登出
+        if self.expires_at - datetime.utcnow() < timedelta(days=self.TTL_DAYS / 2):
+            self.expires_at = datetime.utcnow() + timedelta(days=self.TTL_DAYS)
+
+    def __repr__(self):
+        return f'<ApiToken user={self.user_id} device={self.device}>'
+
+
 class Card(db.Model):
     """卡牌模型"""
     __tablename__ = 'cards'

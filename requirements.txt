@@ -2,9 +2,13 @@ Flask==3.0.0
 Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
 Flask-SocketIO==5.3.6
+Flask-CORS==4.0.0
 python-socketio==5.11.1
 Werkzeug==3.0.1
 Pillow>=10.0.0
 python-engineio==4.9.0
 redis==5.0.1
 eventlet==0.35.2
+
+# WSGI 服务器（生产环境替代 Werkzeug 开发服务器）
+gunicorn==23.0.0
