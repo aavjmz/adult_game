@@ -182,7 +182,7 @@ export class AuthController extends Component {
 
         const forgot = createLabel('忘了密码？', { fontSize: 11, color: Theme.color.textMuted, width: 90 });
         forgot.setPosition((rightW - 80) / 2 - 45, -height / 2 + 200);
-        forgot.node.on(Node.EventType.TOUCH_END, () => showToast(this.node, '已发送重置链接至绑定邮箱'));
+        forgot.on(Node.EventType.TOUCH_END, () => showToast(this.node, '已发送重置链接至绑定邮箱'));
         this.root.addChild(forgot);
     }
 
