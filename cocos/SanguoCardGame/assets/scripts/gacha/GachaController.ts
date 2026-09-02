@@ -37,6 +37,7 @@ export class GachaController extends Component {
     private ssrLabel: Label = null!;
     private singleBtn: Node = null!;
     private tenBtn: Node = null!;
+    private ratesLabel: Label = null!;
     private pulling = false;
 
     onLoad(): void {
@@ -52,6 +53,21 @@ export class GachaController extends Component {
         }
         this.topBar.setUnread(unreadMailCount());
         this.renderUser();
+        this.loadRates();
+    }
+
+    /** 概率公示走后端 /config，避免客户端硬编码数值和服务端脱节 */
+    private async loadRates(): Promise<void> {
+        const res = await GameApi.fetchConfig();
+        if (!res.success || !res.data || !this.ratesLabel?.isValid) return;
+
+        const rarities = res.data.rarities as Record<string, { probability: number }> | undefined;
+        if (!rarities) return;
+
+        const text = Object.entries(rarities)
+            .map(([key, v]) => `${key} ${v.probability}%`)
+            .join(' · ');
+        this.ratesLabel.string = text;
     }
 
     private build(width: number, height: number): void {
@@ -170,11 +186,12 @@ export class GachaController extends Component {
         panel.addChild(this.tenBtn);
         y -= 46;
 
-        const rates = createLabel('概率随保底浮动，详见军府公示 · 十连不低于 SR', {
+        const rates = createLabel('概率加载中……', {
             fontSize: 10, color: Theme.color.textDisabled, width: panelW - 20,
         });
         rates.setPosition(0, y);
         panel.addChild(rates);
+        this.ratesLabel = labelOf(rates);
     }
 
     private buildPityRow(
