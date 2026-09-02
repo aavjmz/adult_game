@@ -350,8 +350,9 @@ export class FormationController extends Component {
         });
 
         const rankColor = Theme.rank[hero.rank];
-        const av = createNode('Av', 40, 52, new Vec2(0, 0.5));
-        av.setPosition(-width / 2 + 6, 0);
+        // 默认居中锚点：姓名首字加在 (0,0) 才落在色块正中
+        const av = createNode('Av', 40, 52);
+        av.setPosition(-width / 2 + 6 + 20, 0);
         drawPanel(av, { fill: withAlpha(rankColor, 46), stroke: rankColor, lineWidth: 1, radius: 2 });
         row.addChild(av);
         const initial = createLabel(hero.name[0], { fontSize: 16, bold: true, color: rankColor, width: 36 });

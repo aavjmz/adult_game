@@ -12,6 +12,10 @@ const { ccclass } = _decorator;
 const PANEL_W = 760;
 const PANEL_H = 560;
 const TAB_W = 150;
+/** 每行右侧控件（开关/分段/按钮/文本）统一的右边界，相对行中心 */
+const CONTROL_RIGHT = 200;
+const TOGGLE_W = 46;
+const LEVELS_W = 200;
 
 type RowKind = 'toggle' | 'level' | 'action' | 'text';
 interface Row { name: string; desc?: string; kind: RowKind; key: string; options?: string[]; danger?: boolean; value?: string }
@@ -194,8 +198,10 @@ class SettingsModalController extends Component {
 
     private buildToggle(key: string): Node {
         const s = MockStore.state;
-        const node = createNode('Toggle', 46, 23, new Vec2(1, 0.5));
-        node.setPosition(200, 0);
+        // 开关与滑块都用默认居中锚点，滑块位置按轨道中心正负偏移算，
+        // 否则轨道盒子和滑块各按各的锚点算，滑块会跑到轨道外面去
+        const node = createNode('Toggle', TOGGLE_W, 23);
+        node.setPosition(CONTROL_RIGHT - TOGGLE_W / 2, 0);
         const paint = () => {
             const on = s.toggles[key];
             drawPanel(node, {
@@ -203,8 +209,8 @@ class SettingsModalController extends Component {
                 stroke: on ? Theme.color.gold : Theme.color.divider, lineWidth: 1, radius: 0,
             });
             node.removeAllChildren();
-            const knob = createNode('Knob', 17, 17, new Vec2(0, 0.5));
-            knob.setPosition(on ? 25 : 2, 0);
+            const knob = createNode('Knob', 17, 17);
+            knob.setPosition(on ? TOGGLE_W / 2 - 10.5 : -TOGGLE_W / 2 + 10.5, 0);
             drawPanel(knob, { fill: on ? Theme.color.goldBright : Theme.color.textDisabled, radius: 0 });
             node.addChild(knob);
         };
@@ -219,16 +225,16 @@ class SettingsModalController extends Component {
 
     private buildLevels(key: string, options: string[]): Node {
         const s = MockStore.state;
-        const host = createNode('Levels', 200, 26, new Vec2(1, 0.5));
-        host.setPosition(200, 0);
-        const cellW = 200 / options.length - 4;
+        const host = createNode('Levels', LEVELS_W, 26);
+        host.setPosition(CONTROL_RIGHT - LEVELS_W / 2, 0);
+        const cellW = LEVELS_W / options.length - 4;
 
         const paint = () => {
             host.removeAllChildren();
             options.forEach((opt, i) => {
                 const active = s.levels[key] === opt;
-                const cell = createNode('Level', cellW, 24, new Vec2(0.5, 0.5));
-                cell.setPosition(-100 + cellW / 2 + i * (cellW + 4), 0);
+                const cell = createNode('Level', cellW, 24);
+                cell.setPosition(-LEVELS_W / 2 + cellW / 2 + i * (cellW + 4), 0);
                 drawPanel(cell, {
                     fill: active ? withAlpha(Theme.color.gold, 30) : withAlpha(Theme.color.bgDeep, 0),
                     stroke: active ? Theme.color.gold : Theme.color.divider, lineWidth: 1, radius: 2,
@@ -254,7 +260,7 @@ class SettingsModalController extends Component {
         }, row.danger
             ? { fill: Theme.color.bgDeep, stroke: new Color(107, 58, 42, 255), textColor: Theme.faction.wu }
             : { fill: Theme.color.panelSunken, stroke: Theme.color.gold, textColor: Theme.color.gold });
-        btn.setPosition(200 - 34, 0);
+        btn.setPosition(CONTROL_RIGHT - 34, 0);
         return btn;
     }
 
@@ -263,7 +269,7 @@ class SettingsModalController extends Component {
             fontSize: 12, color: Theme.color.textMuted, width: 190, align: Label.HorizontalAlign.RIGHT,
         });
         node.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
-        node.setPosition(200, 0);
+        node.setPosition(CONTROL_RIGHT, 0);
         return node;
     }
 }

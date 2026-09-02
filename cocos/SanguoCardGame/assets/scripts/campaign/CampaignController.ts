@@ -262,9 +262,10 @@ export class CampaignController extends Component {
         if (!stage) return;
 
         const artH = 150;
+        // ImageSlot 内部的占位文字与图片都是按居中锚点摆的，这里不能改它的锚点，
+        // 否则画好的框还在原地、只有包围盒变了，图框会有一半跑到面板外面
         const art = ImageSlot.create(width, artH, `${stage.name} 关隘图`);
-        art.getComponent(UITransform)!.setAnchorPoint(0.5, 1);
-        art.setPosition(0, height / 2);
+        art.setPosition(0, height / 2 - artH / 2);
         this.detailPanel.addChild(art);
 
         const list = this.byChapter.get(this.chapter) ?? [];

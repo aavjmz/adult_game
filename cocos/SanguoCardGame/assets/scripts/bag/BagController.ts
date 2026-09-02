@@ -224,9 +224,8 @@ export class BagController extends Component {
         const listed = s.bagListed.includes(item.i);
 
         const artH = 110;
-        const art = createNode('Art', width, artH, undefined);
-        art.getComponent(UITransform)!.setAnchorPoint(0.5, 1);
-        art.setPosition(0, height / 2);
+        const art = createNode('Art', width, artH);
+        art.setPosition(0, height / 2 - artH / 2);
         drawPanel(art, { fill: withAlpha(item.rankColor, 30), radius: 0 });
         this.detailHost.addChild(art);
         const mark = createLabel(item.mark, { fontSize: 44, bold: true, color: item.rankColor, width: width - 20 });

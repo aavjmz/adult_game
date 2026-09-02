@@ -15,6 +15,9 @@ const { ccclass } = _decorator;
 type Mode = 'login' | 'reg';
 type LoginMode = '密码登录' | '验证码登录';
 
+/** 勾选框边长 */
+const BOX_SIZE = 16;
+
 /**
  * 登录 / 注册场景（对应原型的 authOpen 弹层，这里独立成 SceneNav.LOGIN 场景）。
  *
@@ -162,33 +165,30 @@ export class AuthController extends Component {
         this.agreeRow = createNode('Agree', rightW - 80, 30);
         this.agreeRow.setPosition(0, -height / 2 + 200);
         this.root.addChild(this.agreeRow);
-        const box = createNode('Box', 15, 15, new Vec2(0, 0.5));
-        box.setPosition(-(rightW - 80) / 2, 0);
-        drawPanel(box, { fill: withAlpha(Theme.color.bgDeep, 0), stroke: Theme.color.gold, lineWidth: 1, radius: 0 });
-        this.agreeRow.addChild(box);
-        this.agreeMark = labelOf(createLabel('', { fontSize: 10, color: Theme.color.bgDeep }));
-        box.addChild(this.agreeMark.node);
+        const box = this.createCheckBox(-(rightW - 80) / 2 + BOX_SIZE / 2);
+        this.agreeRow.addChild(box.node);
+        this.agreeMark = box.mark;
+        this.paintCheck(box.node, this.agreeMark, this.agreed);
         const text = createLabel('已阅并同意《十三州用户协议》与《隐私政策》，并确认已满 12 周岁。', {
             fontSize: 11, color: Theme.color.textMuted, width: rightW - 120, align: Label.HorizontalAlign.LEFT,
         });
         text.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
         text.setPosition(-(rightW - 80) / 2 + 24, 0);
         this.agreeRow.addChild(text);
-        this.agreeRow.on(Node.EventType.TOUCH_END, () => { this.agreed = !this.agreed; this.paintCheck(box, this.agreeMark, this.agreed); });
+        this.agreeRow.on(Node.EventType.TOUCH_END, () => { this.agreed = !this.agreed; this.paintCheck(box.node, this.agreeMark, this.agreed); });
 
         this.rememberRow = createNode('Remember', 120, 24, new Vec2(0, 0.5));
         this.rememberRow.setPosition(-(rightW - 80) / 2, -height / 2 + 200);
         this.root.addChild(this.rememberRow);
-        const rbox = createNode('Box', 15, 15, new Vec2(0, 0.5));
-        drawPanel(rbox, { fill: withAlpha(Theme.color.gold, 220), stroke: Theme.color.gold, lineWidth: 1, radius: 0 });
-        this.rememberRow.addChild(rbox);
-        this.rememberMark = labelOf(createLabel('✓', { fontSize: 10, color: Theme.color.bgDeep }));
-        rbox.addChild(this.rememberMark.node);
+        const rbox = this.createCheckBox(BOX_SIZE / 2);
+        this.rememberRow.addChild(rbox.node);
+        this.rememberMark = rbox.mark;
+        this.paintCheck(rbox.node, this.rememberMark, this.remember);
         const rtext = createLabel('记住此帐', { fontSize: 11, color: Theme.color.textMuted, width: 90, align: Label.HorizontalAlign.LEFT });
         rtext.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
         rtext.setPosition(22, 0);
         this.rememberRow.addChild(rtext);
-        this.rememberRow.on(Node.EventType.TOUCH_END, () => { this.remember = !this.remember; this.paintCheck(rbox, this.rememberMark, this.remember); });
+        this.rememberRow.on(Node.EventType.TOUCH_END, () => { this.remember = !this.remember; this.paintCheck(rbox.node, this.rememberMark, this.remember); });
 
         this.forgotNode = createLabel('忘了密码？', { fontSize: 11, color: Theme.color.textMuted, width: 90 });
         this.forgotNode.setPosition((rightW - 80) / 2 - 45, -height / 2 + 200);
@@ -214,6 +214,20 @@ export class AuthController extends Component {
         if (!isReg) {
             this.thirdRow.setPosition(0, submitY - 82);
         }
+    }
+
+    /**
+     * 勾选框：方框用默认居中锚点，勾号加在 (0,0) 才落在方框正中。
+     *
+     * （之前方框用了左中锚点 (0,0.5)，勾号加在 (0,0) 就画到了方框左边缘上，
+     * 一半在框外，看起来像方块缺了个角。）
+     */
+    private createCheckBox(x: number): { node: Node; mark: Label } {
+        const node = createNode('Box', BOX_SIZE, BOX_SIZE);
+        node.setPosition(x, 0);
+        const mark = labelOf(createLabel('✓', { fontSize: 12, bold: true, color: Theme.color.bgDeep }));
+        node.addChild(mark.node);
+        return { node, mark };
     }
 
     private paintCheck(box: Node, mark: Label, on: boolean): void {

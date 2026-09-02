@@ -70,9 +70,10 @@ class HeroDetailModalController extends Component {
         title.setPosition(-LEFT_W / 2 + 16, -PANEL_H / 2 + 66);
         left.addChild(title);
 
-        const rankTag = createLabel(`${rank} 阶`, { fontSize: 11, bold: true, color: Theme.color.bgDeep, width: 50 });
-        const tagBg = createNode('RankTag', 46, 20, new Vec2(0, 0.5));
-        tagBg.setPosition(-LEFT_W / 2 + 16, -PANEL_H / 2 + 38);
+        // 底色块用默认居中锚点：文字加在 (0,0) 才落在色块正中
+        const rankTag = createLabel(`${rank} 阶`, { fontSize: 11, bold: true, color: Theme.color.bgDeep, width: 42 });
+        const tagBg = createNode('RankTag', 46, 20);
+        tagBg.setPosition(-LEFT_W / 2 + 16 + 23, -PANEL_H / 2 + 38);
         drawPanel(tagBg, { fill: rankColor, radius: 0 });
         tagBg.addChild(rankTag);
         left.addChild(tagBg);
