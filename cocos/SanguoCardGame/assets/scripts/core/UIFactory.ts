@@ -1,5 +1,5 @@
 import {
-    Color, Graphics, Label, Layers, Mask, Node, ScrollView, Layout, Size,
+    Color, EditBox, Graphics, Label, Layers, Mask, Node, ScrollView, Layout, Size,
     UIOpacity, UITransform, Vec2, BlockInputEvents,
 } from 'cc';
 import { Theme } from './UiTheme';
@@ -287,6 +287,73 @@ export function createModalBackdrop(width: number, height: number, onClose?: () 
         node.on(Node.EventType.TOUCH_END, onClose);
     }
     return node;
+}
+
+export interface InputResult {
+    /** 输入框节点，按此定位（默认居中锚点） */
+    node: Node;
+    editBox: EditBox;
+}
+
+/**
+ * 文本输入框。
+ *
+ * 必须自己建 textLabel / placeholderLabel 交给 EditBox 托管：只 addComponent(EditBox)
+ * 的话，引擎会用默认字号兜底生成两个 Label，字巨大且贴着节点原点画——
+ * 节点锚点一旦不是正中，提示文字就会跑到框外面去。
+ *
+ * 两个 Label 都用左上角锚点：EditBox 内部 _updateLabelPosition() 会把它们摆到
+ * 输入框左上角并把 contentSize 设成框的大小，用左上角锚点才对得齐；
+ * 这里先按同样的规则摆一遍，引擎覆盖与否结果都一致。
+ */
+export function createInput(
+    width: number, height: number, placeholder: string,
+    opts: { password?: boolean; fontSize?: number } = {},
+): InputResult {
+    const node = createNode('Input', width, height);
+    drawPanel(node, {
+        fill: new Color(23, 17, 12, 255),
+        stroke: Theme.color.divider,
+        lineWidth: 1,
+        radius: 2,
+    });
+
+    const fontSize = opts.fontSize ?? Theme.font.caption;
+    const padding = 8;
+
+    const makeLabel = (name: string, text: string, color: Color): Label => {
+        const labelNode = createNode(name, width - padding * 2, height, new Vec2(0, 1));
+        labelNode.setPosition(-width / 2 + padding, height / 2);
+        const label = labelNode.addComponent(Label);
+        label.string = text;
+        label.fontSize = fontSize;
+        label.lineHeight = height;
+        label.color = color;
+        label.horizontalAlign = Label.HorizontalAlign.LEFT;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        label.overflow = Label.Overflow.CLAMP;
+        node.addChild(labelNode);
+        return label;
+    };
+
+    const textLabel = makeLabel('TEXT_LABEL', '', Theme.color.text);
+    const placeholderLabel = makeLabel('PLACEHOLDER_LABEL', placeholder, Theme.color.textDisabled);
+
+    const editBox = node.addComponent(EditBox);
+    editBox.textLabel = textLabel;
+    editBox.placeholderLabel = placeholderLabel;
+    editBox.inputMode = EditBox.InputMode.SINGLE_LINE;
+    editBox.placeholder = placeholder;
+    editBox.fontSize = fontSize;
+    editBox.placeholderFontSize = fontSize;
+    editBox.fontColor = Theme.color.text;
+    editBox.placeholderFontColor = Theme.color.textDisabled;
+    editBox.string = '';
+    if (opts.password) {
+        editBox.inputFlag = EditBox.InputFlag.PASSWORD;
+    }
+
+    return { node, editBox };
 }
 
 export interface ScrollListResult {

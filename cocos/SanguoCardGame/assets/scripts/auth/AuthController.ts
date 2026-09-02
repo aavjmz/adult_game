@@ -7,7 +7,7 @@ import { SceneNav } from '../core/SceneNav';
 import { showToast } from '../core/Toast';
 import { ImageSlot } from '../core/ImageSlot';
 import {
-    createButton, createLabel, createNode, drawPanel, labelOf, setButtonEnabled, withAlpha,
+    createButton, createInput, createLabel, createNode, drawPanel, labelOf, setButtonEnabled, withAlpha,
 } from '../core/UIFactory';
 
 const { ccclass } = _decorator;
@@ -42,8 +42,14 @@ export class AuthController extends Component {
     private rememberRow: Node = null!;
     private rememberMark: Label = null!;
     private remember = true;
+    private forgotNode: Node = null!;
     private submitBtn: Node = null!;
     private thirdRow: Node = null!;
+    /** 表单区尺寸，切换登录/注册时按字段数量重新排下半部分要用 */
+    private formW = 0;
+    private formH = 0;
+    /** 最后一个字段的底边（root 坐标），协议行/按钮跟着它走 */
+    private fieldsBottom = 0;
 
     private inputs: Record<string, EditBox> = {};
     private codeBtn: Node = null!;
@@ -79,16 +85,18 @@ export class AuthController extends Component {
         hero.setPosition(0, 0);
         left.addChild(hero);
 
+        // 竖排标题：Cocos Label 没有 writing-mode，用逐字换行近似，
+        // 文本框要给紧（给大了字会飘到框中心去，和右侧英文副标题叠在一起）
         const title = createLabel('十\n三\n州', {
-            fontSize: 40, bold: true, color: Theme.color.goldBright, width: leftW - 60, height: height - 60,
+            fontSize: 40, bold: true, color: Theme.color.goldBright, width: 56, height: 200,
         });
-        title.setPosition(-leftW / 2 + 60, height / 2 - 140);
+        title.setPosition(-leftW / 2 + 52, height / 2 - 150);
         left.addChild(title);
 
         const en = createLabel('THIRTEEN\nPROVINCES', {
-            fontSize: 11, color: Theme.color.textMuted, width: 200,
+            fontSize: 11, color: Theme.color.textMuted, width: 100, height: 40,
         });
-        en.setPosition(-leftW / 2 + 110, height / 2 - 140);
+        en.setPosition(-leftW / 2 + 132, height / 2 - 150);
         left.addChild(en);
 
         const flavor = createLabel('天下大势，分久必合。\n今州郡零落，唯待主公一纸军令。', {
@@ -105,13 +113,15 @@ export class AuthController extends Component {
         left.addChild(seal);
 
         const rightW = width - leftW;
+        this.formW = rightW;
+        this.formH = height;
         this.root = createNode('Form', rightW, height);
         this.root.setPosition(width / 2 - rightW / 2, 0);
         this.node.addChild(this.root);
 
         this.buildHeader(rightW, height);
         this.modeTabs = createNode('LoginModes', rightW - 80, 36);
-        this.modeTabs.setPosition(-rightW / 2 + 40 + (rightW - 80) / 2, height / 2 - 96);
+        this.modeTabs.setPosition(0, height / 2 - 96);
         this.root.addChild(this.modeTabs);
 
         this.fieldsHost = createNode('Fields', rightW - 80, height - 260);
@@ -180,10 +190,30 @@ export class AuthController extends Component {
         this.rememberRow.addChild(rtext);
         this.rememberRow.on(Node.EventType.TOUCH_END, () => { this.remember = !this.remember; this.paintCheck(rbox, this.rememberMark, this.remember); });
 
-        const forgot = createLabel('忘了密码？', { fontSize: 11, color: Theme.color.textMuted, width: 90 });
-        forgot.setPosition((rightW - 80) / 2 - 45, -height / 2 + 200);
-        forgot.on(Node.EventType.TOUCH_END, () => showToast(this.node, '已发送重置链接至绑定邮箱'));
-        this.root.addChild(forgot);
+        this.forgotNode = createLabel('忘了密码？', { fontSize: 11, color: Theme.color.textMuted, width: 90 });
+        this.forgotNode.setPosition((rightW - 80) / 2 - 45, -height / 2 + 200);
+        this.forgotNode.on(Node.EventType.TOUCH_END, () => showToast(this.node, '已发送重置链接至绑定邮箱'));
+        this.root.addChild(this.forgotNode);
+    }
+
+    /**
+     * 协议行 / 记住此帐 / 提交按钮 / 第三方入口跟着字段区末尾排。
+     *
+     * 登录只有两个字段、注册有六个，固定坐标会让登录态中间空一大片。
+     */
+    private layoutBelowFields(): void {
+        const isReg = this.mode === 'reg';
+        const checkY = this.fieldsBottom - 24;
+        this.agreeRow.setPosition(0, checkY);
+        this.rememberRow.setPosition(-(this.formW - 80) / 2, checkY);
+        this.forgotNode.setPosition((this.formW - 80) / 2 - 45, checkY);
+
+        const submitY = checkY - 46;
+        this.submitBtn.setPosition(0, submitY);
+
+        if (!isReg) {
+            this.thirdRow.setPosition(0, submitY - 82);
+        }
     }
 
     private paintCheck(box: Node, mark: Label, on: boolean): void {
@@ -210,12 +240,14 @@ export class AuthController extends Component {
         this.modeTabs.active = !isReg;
         this.agreeRow.active = isReg;
         this.rememberRow.active = !isReg;
+        this.forgotNode.active = !isReg;
         this.thirdRow.active = !isReg;
 
         this.modeTabs.removeAllChildren();
         if (!isReg) this.buildLoginModeTabs();
 
         this.buildFields();
+        this.layoutBelowFields();
         if (!isReg) this.buildThirdParty();
     }
 
@@ -287,15 +319,19 @@ export class AuthController extends Component {
         this.inputs = {};
         this.strengthBars = [];
         const width = this.fieldsHost.getComponent(UITransform)!.width;
-        const rowH = 56;
+        const rowH = 60;
         const specs = this.fieldSpecs();
         let y = this.fieldsHost.getComponent(UITransform)!.height / 2 - rowH / 2;
 
         for (const spec of specs) {
             this.buildFieldRow(spec, width, y, rowH);
             y -= rowH;
-            if (spec.password && spec.key === 'pwd' && this.mode === 'reg') y -= 14; // 强度条占位
+            if (spec.password && spec.key === 'pwd' && this.mode === 'reg') y -= 16; // 强度条占位
         }
+
+        // 记下最后一行的底边（转成 root 坐标），协议行与按钮跟着字段走，
+        // 否则登录模式只有两个字段时下面会空一大片
+        this.fieldsBottom = y + rowH / 2 + this.fieldsHost.position.y;
     }
 
     private buildFieldRow(
@@ -309,33 +345,28 @@ export class AuthController extends Component {
             fontSize: 11, color: Theme.color.textMuted, width: width - 20, align: Label.HorizontalAlign.LEFT,
         });
         label.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        label.setPosition(-width / 2, rowH / 2 - 12);
+        label.setPosition(-width / 2, rowH / 2 - 10);
         row.addChild(label);
 
         const hasCode = !!spec.code;
         const inputW = hasCode ? width - 96 : width;
-        const inputBox = createNode('InputBox', inputW, 34, new Vec2(0, 0.5));
-        inputBox.setPosition(-width / 2, -4);
-        drawPanel(inputBox, { fill: new Color(23, 17, 12, 255), stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
-        row.addChild(inputBox);
+        const input = createInput(inputW, 34, spec.ph, { password: spec.password, fontSize: 13 });
+        input.node.setPosition(-width / 2 + inputW / 2, -8);
+        row.addChild(input.node);
 
-        const editBox = inputBox.addComponent(EditBox);
-        editBox.placeholder = spec.ph;
-        editBox.fontSize = 13;
-        editBox.string = '';
-        if (spec.password) (editBox as any).inputFlag = EditBox.InputFlag.PASSWORD;
+        const editBox = input.editBox;
         this.inputs[spec.key] = editBox;
 
         if (spec.key === 'pwd' && this.mode === 'reg') {
             editBox.node.on(EditBox.EventType.TEXT_CHANGED, () => this.updateStrength());
-            this.buildStrengthBar(row, width, -26);
+            this.buildStrengthBar(row, width, -33);
         }
 
         if (hasCode) {
             this.codeBtn = createButton('获取验证码', 88, 34, () => this.sendCode(), {
                 fill: new Color(28, 21, 15, 255), stroke: Theme.color.gold, textColor: Theme.color.goldBright, fontSize: 10,
             });
-            this.codeBtn.setPosition(width / 2 - 44, -4);
+            this.codeBtn.setPosition(width / 2 - 44, -8);
             row.addChild(this.codeBtn);
         }
     }

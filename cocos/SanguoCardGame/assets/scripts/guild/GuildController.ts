@@ -1,4 +1,4 @@
-import { _decorator, Color, Component, EditBox, Label, Node, UITransform, Vec2, view } from 'cc';
+import { _decorator, Component, EditBox, Label, Node, UITransform, Vec2, view } from 'cc';
 import { Theme } from '../core/UiTheme';
 import { SceneNav } from '../core/SceneNav';
 import { showToast } from '../core/Toast';
@@ -8,7 +8,7 @@ import { unreadMailCount } from '../mail/MailModal';
 import { MockStore } from '../core/MockStore';
 import { baseChat, GUILD_ACTS, MEMBERS } from './GuildData';
 import {
-    createButton, createLabel, createNode, createProgressBar, createScrollList, drawPanel, withAlpha,
+    createButton, createInput, createLabel, createNode, createProgressBar, createScrollList, drawPanel, withAlpha,
 } from '../core/UIFactory';
 
 const { ccclass } = _decorator;
@@ -202,13 +202,11 @@ export class GuildController extends Component {
         const inputRow = createNode('InputRow', colW - 20, 34);
         inputRow.setPosition(0, -chatH / 2 + 22);
         chatPanel.addChild(inputRow);
-        const inputBox = createNode('InputBox', colW - 100, 34, new Vec2(0, 0.5));
-        inputBox.setPosition(-(colW - 20) / 2, 0);
-        drawPanel(inputBox, { fill: new Color(22, 15, 10, 255), stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
-        inputRow.addChild(inputBox);
-        this.draft = inputBox.addComponent(EditBox);
-        this.draft.placeholder = '传书盟中……';
-        this.draft.fontSize = 12;
+        const inputW = colW - 110;
+        const input = createInput(inputW, 34, '传书盟中……', { fontSize: 12 });
+        input.node.setPosition(-(colW - 20) / 2 + inputW / 2, 0);
+        inputRow.addChild(input.node);
+        this.draft = input.editBox;
         const sendBtn = createButton('传 书', 76, 34, () => this.send(), {
             fill: Theme.color.goldBright, stroke: Theme.color.goldBright, textColor: Theme.color.bgDeep, fontSize: Theme.font.badge,
         });
