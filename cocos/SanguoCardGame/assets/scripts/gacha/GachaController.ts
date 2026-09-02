@@ -1,159 +1,289 @@
-import { _decorator, Component, Button, Label, Node, Prefab, instantiate,
-         ParticleSystem2D } from 'cc';
-import { AppConfig } from '../core/AppConfig';
+import { _decorator, Component, Label, Node, UITransform, view } from 'cc';
+import { Theme } from '../core/UiTheme';
 import { GameApi, CardData } from '../core/GameApi';
-import { rarityWeight } from '../core/GameData';
 import { SceneNav } from '../core/SceneNav';
-import { CardSlot } from './CardSlot';
-const { ccclass, property } = _decorator;
+import { showToast } from '../core/Toast';
+import { ImageSlot } from '../core/ImageSlot';
+import { TopBar } from '../core/TopBar';
+import { BottomNav } from '../core/BottomNav';
+import { unreadMailCount } from '../mail/MailModal';
+import { GachaCardSlot } from './GachaCardSlot';
+import {
+    createButton, createLabel, createModalBackdrop, createNode, createProgressBar,
+    drawPanel, labelOf, setButtonEnabled, setProgressRatio, withAlpha,
+} from '../core/UIFactory';
+
+const { ccclass } = _decorator;
+
+/** 后端 config.py 的保底/概率配置，客户端没有对应查询接口，先按已知值静态展示 */
+const SR_PITY_MAX = 10;
+const SSR_PITY_MAX = 90;
 
 /**
- * 抽卡场景
+ * 招贤台（对应原型 isGacha）。
  *
- * 流程：点击 → 请求后端 → 生成卡槽 → 逐张翻牌 → 最高稀有度触发粒子
- * 抽卡结果完全由后端决定，客户端只负责表现，改客户端刷不出好卡。
+ * 抽卡结果完全来自后端 GameApi.pullGacha——概率、保底都在服务端计算，客户端只管表现。
+ * 「天地玄黄」只是展示皮肤（GachaCardSlot 内部把后端 rarity 映射过去），
+ * 保底进度改成展示后端真实维护的 SR / SSR 两条计数，原型里虚构的单条 80 抽保底不再使用。
  */
 @ccclass('GachaController')
 export class GachaController extends Component {
-    @property(Label)
-    ticketsLabel: Label = null!;
-
-    @property(Button)
-    singleButton: Button = null!;
-
-    @property(Button)
-    multiButton: Button = null!;
-
-    @property(Button)
-    backButton: Button = null!;
-
-    @property({ type: Node, tooltip: '卡牌生成的父节点，建议挂Layout自动排版' })
-    cardContainer: Node = null!;
-
-    @property({ type: Prefab, tooltip: 'CardSlot预制体' })
-    cardSlotPrefab: Prefab = null!;
-
-    @property({ type: ParticleSystem2D, tooltip: 'SSR/UR金色粒子' })
-    ssrEffect: ParticleSystem2D = null!;
-
-    @property({ type: ParticleSystem2D, tooltip: 'SR紫色粒子' })
-    srEffect: ParticleSystem2D = null!;
-
-    @property({ type: Label, tooltip: '错误提示，如票券不足' })
-    hintLabel: Label = null!;
-
-    /** 抽卡进行中，防止重复请求和动画打架 */
+    private topBar: TopBar = null!;
+    private overlay: Node = null!;
+    private ticketLabel: Label = null!;
+    private srBar: { track: Node; fill: Node } = null!;
+    private srLabel: Label = null!;
+    private ssrBar: { track: Node; fill: Node } = null!;
+    private ssrLabel: Label = null!;
+    private singleBtn: Node = null!;
+    private tenBtn: Node = null!;
     private pulling = false;
 
-    onLoad() {
-        this.singleButton.node.on(Button.EventType.CLICK, () => this.pull('single'), this);
-        this.multiButton.node.on(Button.EventType.CLICK, () => this.pull('multi'), this);
-        this.backButton.node.on(Button.EventType.CLICK, this.onBack, this);
-
-        this.stopEffects();
-        this.setHint('');
-        this.renderTickets();
+    onLoad(): void {
+        const size = this.node.getComponent(UITransform)?.contentSize ?? view.getVisibleSize();
+        this.build(size.width || Theme.design.width, size.height || Theme.design.height);
     }
 
-    async start() {
-        // 可能从别的场景带着旧数据进来，刷新一次
-        const res = await GameApi.fetchUserInfo();
-        if (res.success) {
-            this.renderTickets();
+    async start(): Promise<void> {
+        const ok = await this.topBar.refresh();
+        if (!ok) {
+            SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.overlay, reason));
+            return;
         }
+        this.topBar.setUnread(unreadMailCount());
+        this.renderUser();
     }
 
-    private async pull(type: 'single' | 'multi') {
-        if (this.pulling) return;
+    private build(width: number, height: number): void {
+        const bg = createNode('Background', width, height);
+        drawPanel(bg, { fill: Theme.color.bgDeep, radius: 0 });
+        this.node.addChild(bg);
 
+        const contentH = height - Theme.size.topBarHeight - Theme.size.bottomBarHeight;
+        const content = createNode('Content', width, contentH);
+        content.setPosition(0, (Theme.size.bottomBarHeight - Theme.size.topBarHeight) / 2);
+        this.node.addChild(content);
+
+        this.buildHeader(content, width, contentH);
+        this.buildBanner(content, width, contentH);
+        this.buildSidePanel(content, width, contentH);
+
+        const topBar = TopBar.create(width, this.node);
+        topBar.setPosition(0, height / 2 - Theme.size.topBarHeight / 2);
+        this.node.addChild(topBar);
+        this.topBar = topBar.getComponent(TopBar)!;
+
+        const bottomNav = BottomNav.create(width, 'gacha');
+        bottomNav.setPosition(0, -height / 2 + Theme.size.bottomBarHeight / 2);
+        this.node.addChild(bottomNav);
+
+        this.overlay = createNode('Overlay', width, height);
+        this.node.addChild(this.overlay);
+    }
+
+    private buildHeader(content: Node, width: number, height: number): void {
+        const back = createButton('◄ 返回', 74, 28, () => SceneNav.go(SceneNav.MAIN_MENU), {
+            fill: withAlpha(Theme.color.bgDeep, 0), stroke: Theme.color.divider, textColor: Theme.color.textMuted, fontSize: Theme.font.badge,
+        });
+        back.setPosition(-width / 2 + 18 + 37, height / 2 - 24);
+        content.addChild(back);
+
+        const title = createLabel('招 贤 台', { fontSize: 20, bold: true, color: Theme.color.goldBright, width: 200 });
+        title.setPosition(-width / 2 + 130, height / 2 - 24);
+        content.addChild(title);
+
+        const sub = createLabel('天下英雄，唯使君与操耳', { fontSize: 11, color: Theme.color.textDisabled, width: 220 });
+        sub.setPosition(-width / 2 + 270, height / 2 - 24);
+        content.addChild(sub);
+    }
+
+    private buildBanner(content: Node, width: number, height: number): void {
+        const panelW = 330 + 14;
+        const bannerW = width - 18 * 2 - panelW;
+        const bannerH = height - 60;
+        const banner = ImageSlot.create(bannerW, bannerH, '卡池主视觉 · 貂蝉');
+        banner.setPosition(-width / 2 + 18 + bannerW / 2, -12);
+        content.addChild(banner);
+
+        const infoY = -bannerH / 2 + 40;
+        const tag = createLabel('限 时 UP · 天 阶', { fontSize: 10, color: Theme.color.goldBright, width: 200, align: Label.HorizontalAlign.LEFT });
+        tag.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        tag.setPosition(-bannerW / 2 + 18, infoY + 46);
+        banner.addChild(tag);
+
+        const name = createLabel('貂 蝉 · 闭 月', { fontSize: 24, bold: true, color: Theme.color.text, width: 260, align: Label.HorizontalAlign.LEFT });
+        name.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        name.setPosition(-bannerW / 2 + 18, infoY + 16);
+        banner.addChild(name);
+
+        const desc = createLabel('UP 期间高稀有出率提升，必得本期 UP 卡池角色之一', {
+            fontSize: 11, color: Theme.color.textMuted, width: bannerW - 40, align: Label.HorizontalAlign.LEFT,
+        });
+        desc.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        desc.setPosition(-bannerW / 2 + 18, infoY - 14);
+        banner.addChild(desc);
+    }
+
+    private buildSidePanel(content: Node, width: number, height: number): void {
+        const panelW = 330;
+        const panel = createNode('SidePanel', panelW, height - 60);
+        panel.setPosition(width / 2 - 18 - panelW / 2, -12);
+        content.addChild(panel);
+
+        const panelH = height - 60;
+        let y = panelH / 2 - 60;
+
+        const pityCard = createNode('PityCard', panelW, 108);
+        pityCard.setPosition(0, y);
+        drawPanel(pityCard, { fill: withAlpha(Theme.color.panel, 235), stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
+        panel.addChild(pityCard);
+        this.buildPityRow(pityCard, panelW, 26, 'SR', (l) => { this.srLabel = l; }, (b) => { this.srBar = b; });
+        this.buildPityRow(pityCard, panelW, -18, 'SSR', (l) => { this.ssrLabel = l; }, (b) => { this.ssrBar = b; });
+        y -= 122;
+
+        const ticketCard = createNode('TicketCard', panelW, 50);
+        ticketCard.setPosition(0, y);
+        drawPanel(ticketCard, { fill: withAlpha(Theme.color.panel, 200), stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
+        panel.addChild(ticketCard);
+        const ticketTitle = createLabel('招贤令', { fontSize: 12, color: Theme.color.textMuted, width: 100, align: Label.HorizontalAlign.LEFT });
+        ticketTitle.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        ticketTitle.setPosition(-panelW / 2 + 14, 0);
+        ticketCard.addChild(ticketTitle);
+        const ticketValue = createLabel('--', { fontSize: 15, bold: true, color: Theme.color.goldBright, width: 100, align: Label.HorizontalAlign.RIGHT });
+        ticketValue.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
+        ticketValue.setPosition(panelW / 2 - 14, 0);
+        ticketCard.addChild(ticketValue);
+        this.ticketLabel = labelOf(ticketValue);
+        y -= 66;
+
+        this.singleBtn = createButton('单 抽 · 招贤令 ×1', panelW, 44, () => this.pull('single'), {
+            fill: withAlpha(Theme.color.bgDeep, 0), stroke: Theme.color.gold, textColor: Theme.color.goldBright,
+        });
+        this.singleBtn.setPosition(0, y);
+        panel.addChild(this.singleBtn);
+        y -= 58;
+
+        this.tenBtn = createButton('十 连 招 贤', panelW, 54, () => this.pull('multi'), {
+            fill: Theme.color.goldBright, stroke: Theme.color.goldBright, textColor: Theme.color.bgDeep, fontSize: 17,
+        });
+        this.tenBtn.setPosition(0, y);
+        panel.addChild(this.tenBtn);
+        y -= 46;
+
+        const rates = createLabel('概率随保底浮动，详见军府公示 · 十连不低于 SR', {
+            fontSize: 10, color: Theme.color.textDisabled, width: panelW - 20,
+        });
+        rates.setPosition(0, y);
+        panel.addChild(rates);
+    }
+
+    private buildPityRow(
+        card: Node, panelW: number, y: number, label: string,
+        onLabel: (l: Label) => void, onBar: (b: { track: Node; fill: Node }) => void,
+    ): void {
+        const title = createLabel(`${label} 保底`, { fontSize: 11, color: Theme.color.textMuted, width: 100, align: Label.HorizontalAlign.LEFT });
+        title.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        title.setPosition(-panelW / 2 + 14, y + 12);
+        card.addChild(title);
+
+        const value = createLabel('--', { fontSize: 12, color: Theme.color.goldBright, width: 140, align: Label.HorizontalAlign.RIGHT });
+        value.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
+        value.setPosition(panelW / 2 - 14, y + 12);
+        card.addChild(value);
+        onLabel(labelOf(value));
+
+        const bar = createProgressBar(panelW - 28, 6, 0, { fillColor: Theme.color.goldBright });
+        bar.track.setPosition(0, y);
+        card.addChild(bar.track);
+        onBar(bar);
+    }
+
+    private renderUser(): void {
+        const user = GameApi.user;
+        if (!user) return;
+        this.ticketLabel.string = `${user.tickets}`;
+
+        const sr = Math.min(user.sr_pity_count, SR_PITY_MAX);
+        this.srLabel.string = `${sr} / ${SR_PITY_MAX}`;
+        setProgressRatio(this.srBar, sr / SR_PITY_MAX);
+
+        const ssr = Math.min(user.ssr_pity_count, SSR_PITY_MAX);
+        this.ssrLabel.string = `${ssr} / ${SSR_PITY_MAX}`;
+        setProgressRatio(this.ssrBar, ssr / SSR_PITY_MAX);
+    }
+
+    private async pull(type: 'single' | 'multi'): Promise<void> {
+        if (this.pulling) return;
         this.setPulling(true);
-        this.setHint('');
-        this.clearCards();
-        this.stopEffects();
 
         const res = await GameApi.pullGacha(type);
+        this.setPulling(false);
 
         if (!res.success || !res.data) {
-            this.setHint(res.error || '抽卡失败');
-            this.setPulling(false);
+            showToast(this.overlay, res.error || '抽卡失败');
             return;
         }
 
-        this.renderTickets();
-        await this.revealCards(res.data.cards);
-        this.setPulling(false);
+        this.renderUser();
+        this.showReveal(res.data.cards);
     }
 
-    /** 生成卡槽并逐张翻开 */
-    private async revealCards(cards: CardData[]) {
-        const slots: CardSlot[] = [];
-
-        for (const card of cards) {
-            const node = instantiate(this.cardSlotPrefab);
-            this.cardContainer.addChild(node);
-
-            const slot = node.getComponent(CardSlot);
-            if (!slot) {
-                AppConfig.error('CardSlot预制体上没有挂CardSlot脚本');
-                continue;
-            }
-            slot.setup(card);
-            slots.push(slot);
-        }
-
-        // 十连逐张翻开，间隔0.12秒；单抽无需等待
-        const flips = slots.map((slot, i) => slot.playFlip(i * 0.12));
-        await Promise.all(flips);
-
-        this.playRarityEffect(cards);
-    }
-
-    /** 按本次结果的最高稀有度播放粒子 */
-    private playRarityEffect(cards: CardData[]) {
-        let best = 'N';
-        for (const card of cards) {
-            if (rarityWeight(card.rarity) > rarityWeight(best)) {
-                best = card.rarity;
-            }
-        }
-
-        if (best === 'SSR' || best === 'UR') {
-            this.ssrEffect?.resetSystem();
-        } else if (best === 'SR') {
-            this.srEffect?.resetSystem();
-        }
-    }
-
-    private clearCards() {
-        this.cardContainer.removeAllChildren();
-    }
-
-    private stopEffects() {
-        this.ssrEffect?.stopSystem();
-        this.srEffect?.stopSystem();
-    }
-
-    private renderTickets() {
-        const user = GameApi.user;
-        if (user) {
-            this.ticketsLabel.string = `抽卡券 ${user.tickets}`;
-        }
-    }
-
-    private setPulling(pulling: boolean) {
+    private setPulling(pulling: boolean): void {
         this.pulling = pulling;
-        this.singleButton.interactable = !pulling;
-        this.multiButton.interactable = !pulling;
-        this.backButton.interactable = !pulling;
+        setButtonEnabled(this.singleBtn, !pulling);
+        setButtonEnabled(this.tenBtn, !pulling);
     }
 
-    private setHint(message: string) {
-        if (this.hintLabel) {
-            this.hintLabel.string = message;
-        }
-    }
+    /** 抽卡结果的整版覆盖层：点击每张令牌翻开，或一键全翻 */
+    private showReveal(cards: CardData[]): void {
+        const width = this.node.getComponent(UITransform)!.width;
+        const height = this.node.getComponent(UITransform)!.height;
 
-    private onBack() {
-        SceneNav.go(SceneNav.MAIN_MENU);
+        const layer = createModalBackdrop(width, height);
+        this.node.addChild(layer);
+
+        const hint = createLabel('点 击 令 牌 · 翻 开 所 得', { fontSize: 12, color: Theme.color.textMuted, width: 400 });
+        hint.setPosition(0, height / 2 - 80);
+        layer.addChild(hint);
+
+        const cardW = 124;
+        const cardH = 212;
+        const gap = 12;
+        const cols = Math.min(5, cards.length);
+        const rows = Math.ceil(cards.length / cols);
+        const gridW = cols * cardW + (cols - 1) * gap;
+        const gridH = rows * cardH + (rows - 1) * gap;
+        const grid = createNode('Grid', gridW, gridH);
+        grid.setPosition(0, 10);
+        layer.addChild(grid);
+
+        const slots: Node[] = [];
+        cards.forEach((card, i) => {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            const slot = GachaCardSlot.create(card, cardW, cardH);
+            slot.setPosition(
+                -gridW / 2 + cardW / 2 + col * (cardW + gap),
+                gridH / 2 - cardH / 2 - row * (cardH + gap),
+            );
+            grid.addChild(slot);
+            slots.push(slot);
+        });
+
+        const actions = createNode('Actions', 300, 40);
+        actions.setPosition(0, -height / 2 + 90);
+        layer.addChild(actions);
+
+        const flipAll = createButton('一 键 全 翻', 140, 38, () => {
+            slots.forEach((s) => s.getComponent(GachaCardSlot)!.reveal());
+        }, { fill: withAlpha(Theme.color.bgDeep, 0), stroke: Theme.color.gold, textColor: Theme.color.goldBright });
+        flipAll.setPosition(-78, 0);
+        actions.addChild(flipAll);
+
+        const close = createButton('收 入 麾 下', 140, 38, () => layer.destroy(), {
+            fill: Theme.color.goldBright, stroke: Theme.color.goldBright, textColor: Theme.color.bgDeep,
+        });
+        close.setPosition(78, 0);
+        actions.addChild(close);
     }
 }
