@@ -1,9 +1,12 @@
 import { Node, UIOpacity, tween, v3 } from 'cc';
-import { Theme } from '../core/UiTheme';
-import { createLabel, createNode, drawPanel, withAlpha } from '../core/UIFactory';
+import { Theme } from './UiTheme';
+import { createLabel, createNode, drawPanel, withAlpha } from './UIFactory';
 
 /**
- * 轻提示：出征结果、未解锁提示等都走这里，1.6 秒后自动消失。
+ * 轻提示：操作反馈、未解锁提示等都走这里，1.6 秒后自动消失。
+ *
+ * 原为 provinces/Toast.ts，随「征伐」取代十三州地理图后提升为 core 公共组件，
+ * 所有新场景统一从这里引用。
  */
 export function showToast(parent: Node, text: string): void {
     // 同一时刻只保留一条提示，避免连续反馈互相重叠

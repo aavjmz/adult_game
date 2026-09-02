@@ -9,12 +9,29 @@ import { AppConfig } from './AppConfig';
  * 所以统一走这里，把失败明确回报给调用方。
  */
 export class SceneNav {
+    /** 登录 / 注册，同一场景内切换 */
     static readonly LOGIN = 'Login';
+    /** 主城 */
     static readonly MAIN_MENU = 'MainMenu';
+    /** 招贤台 */
     static readonly GACHA = 'Gacha';
     static readonly BATTLE = 'Battle';
-    /** 十三州战略地图 */
-    static readonly PROVINCES = 'ThirteenProvinces';
+    /** 将台（武将图鉴） */
+    static readonly ROSTER = 'Roster';
+    /** 编伍 */
+    static readonly FORMATION = 'Formation';
+    /** 征伐：三章节点推图，取代早期的十三州地理版图（ThirteenProvinces，已移除） */
+    static readonly CAMPAIGN = 'Campaign';
+    /** 军令 */
+    static readonly ORDERS = 'Orders';
+    /** 市集 */
+    static readonly SHOP = 'Shop';
+    /** 盟 */
+    static readonly GUILD = 'Guild';
+    /** 行囊 */
+    static readonly BAG = 'Bag';
+    /** 军演 */
+    static readonly ARENA = 'Arena';
 
     /**
      * 跳转到指定场景

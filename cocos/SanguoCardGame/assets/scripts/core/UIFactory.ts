@@ -1,4 +1,7 @@
-import { Color, Graphics, Label, Layers, Node, UIOpacity, UITransform, Vec2 } from 'cc';
+import {
+    Color, Graphics, Label, Layers, Mask, Node, ScrollView, Layout, Size,
+    UIOpacity, UITransform, Vec2, BlockInputEvents,
+} from 'cc';
 import { Theme } from './UiTheme';
 
 /**
@@ -197,4 +200,147 @@ export function dim(color: Color, factor: number): Color {
 /** 颜色改透明度 */
 export function withAlpha(color: Color, alpha: number): Color {
     return new Color(color.r, color.g, color.b, alpha);
+}
+
+/**
+ * 小胶囊/徽标（页签、稀有度角标、货币条等大量复用这个形状）。
+ *
+ * 纯展示用，点击态由调用方在返回的节点上自行挂监听。
+ */
+export function createPill(
+    text: string, width: number, height: number,
+    style: { fill?: Color; stroke?: Color; textColor?: Color; fontSize?: number; radius?: number } = {},
+): Node {
+    const node = createNode('Pill', width, height);
+    drawPanel(node, {
+        fill: style.fill ?? Theme.color.panelSunken,
+        stroke: style.stroke ?? Theme.color.divider,
+        lineWidth: 1,
+        radius: style.radius ?? height / 2,
+    });
+
+    const label = createLabel(text, {
+        fontSize: style.fontSize ?? Theme.font.caption,
+        color: style.textColor ?? Theme.color.text,
+        bold: true,
+        width: width - 10,
+    });
+    node.addChild(label);
+    return node;
+}
+
+/** 重绘一个已有胶囊的底色/描边（用于页签选中态切换，不重建节点） */
+export function repaintPill(
+    node: Node, style: { fill?: Color; stroke?: Color; textColor?: Color; radius?: number } = {},
+): void {
+    const transform = node.getComponent(UITransform)!;
+    drawPanel(node, {
+        fill: style.fill ?? Theme.color.panelSunken,
+        stroke: style.stroke ?? Theme.color.divider,
+        lineWidth: 1,
+        radius: style.radius ?? transform.height / 2,
+    });
+    const label = node.getComponentInChildren(Label);
+    if (label && style.textColor) label.color = style.textColor;
+}
+
+export interface ProgressBarStyle {
+    trackColor?: Color;
+    fillColor?: Color;
+    radius?: number;
+}
+
+/** 一条进度条：轨道 + 填充；返回 {track, fill}，刷新时改 fill 的宽度 */
+export function createProgressBar(width: number, height: number, ratio: number, style: ProgressBarStyle = {}): { track: Node; fill: Node } {
+    const track = createNode('ProgressTrack', width, height);
+    drawPanel(track, {
+        fill: style.trackColor ?? Theme.color.panelSunken,
+        radius: style.radius ?? height / 2,
+    });
+
+    const fillWidth = Math.max(0.0001, width * Math.max(0, Math.min(1, ratio)));
+    const fill = createNode('ProgressFill', fillWidth, height, new Vec2(0, 0.5));
+    fill.setPosition(-width / 2, 0);
+    drawPanel(fill, { fill: style.fillColor ?? Theme.color.goldBright, radius: style.radius ?? height / 2 });
+    track.addChild(fill);
+
+    return { track, fill };
+}
+
+/** 更新已有进度条的比例（0~1），宽度取自 track 的 UITransform */
+export function setProgressRatio(bar: { track: Node; fill: Node }, ratio: number): void {
+    const width = bar.track.getComponent(UITransform)!.width;
+    const fillTransform = bar.fill.getComponent(UITransform)!;
+    fillTransform.width = Math.max(0.0001, width * Math.max(0, Math.min(1, ratio)));
+}
+
+/**
+ * 半透明遮罩层，铺满 (width,height)，点击自身（非子内容）关闭。
+ *
+ * 用于军书 / 设置 / 武将详情等弹层的背景。BlockInputEvents 挡住穿透到下层场景的点击。
+ */
+export function createModalBackdrop(width: number, height: number, onClose?: () => void): Node {
+    const node = createNode('Backdrop', width, height);
+    node.addComponent(BlockInputEvents);
+    drawPanel(node, { fill: withAlpha(new Color(8, 6, 5), 220), radius: 0 });
+    if (onClose) {
+        node.on(Node.EventType.TOUCH_END, onClose);
+    }
+    return node;
+}
+
+export interface ScrollListResult {
+    /** 整个滚动区域节点（挂 Mask + ScrollView），按此定位 */
+    view: Node;
+    /** 内容节点：把列表项加到这里；vertical 模式下高度自动增长 */
+    content: Node;
+    scrollView: ScrollView;
+}
+
+/**
+ * 一个可滚动列表容器：view(Mask+ScrollView) -> content(Layout)。
+ *
+ * @param direction 'vertical' 单列纵向滚动；'grid' 纵向滚动的网格（需要 cellSize）
+ */
+export function createScrollList(
+    width: number, height: number,
+    direction: 'vertical' | 'grid' = 'vertical',
+    opts: { spacing?: number; padding?: number; cellSize?: Size; columns?: number } = {},
+): ScrollListResult {
+    const view = createNode('ScrollView', width, height);
+    view.addComponent(Mask);
+    view.addComponent(Graphics); // Mask 需要一个 Graphics 定义裁剪区域
+    drawPanel(view, { fill: new Color(0, 0, 0, 0), radius: 0 });
+
+    const content = createNode('Content', width, height, new Vec2(0.5, 1));
+    content.setPosition(0, height / 2);
+    view.addChild(content);
+
+    const layout = content.addComponent(Layout);
+    layout.resizeMode = Layout.ResizeMode.CONTAINER;
+    const padding = opts.padding ?? 0;
+    layout.paddingTop = padding;
+    layout.paddingBottom = padding;
+    layout.paddingLeft = padding;
+    layout.paddingRight = padding;
+
+    if (direction === 'grid') {
+        layout.type = Layout.Type.GRID;
+        layout.startAxis = Layout.AxisDirection.HORIZONTAL;
+        layout.cellSize = opts.cellSize ?? new Size(120, 160);
+        layout.spacingX = opts.spacing ?? 8;
+        layout.spacingY = opts.spacing ?? 8;
+    } else {
+        layout.type = Layout.Type.VERTICAL;
+        layout.spacingY = opts.spacing ?? 8;
+    }
+
+    const scrollView = view.addComponent(ScrollView);
+    scrollView.content = content;
+    scrollView.horizontal = false;
+    scrollView.vertical = true;
+    scrollView.brake = 0.75;
+    scrollView.elastic = true;
+
+    return { view, content, scrollView };
 }
