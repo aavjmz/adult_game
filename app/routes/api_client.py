@@ -10,11 +10,14 @@
 2. 浏览器预览时JS无法设置Cookie头（forbidden header）
 3. CORS携带凭证时不允许 Access-Control-Allow-Origin: *
 """
+import json
+import random
 from functools import wraps
 
 from flask import Blueprint, jsonify, request, g
 
-from app.models import db, User, Card, UserCard, ApiToken
+from app.models import db, User, Card, UserCard, ApiToken, Stage, UserStageProgress, UserItem
+from app.utils.stamina import StaminaSystem
 from config import Config
 
 bp = Blueprint('api_client', __name__, url_prefix='/api/v1')
@@ -283,4 +286,122 @@ def game_config():
     return ok({
         'rarities': Config.CARD_RARITIES,
         'gacha': Config.GACHA_CONFIG,
+    })
+
+
+# ============ 征伐（PVE 关卡） ============
+#
+# app/routes/pve.py 下的 /api/pve/* 是给 Web 端用的，走 Flask-Login 的
+# Session Cookie 鉴权（@login_required），原生/预览环境的 Cocos 客户端不维护
+# Cookie jar，打不到那一组接口（该文件顶部的注释原话就是这个原因）。
+# 这里在 /api/v1 下补两个 Bearer Token 鉴权的版本，只做客户端「征伐」页
+# 真正需要的两件事：看关卡列表与进度、扫荡已通关的关卡。复杂的即时战斗
+# （PVEBattle 引擎）不在这里重复实现，未通关关卡的「出征」由客户端跳转到
+# 单独的 Battle 场景处理。
+
+def _stage_payload(stage, progress):
+    return {
+        'id': stage.id,
+        'stage_number': stage.stage_number,
+        'name': stage.name,
+        'description': stage.description,
+        'chapter': stage.chapter,
+        'difficulty': stage.difficulty,
+        'recommended_power': stage.recommended_power,
+        'stamina_cost': stage.stamina_cost,
+        'enemy_config': json.loads(stage.enemy_config) if stage.enemy_config else None,
+        'rewards': json.loads(stage.rewards) if stage.rewards else None,
+        'user_progress': {
+            'is_cleared': progress.is_cleared if progress else False,
+            'stars': progress.stars if progress else 0,
+            'total_attempts': progress.total_attempts if progress else 0,
+        },
+    }
+
+
+@bp.route('/pve/stages', methods=['GET'])
+@token_required
+def pve_stages():
+    """关卡列表（主线），带当前用户的通关进度。不传 chapter 时返回全部章节。"""
+    stage_type = request.args.get('type', 'main')
+    chapter = request.args.get('chapter', type=int)
+
+    query = Stage.query.filter_by(stage_type=stage_type)
+    if chapter:
+        query = query.filter_by(chapter=chapter)
+    stages = query.order_by(Stage.chapter, Stage.stage_number).all()
+
+    progress_map = {
+        p.stage_id: p for p in UserStageProgress.query.filter_by(user_id=g.current_user.id).all()
+    }
+
+    return ok({
+        'stages': [_stage_payload(s, progress_map.get(s.id)) for s in stages],
+    })
+
+
+@bp.route('/pve/battle/sweep', methods=['POST'])
+@token_required
+def pve_sweep():
+    """扫荡已通关的关卡，直接结算奖励（不跑真实战斗）"""
+    body = _json_body()
+    stage_id = body.get('stage_id')
+    times = body.get('times', 1)
+
+    stage = Stage.query.get(stage_id)
+    if not stage:
+        return fail('关卡不存在', 404)
+
+    if not isinstance(times, int) or times < 1 or times > 10:
+        return fail('扫荡次数必须在 1-10 之间')
+
+    user = g.current_user
+    progress = UserStageProgress.query.filter_by(user_id=user.id, stage_id=stage.id).first()
+    if not progress or not progress.is_cleared:
+        return fail('只能扫荡已通关的关卡')
+
+    total_cost = stage.stamina_cost * times
+    stamina_info = StaminaSystem.get_stamina_info(user)
+    if stamina_info['current'] < total_cost:
+        return fail(f'体力不足，需要 {total_cost} 点，当前 {stamina_info["current"]} 点')
+
+    total_rewards = {'coins': 0, 'exp': 0, 'items': []}
+    base_rewards = json.loads(stage.rewards) if stage.rewards else {'coins': {'min': 0, 'max': 0}, 'exp': 0}
+    drop_config = json.loads(stage.drop_config) if stage.drop_config else []
+
+    for _ in range(times):
+        if not StaminaSystem.consume_stamina(user, stage.stamina_cost):
+            break
+
+        total_rewards['coins'] += (base_rewards['coins']['min'] + base_rewards['coins']['max']) // 2
+        total_rewards['exp'] += base_rewards.get('exp', 0)
+
+        for drop_item in drop_config:
+            if random.random() < drop_item['probability']:
+                quantity = random.randint(drop_item['quantity'][0], drop_item['quantity'][1])
+                total_rewards['items'].append({
+                    'item_type': drop_item['item_type'],
+                    'item_subtype': drop_item.get('item_subtype'),
+                    'quantity': quantity,
+                })
+
+    user.coins += total_rewards['coins']
+    for item in total_rewards['items']:
+        existing = UserItem.query.filter_by(
+            user_id=user.id, item_type=item['item_type'], item_subtype=item['item_subtype'],
+        ).first()
+        if existing:
+            existing.quantity += item['quantity']
+        else:
+            db.session.add(UserItem(
+                user_id=user.id, item_type=item['item_type'],
+                item_subtype=item['item_subtype'], quantity=item['quantity'],
+            ))
+
+    db.session.commit()
+
+    return ok({
+        'times': times,
+        'rewards': total_rewards,
+        'user': _user_payload(user),
     })

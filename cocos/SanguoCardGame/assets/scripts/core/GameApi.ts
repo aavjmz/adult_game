@@ -50,6 +50,27 @@ export interface GachaResult {
     user: UserInfo;
 }
 
+/** 关卡数据，对应 /api/v1/pve/stages 返回的单条记录 */
+export interface StageData {
+    id: number;
+    stage_number: number;
+    name: string;
+    description: string;
+    chapter: number;
+    difficulty: 'easy' | 'normal' | 'hard' | 'elite' | 'boss';
+    recommended_power: number;
+    stamina_cost: number;
+    enemy_config: { enemies: Array<{ level: number; card_name: string; position: number }>; ai_strategy: string } | null;
+    rewards: { coins: { min: number; max: number }; exp: number } | null;
+    user_progress: { is_cleared: boolean; stars: number; total_attempts: number };
+}
+
+export interface SweepResult {
+    times: number;
+    rewards: { coins: number; exp: number; items: Array<{ item_type: string; item_subtype: string | null; quantity: number }> };
+    user: UserInfo;
+}
+
 /**
  * 后端接口封装
  *
@@ -115,6 +136,23 @@ export class GameApi {
 
     static async fetchConfig(): Promise<ApiResult<any>> {
         return Http.get('/config');
+    }
+
+    // ============ 征伐（PVE） ============
+
+    /** 不传 chapter 时返回全部章节的主线关卡 */
+    static async fetchStages(chapter?: number): Promise<ApiResult<{ stages: StageData[] }>> {
+        const query = chapter ? `?type=main&chapter=${chapter}` : '?type=main';
+        return Http.get(`/pve/stages${query}`);
+    }
+
+    /** 扫荡已通关关卡；结算结果会刷新 GameApi.user 缓存 */
+    static async sweepStage(stageId: number, times = 1): Promise<ApiResult<SweepResult>> {
+        const res = await Http.post<SweepResult>('/pve/battle/sweep', { stage_id: stageId, times });
+        if (res.success && res.data) {
+            this.user = res.data.user;
+        }
+        return res;
     }
 
     // ============ 内部 ============
