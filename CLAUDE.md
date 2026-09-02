@@ -46,6 +46,9 @@ adult_game/
 │   ├── growth_utils.py         # Growth system calculations (leveling, starring)
 │   ├── equipment_utils.py      # Equipment stat calculations
 │   ├── routes/                 # Flask blueprints (one per feature)
+│   │   ├── api_client.py       # /api/v1/* — Bearer Token API for the Cocos client
+│   │   │                         (see cocos/SanguoCardGame/), separate from the
+│   │   │                         Session-Cookie Web routes below
 │   │   ├── auth.py             # /register, /login, /logout
 │   │   ├── main.py             # /, /dashboard, /api/user/info
 │   │   ├── gacha.py            # /gacha, /pull (card pulling)
