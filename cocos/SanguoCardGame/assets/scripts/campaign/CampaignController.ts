@@ -4,6 +4,7 @@ import {
 import { Theme } from '../core/UiTheme';
 import { GameApi, StageData } from '../core/GameApi';
 import { SceneNav } from '../core/SceneNav';
+import { BattleContext } from '../core/BattleContext';
 import { showToast } from '../core/Toast';
 import { ImageSlot } from '../core/ImageSlot';
 import { TopBar } from '../core/TopBar';
@@ -358,6 +359,8 @@ export class CampaignController extends Component {
 
     private async onAction(stage: StageData, cleared: boolean): Promise<void> {
         if (!cleared) {
+            // loadScene 不接受参数，关卡经 BattleContext 交给 Battle 场景
+            BattleContext.setStage(stage);
             showToast(this.overlay, `大军开拔，目标 ${stage.name}`);
             SceneNav.go(SceneNav.BATTLE, (reason) => showToast(this.overlay, reason));
             return;

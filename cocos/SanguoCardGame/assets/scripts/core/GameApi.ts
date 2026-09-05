@@ -65,6 +65,50 @@ export interface StageData {
     user_progress: { is_cleared: boolean; stars: number; total_attempts: number };
 }
 
+/** 战斗单位快照，开打前的满血状态 */
+export interface BattleUnit {
+    name: string;
+    level: number;
+    max_hp: number;
+    attack: number;
+    defense: number;
+    speed: number;
+    rarity: string;
+    image_url: string | null;
+}
+
+/**
+ * 战报的一条记录。
+ *
+ * 攻击条目带 actor/target/damage，阵亡等旁白只有 message；
+ * 双方单位只以「姓名」标识，同名小兵（一关里常有三个黄巾贼兵）无法区分，
+ * 客户端回放时按「同名且尚存活的第一个」结算，视觉上没有差别。
+ */
+export interface BattleLogEntry {
+    turn: number;
+    actor?: string;
+    action?: string;
+    target?: string;
+    damage?: number;
+    message?: string;
+}
+
+export interface BattleResult {
+    stage: { id: number; name: string };
+    allies: BattleUnit[];
+    enemies: BattleUnit[];
+    result: 'win' | 'lose';
+    stars: number;
+    turns: number;
+    damage_dealt: number;
+    damage_taken: number;
+    deaths: number;
+    rewards: { coins?: number; exp?: number; items?: any[] } | null;
+    drops: any[] | null;
+    battle_log: BattleLogEntry[];
+    user: UserInfo;
+}
+
 export interface SweepResult {
     times: number;
     rewards: { coins: number; exp: number; items: Array<{ item_type: string; item_subtype: string | null; quantity: number }> };
@@ -144,6 +188,20 @@ export class GameApi {
     static async fetchStages(chapter?: number): Promise<ApiResult<{ stages: StageData[] }>> {
         const query = chapter ? `?type=main&chapter=${chapter}` : '?type=main';
         return Http.get(`/pve/stages${query}`);
+    }
+
+    /**
+     * 出征：整场战斗在服务端算完，返回战报供客户端回放
+     *
+     * @param teamIds 出战的 UserCard id 列表（编伍页存的是花名册 id，
+     *                需先经 RosterData.formationUserCardIds() 换算）
+     */
+    static async startBattle(stageId: number, teamIds: number[]): Promise<ApiResult<BattleResult>> {
+        const res = await Http.post<BattleResult>('/pve/battle/start', { stage_id: stageId, team: teamIds });
+        if (res.success && res.data) {
+            this.user = res.data.user;
+        }
+        return res;
     }
 
     /** 扫荡已通关关卡；结算结果会刷新 GameApi.user 缓存 */

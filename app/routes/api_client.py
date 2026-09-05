@@ -405,3 +405,79 @@ def pve_sweep():
         'rewards': total_rewards,
         'user': _user_payload(user),
     })
+
+
+def _unit_payload(unit):
+    """战斗单位快照。必须在开打前取——战斗过程会就地把 hp 扣到 0"""
+    return {
+        'name': unit['card'].name,
+        'level': unit['level'],
+        'max_hp': unit['max_hp'],
+        'attack': unit['attack'],
+        'defense': unit['defense'],
+        'speed': unit['speed'],
+        'rarity': unit['card'].rarity,
+        'image_url': unit['card'].image_url,
+    }
+
+
+@bp.route('/pve/battle/start', methods=['POST'])
+@token_required
+def pve_battle_start():
+    """出征：整场战斗在服务端一次算完，返回战报供客户端回放
+
+    请求：{"stage_id": 1, "team": [UserCard id, ...]}
+
+    客户端的战斗界面是「回放服务端算好的 battle_log」，不是逐回合发指令——
+    PVEBattle 的设计就是一次跑完，要做成手动出招得先改战斗引擎。
+    """
+    from app.utils.pve_battle import PVEBattle
+
+    body = _json_body()
+    stage_id = body.get('stage_id')
+    team_ids = body.get('team') or []
+
+    stage = Stage.query.get(stage_id)
+    if not stage:
+        return fail('关卡不存在', 404)
+
+    if not team_ids:
+        return fail('请先在编伍中安排出战武将')
+
+    user = g.current_user
+    team = []
+    for user_card_id in team_ids:
+        user_card = UserCard.query.filter_by(id=user_card_id, user_id=user.id).first()
+        if not user_card:
+            return fail(f'卡牌 {user_card_id} 不存在或不属于你')
+        team.append(user_card)
+
+    stamina_info = StaminaSystem.get_stamina_info(user)
+    if stamina_info['current'] < stage.stamina_cost:
+        return fail(f'体力不足，需要 {stage.stamina_cost} 点，当前 {stamina_info["current"]} 点')
+
+    battle = PVEBattle(user, stage, team)
+
+    # 双方阵容在构造时就已生成，趁 hp 还是满的先存下来
+    allies = [_unit_payload(u) for u in battle.user_team_units]
+    enemies = [_unit_payload(u) for u in battle.enemy_team]
+
+    result = battle.start_battle()
+    if not result.get('success'):
+        return fail(result.get('message') or '战斗未能开始')
+
+    return ok({
+        'stage': {'id': stage.id, 'name': stage.name},
+        'allies': allies,
+        'enemies': enemies,
+        'result': result.get('result'),
+        'stars': result.get('stars', 0),
+        'turns': result.get('turns', 0),
+        'damage_dealt': result.get('damage_dealt', 0),
+        'damage_taken': result.get('damage_taken', 0),
+        'deaths': result.get('deaths', 0),
+        'rewards': result.get('rewards'),
+        'drops': result.get('drops'),
+        'battle_log': result.get('battle_log', []),
+        'user': _user_payload(user),
+    })

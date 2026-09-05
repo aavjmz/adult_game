@@ -14,6 +14,24 @@ export interface RosterEntry {
     card?: CardData;
 }
 
+/**
+ * 编伍的阵容换算成后端认的 UserCard id。
+ *
+ * 编伍页存的是花名册里的武将 id（MockStore.state.field），而战斗接口要的是
+ * 玩家名下真实卡牌的 id；没匹配到真实卡牌的阵位（设计稿里有、后端还没做出来的
+ * 武将）直接跳过，不会把空位塞给后端。
+ */
+export function formationUserCardIds(roster: RosterEntry[], field: Array<number | null>): number[] {
+    const byHeroId = new Map(roster.map((e) => [e.hero.id, e]));
+    const ids: number[] = [];
+    for (const heroId of field) {
+        if (heroId == null) continue;
+        const userCardId = byHeroId.get(heroId)?.card?.user_card_id;
+        if (userCardId != null) ids.push(userCardId);
+    }
+    return ids;
+}
+
 export async function loadRoster(): Promise<RosterEntry[]> {
     const res = await GameApi.fetchMyCards();
     const owned = new Map<string, CardData>();

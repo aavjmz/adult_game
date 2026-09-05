@@ -40,7 +40,7 @@
 | `Guild` | `guild/GuildController.ts` | `GuildController` | 盟，新增场景 |
 | `Bag` | `bag/BagController.ts` | `BagController` | 行囊，新增场景 |
 | `Arena` | `arena/ArenaController.ts` | `ArenaController` | 军演，新增场景 |
-| `Battle` | （不在本次改动范围内） | — | 真实战斗结算场景，由征伐页「出征」和军演跳转过去；这个场景本身没有改动，按你仓库原有的状态处理 |
+| `Battle` | `battle/BattleController.ts` | `BattleController` | 战斗，由征伐页「出征」跳转过来；回放服务端算好的战报 |
 
 ## 已知需要在编辑器里核对的地方
 
@@ -58,3 +58,14 @@
   不是漏做，后续要加渐变贴图需要额外的美术资源
 - 中文竖排标题（登录页「十三州」、主城「飞将·吕奉先」）用的是多行竖排文字
   近似，不是真正的 `writing-mode: vertical-rl`，Cocos Label 不支持这个属性
+
+## 战斗场景的两个前提
+
+- **关卡敌军配置要先修过**：`PVEBattle._generate_enemy_team()` 按
+  `enemy_config.enemies[].card_id` 取敌方卡牌，而 `init_stages.py` 里种的是
+  `card_name`。服务端如果没跑过 `init_enemy_cards.py` + `fix_stage_enemy_config.py`，
+  敌军会是空的，战斗直接判胜、战报为空（这种情况战斗界面会显示「此关未配置敌军」
+  并直接出结算，不会白屏）。
+- **出战阵容取自编伍页**：战斗接口要的是玩家名下真实卡牌的 UserCard id，编伍页
+  存的是花名册 id，中间经 `RosterData.formationUserCardIds()` 换算，只有匹配到
+  后端真实卡牌的阵位才会上场。阵中无人时会提示并跳去编伍。
