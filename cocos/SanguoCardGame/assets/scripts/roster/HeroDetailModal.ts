@@ -100,7 +100,8 @@ class HeroDetailModalController extends Component {
 
     private buildRight(panel: Node): void {
         const right = createNode('Right', RIGHT_W, PANEL_H);
-        right.setPosition(PANEL_W / 2 - RIGHT_W, 0);
+        // 右半区用默认居中锚点，给的必须是中心坐标：面板右边缘往左退半个 RIGHT_W
+        right.setPosition(PANEL_W / 2 - RIGHT_W / 2, 0);
         panel.addChild(right);
 
         this.tabsHost = createNode('Tabs', RIGHT_W, 40, new Vec2(0, 1));
