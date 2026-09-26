@@ -176,12 +176,14 @@ export class FormationController extends Component {
 
     private buildBench(content: Node, width: number, height: number): void {
         const panelW = 322;
-        const panel = createNode('BenchPanel', panelW, height - 40);
-        panel.setPosition(width / 2 - 18 - panelW / 2, -4);
+        // 顶部 44px 留给页头（一键上阵/卸阵/阵中战力），面板顶边从其下方开始
+        const panelTop = height / 2 - 44;
+        const panelH = height - 44 - 8;
+        const panel = createNode('BenchPanel', panelW, panelH);
+        panel.setPosition(width / 2 - 18 - panelW / 2, panelTop - panelH / 2);
         drawPanel(panel, { fill: withAlpha(Theme.color.panel, 235), stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
         content.addChild(panel);
 
-        const panelH = height - 40;
         const header = createLabel('待 命 武 将', { fontSize: 12, color: Theme.color.text, width: 160, align: Label.HorizontalAlign.LEFT });
         header.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
         header.setPosition(-panelW / 2 + 12, panelH / 2 - 20);
