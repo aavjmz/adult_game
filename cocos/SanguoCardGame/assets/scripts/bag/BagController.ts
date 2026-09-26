@@ -16,6 +16,7 @@ const { ccclass } = _decorator;
 
 const CELL = 74;
 const DETAIL_W = 296;
+const RANK_ORDER = ['天', '地', '玄', '黄'];
 
 /**
  * 行囊（对应原型 isBag）：八分类网格 + 右侧详情与四个动作。
@@ -34,6 +35,8 @@ export class BagController extends Component {
     private slotsBar: { track: Node; fill: Node } = null!;
     private tab = '全部';
     private onlyLocked = false;
+    /** 点过「整理」后按品阶（天→黄）再按品类排列 */
+    private tidied = false;
     private selected = 0;
 
     onLoad(): void {
@@ -99,13 +102,20 @@ export class BagController extends Component {
 
         const slots = createLabel('格 -- / 120', { fontSize: 10, color: Theme.color.textDisabled, width: 100, align: Label.HorizontalAlign.RIGHT });
         slots.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
-        slots.setPosition(width / 2 - 200, height / 2 - 22);
+        slots.setPosition(width / 2 - 270, height / 2 - 22);
         content.addChild(slots);
         this.slotsLabel = slots.getComponent(Label)!;
 
         this.slotsBar = createProgressBar(96, 5, 0, { fillColor: Theme.color.goldBright });
-        this.slotsBar.track.setPosition(width / 2 - 120, height / 2 - 22);
+        this.slotsBar.track.setPosition(width / 2 - 190, height / 2 - 22);
         content.addChild(this.slotsBar.track);
+
+        const tidy = createButton('整 理', 70, 28, () => this.tidy(), {
+            fill: withAlpha(Theme.color.bgDeep, 0), stroke: Theme.color.divider,
+            textColor: Theme.color.gold, fontSize: Theme.font.badge,
+        });
+        tidy.setPosition(width / 2 - 18 - 35, height / 2 - 22);
+        content.addChild(tidy);
     }
 
     private buildTabs(content: Node, width: number, height: number): void {
@@ -144,7 +154,18 @@ export class BagController extends Component {
         let list = BAG_ITEMS.filter((x) => !s.bagSold.includes(x.i));
         if (this.tab !== '全部') list = list.filter((x) => x.kind === this.tab);
         if (this.onlyLocked) list = list.filter((x) => s.bagLocks.includes(x.i));
+        if (this.tidied) {
+            list = list.slice().sort((a, b) =>
+                RANK_ORDER.indexOf(a.rank) - RANK_ORDER.indexOf(b.rank)
+                || BAG_TABS.indexOf(a.kind) - BAG_TABS.indexOf(b.kind));
+        }
         return list;
+    }
+
+    private tidy(): void {
+        this.tidied = true;
+        this.renderGrid();
+        showToast(this.node, '行囊已整理，按品阶排列');
     }
 
     private renderAll(): void {

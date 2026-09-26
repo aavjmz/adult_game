@@ -13,6 +13,9 @@ import {
 
 const { ccclass } = _decorator;
 
+const CHAT_TABS = ['盟内', '世界', '私信'] as const;
+type ChatTab = typeof CHAT_TABS[number];
+
 /**
  * 盟（对应原型 isGuild）：成员名单 + 攻城横幅 + 盟内活动 + 聊天。
  *
@@ -23,6 +26,8 @@ const { ccclass } = _decorator;
 export class GuildController extends Component {
     private topBar: TopBar = null!;
     private chatList: Node = null!;
+    private chatTabs: Node = null!;
+    private chatTab: ChatTab = '盟内';
     private draft: EditBox = null!;
 
     onLoad(): void {
@@ -81,23 +86,41 @@ export class GuildController extends Component {
         col.setPosition(-width / 2 + colW / 2 + 6, -22);
         content.addChild(col);
 
-        const banner = createNode('Banner', colW, 96);
-        banner.setPosition(0, (height - 44) / 2 - 48);
+        // 盟徽卡：盟徽「義」+ 盟名/盟阶 + 盟训 + 三项战绩
+        const bannerH = 138;
+        const banner = createNode('Banner', colW, bannerH);
+        banner.setPosition(0, (height - 44) / 2 - bannerH / 2);
         drawPanel(banner, { fill: withAlpha(Theme.color.panel, 235), stroke: Theme.color.gold, lineWidth: 1, radius: 2 });
         col.addChild(banner);
-        const name = createLabel('虎牢义盟', { fontSize: 16, bold: true, color: Theme.color.text, width: colW - 20, align: Label.HorizontalAlign.LEFT });
+
+        const emblem = createNode('Emblem', 44, 44);
+        emblem.setPosition(-colW / 2 + 13 + 22, bannerH / 2 - 11 - 22);
+        drawPanel(emblem, { fill: withAlpha(Theme.color.gold, 40), stroke: Theme.color.gold, lineWidth: 2, radius: 2 });
+        emblem.addChild(createLabel('義', { fontSize: 19, bold: true, color: Theme.color.goldBright }));
+        banner.addChild(emblem);
+
+        const textX = -colW / 2 + 13 + 44 + 11;
+        const name = createLabel('虎牢义盟', { fontSize: 16, bold: true, color: Theme.color.text, width: colW - 90, align: Label.HorizontalAlign.LEFT });
         name.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        name.setPosition(-colW / 2 + 14, 24);
+        name.setPosition(textX, bannerH / 2 - 24);
         banner.addChild(name);
-        const meta = createLabel('盟阶 6 · 众 38 / 40', { fontSize: 10, color: Theme.color.textMuted, width: colW - 20, align: Label.HorizontalAlign.LEFT });
+        const meta = createLabel('盟阶 6 · 众 38 / 40', { fontSize: 10, color: Theme.color.textMuted, width: colW - 90, align: Label.HorizontalAlign.LEFT });
         meta.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        meta.setPosition(-colW / 2 + 14, 6);
+        meta.setPosition(textX, bannerH / 2 - 44);
         banner.addChild(meta);
+
+        const motto = createLabel('「同年同月同日死」——诸君共讨国贼，勿失其时。', {
+            fontSize: 10, color: Theme.color.textMuted, width: colW - 26, align: Label.HorizontalAlign.LEFT,
+        });
+        motto.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        motto.setPosition(-colW / 2 + 13, bannerH / 2 - 72);
+        banner.addChild(motto);
+
         const stats: Array<[string, string]> = [['盟战排名', '第 2'], ['本周军功', '48.2k'], ['盟仓', '充盈']];
         const cellW = (colW - 24) / 3;
         stats.forEach(([k, v], i) => {
             const cell = createNode('Stat', cellW - 4, 34);
-            cell.setPosition(-colW / 2 + 12 + cellW / 2 + i * cellW, -26);
+            cell.setPosition(-colW / 2 + 12 + cellW / 2 + i * cellW, -bannerH / 2 + 11 + 17);
             drawPanel(cell, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
             banner.addChild(cell);
             const kl = createLabel(k, { fontSize: 8, color: Theme.color.textDisabled, width: cellW - 8 });
@@ -108,11 +131,11 @@ export class GuildController extends Component {
             cell.addChild(vl);
         });
 
-        const listPanel = createNode('Members', colW, height - 44 - 106);
-        listPanel.setPosition(0, (height - 44) / 2 - 96 - (height - 44 - 106) / 2);
+        const listPanel = createNode('Members', colW, height - 44 - bannerH - 10);
+        listPanel.setPosition(0, (height - 44) / 2 - bannerH - 10 - (height - 44 - bannerH - 10) / 2);
         drawPanel(listPanel, { fill: withAlpha(Theme.color.panel, 220), stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
         col.addChild(listPanel);
-        const listH = height - 44 - 106;
+        const listH = height - 44 - bannerH - 10;
         const memberHead = createLabel('盟中诸位', { fontSize: 11, color: Theme.color.text, width: 120, align: Label.HorizontalAlign.LEFT });
         memberHead.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
         memberHead.setPosition(-colW / 2 + 12, listH / 2 - 16);
@@ -194,8 +217,15 @@ export class GuildController extends Component {
         drawPanel(chatPanel, { fill: withAlpha(Theme.color.panel, 220), stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
         col.addChild(chatPanel);
 
-        const scroll = createScrollList(colW - 20, chatH - 52, 'vertical', { spacing: 10 });
-        scroll.view.setPosition(0, chatH / 2 - 8 - (chatH - 52) / 2);
+        // 聊天页签：盟内 / 世界 / 私信
+        this.chatTabs = createNode('ChatTabs', colW - 20, 26);
+        this.chatTabs.setPosition(0, chatH / 2 - 8 - 13);
+        chatPanel.addChild(this.chatTabs);
+        this.buildChatTabs();
+
+        const listH = chatH - 52 - 34;
+        const scroll = createScrollList(colW - 20, listH, 'vertical', { spacing: 10 });
+        scroll.view.setPosition(0, chatH / 2 - 8 - 34 - listH / 2);
         chatPanel.addChild(scroll.view);
         this.chatList = scroll.content;
 
@@ -214,8 +244,35 @@ export class GuildController extends Component {
         inputRow.addChild(sendBtn);
     }
 
+    private buildChatTabs(): void {
+        this.chatTabs.removeAllChildren();
+        const width = this.chatTabs.getComponent(UITransform)!.width;
+        const cellW = 68;
+        CHAT_TABS.forEach((t, i) => {
+            const active = t === this.chatTab;
+            const cell = createButton(t, cellW, 24, () => { this.chatTab = t; this.buildChatTabs(); this.renderChat(); }, {
+                fill: active ? withAlpha(Theme.color.gold, 30) : withAlpha(Theme.color.bgDeep, 0),
+                stroke: active ? Theme.color.gold : Theme.color.divider,
+                textColor: active ? Theme.color.goldBright : Theme.color.textMuted,
+                fontSize: 11,
+            });
+            cell.setPosition(-width / 2 + cellW / 2 + i * (cellW + 5), 0);
+            this.chatTabs.addChild(cell);
+        });
+    }
+
     private renderChat(): void {
         this.chatList.removeAllChildren();
+
+        // 世界 / 私信频道没有后端，原型里也是「筹备中」，这里给出空态而不是假消息
+        if (this.chatTab !== '盟内') {
+            const width = this.chatList.getComponent(UITransform)!.width;
+            const row = createNode('Empty', width, 60);
+            row.addChild(createLabel(`『${this.chatTab}』频道尚在筹备`, { fontSize: 12, color: Theme.color.textDisabled, width }));
+            this.chatList.addChild(row);
+            return;
+        }
+
         const s = MockStore.state;
         const lines = [...baseChat(), ...s.guildSent.map((t) => ({ rank: '盟主', name: '云长在上', text: t, time: '此刻', color: Theme.color.gold }))];
 
@@ -235,6 +292,7 @@ export class GuildController extends Component {
     }
 
     private send(): void {
+        if (this.chatTab !== '盟内') { showToast(this.node, `『${this.chatTab}』频道尚在筹备`); return; }
         const text = (this.draft.string ?? '').trim();
         if (!text) { showToast(this.node, '且书一言'); return; }
         const s = MockStore.state;

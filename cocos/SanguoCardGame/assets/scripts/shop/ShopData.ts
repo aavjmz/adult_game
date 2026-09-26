@@ -1,7 +1,11 @@
 import { Color } from 'cc';
 
 /** 市集商品数据，照抄设计稿 shopVals() 的 SETS 常量（本地静态，无对应后端） */
-export interface ShopGood { key: string; name: string; desc: string; mark: string; color: Color; price: string; limit: string }
+export interface ShopGood {
+    key: string; name: string; desc: string; mark: string; color: Color; price: string; limit: string;
+    /** 「热售」角标，规则照抄原型：每类第二件、且用元宝购买 */
+    hot: boolean;
+}
 
 export const CURRENCY_COLOR: Record<string, Color> = {
     银: new Color(200, 189, 166, 255),
@@ -48,5 +52,6 @@ const MARK_COLOR = [new Color(224, 182, 74, 255), new Color(201, 107, 69, 255), 
 export function goodsOf(tab: string): ShopGood[] {
     return (RAW[tab] ?? []).map(([name, desc, mark, price, limit], i) => ({
         key: `${tab}-${i}`, name, desc, mark, price, limit, color: MARK_COLOR[i % MARK_COLOR.length],
+        hot: i === 1 && price.startsWith('宝'),
     }));
 }

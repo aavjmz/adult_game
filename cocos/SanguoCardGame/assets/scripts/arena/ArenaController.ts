@@ -33,6 +33,8 @@ export class ArenaController extends Component {
     private logList: Node = null!;
     private foeList: Node = null!;
     private powerLabel: Label = null!;
+    private trendLabel: Label = null!;
+    private statsHost: Node = null!;
     private myPower = 0;
 
     onLoad(): void {
@@ -105,50 +107,122 @@ export class ArenaController extends Component {
 
     private buildLeft(content: Node, width: number, height: number): void {
         const colW = 300;
-        const col = createNode('Left', colW, height - 44);
+        const colH = height - 44;
+        const col = createNode('Left', colW, colH);
         col.setPosition(-width / 2 + colW / 2 + 6, -22);
         content.addChild(col);
 
-        const rankCard = createNode('Rank', colW, 96);
-        rankCard.setPosition(0, (height - 44) / 2 - 48);
+        // ---- 名次卡：名次 + 趋势 / 段位 + 积分 / 三格战绩 / 我军战力 ----
+        const cardH = 140;
+        const rankCard = createNode('Rank', colW, cardH);
+        rankCard.setPosition(0, colH / 2 - cardH / 2);
         drawPanel(rankCard, { fill: withAlpha(Theme.color.panel, 235), stroke: Theme.color.gold, lineWidth: 1, radius: 2 });
         col.addChild(rankCard);
-        const rank = createLabel('--', { fontSize: 26, bold: true, color: Theme.color.text, width: 100, align: Label.HorizontalAlign.LEFT });
-        rank.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        rank.setPosition(-colW / 2 + 14, 24);
-        rankCard.addChild(rank);
-        this.rankLabel = rank.getComponent(Label)!;
-        const tier = createLabel('--', { fontSize: 11, bold: true, color: Theme.color.goldBright, width: 120, align: Label.HorizontalAlign.LEFT });
-        tier.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        tier.setPosition(-colW / 2 + 14, 2);
-        rankCard.addChild(tier);
-        this.tierLabel = tier.getComponent(Label)!;
-        const score = createLabel('积分 --', { fontSize: 11, color: Theme.color.textMuted, width: 140, align: Label.HorizontalAlign.LEFT });
-        score.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        score.setPosition(-colW / 2 + 90, 2);
-        rankCard.addChild(score);
-        this.scoreLabel = score.getComponent(Label)!;
 
-        const power = createLabel('我军战力 --', { fontSize: 10, color: Theme.color.textDisabled, width: colW - 28, align: Label.HorizontalAlign.LEFT });
-        power.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        power.setPosition(-colW / 2 + 14, -24);
-        rankCard.addChild(power);
-        this.powerLabel = power.getComponent(Label)!;
+        this.leftLabel(rankCard, '我 之 名 次', -colW / 2 + 14, cardH / 2 - 14, 10, Theme.color.textMuted, 120);
+        this.rankLabel = this.leftLabel(rankCard, '--', -colW / 2 + 14, cardH / 2 - 38, 24, Theme.color.text, 160);
+        this.rankLabel.isBold = true;
 
-        const logH = height - 44 - 106;
+        const trend = createLabel('', { fontSize: 10, color: Theme.faction.shu, width: 120, align: Label.HorizontalAlign.RIGHT });
+        trend.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
+        trend.setPosition(colW / 2 - 14, cardH / 2 - 38);
+        rankCard.addChild(trend);
+        this.trendLabel = trend.getComponent(Label)!;
+
+        this.tierLabel = this.leftLabel(rankCard, '--', -colW / 2 + 14, cardH / 2 - 64, 11, Theme.color.goldBright, 70);
+        this.tierLabel.isBold = true;
+        this.scoreLabel = this.leftLabel(rankCard, '积分 --', -colW / 2 + 80, cardH / 2 - 64, 11, Theme.color.textMuted, 140);
+
+        this.statsHost = createNode('Stats', colW - 28, 36);
+        this.statsHost.setPosition(0, cardH / 2 - 96);
+        rankCard.addChild(this.statsHost);
+
+        this.powerLabel = this.leftLabel(rankCard, '我军战力 --', -colW / 2 + 14, -cardH / 2 + 12, 10, Theme.color.textDisabled, colW - 28);
+
+        // ---- 段位之赏：单行横排 ----
+        const lootH = 32;
+        const loot = createNode('TierLoot', colW, lootH);
+        loot.setPosition(0, colH / 2 - cardH - 8 - lootH / 2);
+        drawPanel(loot, { fill: withAlpha(Theme.color.panel, 220), stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
+        col.addChild(loot);
+        this.leftLabel(loot, '段位之赏', -colW / 2 + 12, 0, 11, Theme.color.text, 80);
+        const rewards: Array<[string, string, typeof Theme.color.text]> = [
+            ['功', '×600', Theme.faction.shu],
+            ['宝', '×120', Theme.color.goldBright],
+            ['魂', '×3', Theme.rank['地']],
+        ];
+        rewards.forEach(([mark, qty, color], i) => {
+            const x = colW / 2 - 12 - (rewards.length - i) * 56;
+            this.leftLabel(loot, mark, x, 0, 12, color, 16).isBold = true;
+            this.leftLabel(loot, qty, x + 16, 0, 10, Theme.color.textMuted, 40);
+        });
+
+        // ---- 战报 ----
+        const logTop = colH / 2 - cardH - 8 - lootH - 8;
+        const logH = logTop + colH / 2;
         const logPanel = createNode('Logs', colW, logH);
-        logPanel.setPosition(0, (height - 44) / 2 - 96 - logH / 2);
+        logPanel.setPosition(0, logTop - logH / 2);
         drawPanel(logPanel, { fill: withAlpha(Theme.color.panel, 220), stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
         col.addChild(logPanel);
-        const logHead = createLabel('战 报', { fontSize: 11, color: Theme.color.text, width: 100, align: Label.HorizontalAlign.LEFT });
-        logHead.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        logHead.setPosition(-colW / 2 + 12, logH / 2 - 16);
-        logPanel.addChild(logHead);
+        this.leftLabel(logPanel, '战 报', -colW / 2 + 12, logH / 2 - 16, 11, Theme.color.text, 100);
 
         const scroll = createScrollList(colW - 16, logH - 40, 'vertical', { spacing: 5 });
         scroll.view.setPosition(0, -18);
         logPanel.addChild(scroll.view);
         this.logList = scroll.content;
+    }
+
+    /** 左对齐单行文字，返回 Label 便于后续改文案 */
+    private leftLabel(
+        parent: Node, text: string, x: number, y: number, fontSize: number,
+        color: typeof Theme.color.text, width: number,
+    ): Label {
+        const node = createLabel(text, { fontSize, color, width, align: Label.HorizontalAlign.LEFT });
+        node.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        node.setPosition(x, y);
+        parent.addChild(node);
+        return node.getComponent(Label)!;
+    }
+
+    /** 今日 / 连胜 / 历史最高 三格，随战报变化重绘 */
+    private renderStats(): void {
+        const s = MockStore.state;
+        this.statsHost.removeAllChildren();
+        const width = this.statsHost.getComponent(UITransform)!.width;
+
+        const wins = s.arenaLog.filter((l) => l.win).length;
+        const losses = s.arenaLog.length - wins;
+        const firstLoss = s.arenaLog.findIndex((l) => !l.win);
+        const streak = firstLoss < 0 ? s.arenaLog.length : firstLoss;
+        const cells: Array<[string, string]> = [
+            ['今 日', `胜 ${wins} 负 ${losses}`],
+            ['连 胜', `${streak}`],
+            ['历史最高', `第 ${Math.min(s.arenaRank, 842)}`],
+        ];
+
+        const cellW = (width - 12) / 3;
+        cells.forEach(([k, v], i) => {
+            const cell = createNode('Stat', cellW, 36);
+            cell.setPosition(-width / 2 + cellW / 2 + i * (cellW + 6), 0);
+            drawPanel(cell, { fill: withAlpha(Theme.color.bgDeep, 150), stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
+            this.statsHost.addChild(cell);
+            const kl = createLabel(k, { fontSize: 9, color: Theme.color.textDisabled, width: cellW - 6 });
+            kl.setPosition(0, 8);
+            cell.addChild(kl);
+            const vl = createLabel(v, { fontSize: 12, bold: true, color: Theme.color.goldBright, width: cellW - 6 });
+            vl.setPosition(0, -8);
+            cell.addChild(vl);
+        });
+
+        // 名次趋势：打过就看最近一场，没打过沿用原型的「较昨日」
+        if (s.arenaLog.length) {
+            const up = s.arenaLog[0].win;
+            this.trendLabel.string = up ? '▲ 名次上行' : '▼ 名次下落';
+            this.trendLabel.color = up ? Theme.faction.shu : Theme.faction.wu;
+        } else {
+            this.trendLabel.string = '较昨日 ▲ 46';
+            this.trendLabel.color = Theme.faction.shu;
+        }
     }
 
     private buildRight(content: Node, width: number, height: number): void {
@@ -195,6 +269,7 @@ export class ArenaController extends Component {
         this.rankLabel.string = `${s.arenaRank.toLocaleString()} 名`;
         this.scoreLabel.string = `积分 ${s.arenaScore.toLocaleString()}`;
         this.tierLabel.string = tierOf(s.arenaRank);
+        this.renderStats();
         this.renderLogs();
         this.renderFoes();
     }

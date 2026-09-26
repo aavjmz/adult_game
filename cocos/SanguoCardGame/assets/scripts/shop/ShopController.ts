@@ -183,6 +183,13 @@ export class ShopController extends Component {
         node.addChild(art);
         const mark = createLabel(good.mark, { fontSize: 30, bold: true, color: good.color, width: CARD_W - 10 });
         art.addChild(mark);
+        if (good.hot) {
+            const tag = createNode('HotTag', 40, 16);
+            tag.setPosition(-CARD_W / 2 + 22, artH / 2 - 10);
+            drawPanel(tag, { fill: Theme.color.goldBright, radius: 0 });
+            tag.addChild(createLabel('热 售', { fontSize: 9, bold: true, color: Theme.color.bgDeep, width: 36 }));
+            art.addChild(tag);
+        }
         if (good.limit) {
             const tag = createLabel(good.limit, { fontSize: 9, color: Theme.color.textMuted, width: 60 });
             tag.setPosition(CARD_W / 2 - 34, artH / 2 - 10);
