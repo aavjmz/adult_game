@@ -31,9 +31,15 @@ class Config:
     INITIAL_TICKETS = 10
     INITIAL_COINS = 1000
 
-    # WebView兼容性配置（iOS Session Cookie）
-    SESSION_COOKIE_SAMESITE = 'None'
-    SESSION_COOKIE_SECURE = True
+    # Web端Session Cookie配置
+    #
+    # 注意：SESSION_COOKIE_SECURE=True 会让浏览器仅在HTTPS下回传Cookie。
+    # 当前VPS以纯HTTP提供服务(http://45.32.85.66:8080)，若强制开启会导致
+    # 登录后Cookie不回传、所有 @login_required 页面无限跳回登录页。
+    # 因此默认关闭，部署HTTPS后设置环境变量 SESSION_COOKIE_SECURE=true 开启。
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true', 'yes')
+    # SameSite=None 必须搭配 Secure，否则浏览器直接丢弃Cookie
+    SESSION_COOKIE_SAMESITE = 'None' if SESSION_COOKIE_SECURE else 'Lax'
     SESSION_COOKIE_HTTPONLY = True
     PERMANENT_SESSION_LIFETIME = 86400 * 7  # 7天会话
     SESSION_COOKIE_NAME = 'game_session'
