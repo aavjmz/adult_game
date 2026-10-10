@@ -2,7 +2,6 @@ import { _decorator, Component, Label, Node, UITransform, Color } from 'cc';
 import { Theme } from './UiTheme';
 import { GameApi, UserInfo } from './GameApi';
 import { ImageSlot } from './ImageSlot';
-import { SceneNav } from './SceneNav';
 import {
     createLabel, createNode, drawPanel, graphicsOf, labelOf, withAlpha,
 } from './UIFactory';
@@ -120,8 +119,9 @@ export class TopBar extends Component {
         } else if (key === 'set') {
             openSettingsModal(this._overlayHost);
         } else {
-            // 「帐」按钮：已登录状态下作退出登录用
-            GameApi.logout().then(() => SceneNav.go(SceneNav.LOGIN));
+            // 「帐」按钮：打开设置的帐号页（名号/UID/退出登录），
+            // 不再点一下就直接登出——顶栏图标太容易误触
+            openSettingsModal(this._overlayHost, '帐 号');
         }
     }
 

@@ -2,6 +2,7 @@ import { _decorator, Color, Component, Label, Node, UITransform, Vec2 } from 'cc
 import { Theme } from '../core/UiTheme';
 import { MockStore } from '../core/MockStore';
 import { GameApi } from '../core/GameApi';
+import { SceneNav } from '../core/SceneNav';
 import { showToast } from '../core/Toast';
 import {
     createButton, createLabel, createModalBackdrop, createNode, createScrollList,
@@ -54,6 +55,7 @@ const TABS: Record<string, Row[]> = {
         { name: '绑定', kind: 'text', key: '', value: '未绑定' },
         { name: '切换服务器', kind: 'action', key: 'switch_server' },
         { name: '客服与反馈', kind: 'action', key: 'support' },
+        { name: '退出登录', desc: '返回登录页，可换号再进', kind: 'action', key: 'logout', danger: true },
         { name: '注销帐号', desc: '需七日冷静期', kind: 'action', key: 'delete_account', danger: true },
     ],
 };
@@ -74,7 +76,8 @@ class SettingsModalController extends Component {
     private rowsList: Node = null!;
     private tab = '音 律';
 
-    build(host: Node): void {
+    build(host: Node, tab?: string): void {
+        if (tab && TABS[tab]) this.tab = tab;
         const backdrop = createModalBackdrop(
             host.getComponent(UITransform)!.width,
             host.getComponent(UITransform)!.height,
@@ -262,6 +265,7 @@ class SettingsModalController extends Component {
     }
 
     private buildAction(row: Row): Node {
+        if (row.key === 'logout') return this.buildLogout(row);
         const btn = createButton(row.name.length > 4 ? row.name.slice(-2) : row.name, 68, 28, () => {
             if (row.key === 'reset_field') {
                 const s = MockStore.state;
@@ -276,6 +280,27 @@ class SettingsModalController extends Component {
         return btn;
     }
 
+    /** 退出登录要点两次：首次点击按钮变为「确认」，3 秒内再点才真正退出，防误触 */
+    private buildLogout(row: Row): Node {
+        let armed = false;
+        const btn = createButton('退 出', 68, 28, () => {
+            if (!armed) {
+                armed = true;
+                labelOf(btn.children[0]).string = '确 认';
+                showToast(this.node, '再点一次「确认」即退出登录');
+                this.scheduleOnce(() => {
+                    if (!btn.isValid) return;
+                    armed = false;
+                    labelOf(btn.children[0]).string = '退 出';
+                }, 3);
+                return;
+            }
+            GameApi.logout().then(() => SceneNav.go(SceneNav.LOGIN));
+        }, { fill: Theme.color.bgDeep, stroke: new Color(107, 58, 42, 255), textColor: Theme.faction.wu });
+        btn.setPosition(CONTROL_RIGHT - 34, 0);
+        return btn;
+    }
+
     private buildText(value: string): Node {
         const node = createLabel(value, {
             fontSize: 12, color: Theme.color.textMuted, width: 190, align: Label.HorizontalAlign.RIGHT,
@@ -286,9 +311,12 @@ class SettingsModalController extends Component {
     }
 }
 
-/** 设置弹层入口，由 TopBar 的「设」按钮调用 */
-export function openSettingsModal(host: Node): void {
+/**
+ * 设置弹层入口，由 TopBar 的「设」「帐」按钮调用
+ * @param tab 初始页签，缺省为「音 律」；「帐」按钮直接打开「帐 号」
+ */
+export function openSettingsModal(host: Node, tab?: string): void {
     const node = createNode('SettingsModal', host.getComponent(UITransform)!.width, host.getComponent(UITransform)!.height);
     host.addChild(node);
-    node.addComponent(SettingsModalController).build(host);
+    node.addComponent(SettingsModalController).build(host, tab);
 }
