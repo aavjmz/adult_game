@@ -311,7 +311,11 @@ export function createInput(
     opts: { password?: boolean; fontSize?: number } = {},
 ): InputResult {
     const node = createNode('Input', width, height);
-    drawPanel(node, {
+    // 底框画在子节点上：EditBox 启用时会往自身节点补一个背景 Sprite，
+    // 节点上若已有 Graphics（同属渲染组件）就会报「already have one」
+    const bg = createNode('Background', width, height);
+    node.addChild(bg);
+    drawPanel(bg, {
         fill: new Color(23, 17, 12, 255),
         stroke: Theme.color.divider,
         lineWidth: 1,

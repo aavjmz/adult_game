@@ -38,7 +38,6 @@ export class CampaignController extends Component {
     private mapArea: Node = null!;
     private chapterTabs: Node = null!;
     private detailPanel: Node = null!;
-    private powerLabel: Label = null!;
 
     private byChapter = new Map<number, StageData[]>();
     private chapters: number[] = [];
@@ -55,6 +54,7 @@ export class CampaignController extends Component {
 
     async start(): Promise<void> {
         const ok = await this.topBar.refresh();
+        if (!this.isValid) return;
         if (!ok) {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.overlay, reason));
             return;
@@ -62,15 +62,16 @@ export class CampaignController extends Component {
         this.topBar.setUnread(unreadMailCount());
 
         const roster = await loadRoster();
+        if (!this.isValid) return;
         const ownedById = new Map(roster.filter((e) => e.owned).map((e) => [e.hero.id, e.hero]));
         this.myPower = MockStore.state.field
             .filter((id) => id != null)
             .map((id) => ownedById.get(id!))
             .filter((h): h is NonNullable<typeof h> => !!h)
             .reduce((t, h) => t + heroPower(h), 0);
-        this.powerLabel.string = this.myPower.toLocaleString();
 
         const res = await GameApi.fetchStages();
+        if (!this.isValid) return;
         if (!res.success || !res.data) {
             showToast(this.overlay, res.error || '关卡加载失败');
             return;
@@ -136,11 +137,6 @@ export class CampaignController extends Component {
         this.detailPanel.setPosition(width / 2 - DETAIL_W / 2 - 6, -22);
         drawPanel(this.detailPanel, { fill: withAlpha(Theme.color.panel, 235), stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
         content.addChild(this.detailPanel);
-
-        const power = createLabel('我军战力 --', { fontSize: 10, color: Theme.color.textDisabled, width: DETAIL_W - 20 });
-        power.setPosition(width / 2 - DETAIL_W / 2 - 6, -(contentH - 44) / 2 + 14);
-        content.addChild(power);
-        this.powerLabel = power.getComponent(Label)!;
 
         const topBar = TopBar.create(width, this.node);
         topBar.setPosition(0, height / 2 - Theme.size.topBarHeight / 2);
@@ -262,12 +258,14 @@ export class CampaignController extends Component {
         const width = DETAIL_W;
         if (!stage) return;
 
-        const artH = 150;
+        const pad = 8;
+        const artH = 130;
         // ImageSlot 内部的占位文字与图片都是按居中锚点摆的，这里不能改它的锚点，
         // 否则画好的框还在原地、只有包围盒变了，图框会有一半跑到面板外面
-        const art = ImageSlot.create(width, artH, `${stage.name} 关隘图`);
-        art.setPosition(0, height / 2 - artH / 2);
+        const art = ImageSlot.create(width - pad * 2, artH, `${stage.name} 关隘图`);
+        art.setPosition(0, height / 2 - pad - artH / 2);
         this.detailPanel.addChild(art);
+        const artBottom = height / 2 - pad - artH;
 
         const list = this.byChapter.get(this.chapter) ?? [];
         const idx = list.findIndex((s) => s.id === stage.id);
@@ -275,22 +273,22 @@ export class CampaignController extends Component {
 
         const no = createLabel(`第 ${idx + 1} 阵`, { fontSize: 10, color: Theme.color.textMuted, width: width - 24, align: Label.HorizontalAlign.LEFT });
         no.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        no.setPosition(-width / 2 + 14, height / 2 - artH + 24);
+        no.setPosition(-width / 2 + 14, artBottom - 16);
         this.detailPanel.addChild(no);
 
         const name = createLabel(stage.name, { fontSize: 18, bold: true, color: Theme.color.text, width: width - 24, align: Label.HorizontalAlign.LEFT });
         name.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        name.setPosition(-width / 2 + 14, height / 2 - artH + 2);
+        name.setPosition(-width / 2 + 14, artBottom - 38);
         this.detailPanel.addChild(name);
 
-        let y = height / 2 - artH - 30;
+        let y = artBottom - 56;
         const desc = createLabel(stage.description, {
-            fontSize: 11, color: Theme.color.textMuted, width: width - 28, height: 60, align: Label.HorizontalAlign.LEFT, vAlign: Label.VerticalAlign.TOP,
+            fontSize: 11, color: Theme.color.textMuted, width: width - 28, height: 40, align: Label.HorizontalAlign.LEFT, vAlign: Label.VerticalAlign.TOP,
         });
         desc.getComponent(UITransform)!.setAnchorPoint(0, 1);
         desc.setPosition(-width / 2 + 14, y);
         this.detailPanel.addChild(desc);
-        y -= 76;
+        y -= 52;
 
         const foesTitle = createLabel('敌 军', { fontSize: 10, color: Theme.color.textDisabled, width: 100, align: Label.HorizontalAlign.LEFT });
         foesTitle.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
@@ -312,7 +310,7 @@ export class CampaignController extends Component {
             flv.setPosition(0, -8);
             cell.addChild(flv);
         });
-        y -= 60;
+        y -= 56;
 
         if (stage.rewards) {
             const lootTitle = createLabel('战 利', { fontSize: 10, color: Theme.color.textDisabled, width: 100, align: Label.HorizontalAlign.LEFT });
@@ -331,29 +329,40 @@ export class CampaignController extends Component {
             y -= 34;
         }
 
-        const needRow = createNode('Need', width - 28, 30);
-        needRow.setPosition(0, y);
+        const needH = 52;
+        const needRow = createNode('Need', width - 28, needH);
+        needRow.setPosition(0, y - needH / 2 + 15);
         drawPanel(needRow, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
         this.detailPanel.addChild(needRow);
         const needTitle = createLabel('建议战力', { fontSize: 10, color: Theme.color.textDisabled, width: 100, align: Label.HorizontalAlign.LEFT });
         needTitle.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        needTitle.setPosition(-(width - 28) / 2 + 10, 0);
+        needTitle.setPosition(-(width - 28) / 2 + 10, 12);
         needRow.addChild(needTitle);
         const needValue = createLabel(stage.recommended_power.toLocaleString(), {
             fontSize: 13, bold: true, color: this.myPower >= stage.recommended_power ? Theme.color.gold : Theme.faction.wu, width: 140, align: Label.HorizontalAlign.RIGHT,
         });
         needValue.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
-        needValue.setPosition((width - 28) / 2 - 10, 0);
+        needValue.setPosition((width - 28) / 2 - 10, 12);
         needRow.addChild(needValue);
+        const mineTitle = createLabel('我军战力', { fontSize: 10, color: Theme.color.textDisabled, width: 100, align: Label.HorizontalAlign.LEFT });
+        mineTitle.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        mineTitle.setPosition(-(width - 28) / 2 + 10, -12);
+        needRow.addChild(mineTitle);
+        const mineValue = createLabel(this.myPower.toLocaleString(), {
+            fontSize: 13, bold: true, color: Theme.color.text, width: 140, align: Label.HorizontalAlign.RIGHT,
+        });
+        mineValue.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
+        mineValue.setPosition((width - 28) / 2 - 10, -12);
+        needRow.addChild(mineValue);
 
         const btn = createButton(cleared ? '扫 荡' : '出 征', width - 28, 46, () => this.onAction(stage, cleared), {
             fill: Theme.color.goldBright, stroke: Theme.color.goldBright, textColor: Theme.color.bgDeep,
         });
-        btn.setPosition(0, -height / 2 + 30);
+        btn.setPosition(0, -height / 2 + 14 + 23);
         this.detailPanel.addChild(btn);
 
         const costLine = createLabel(`消耗体力 ${stage.stamina_cost}`, { fontSize: 9, color: Theme.color.textDisabled, width: width - 28 });
-        costLine.setPosition(0, -height / 2 + 60);
+        costLine.setPosition(0, -height / 2 + 14 + 46 + 12);
         this.detailPanel.addChild(costLine);
     }
 
@@ -367,6 +376,7 @@ export class CampaignController extends Component {
         }
 
         const res = await GameApi.sweepStage(stage.id, 1);
+        if (!this.isValid) return;
         if (!res.success || !res.data) {
             showToast(this.overlay, res.error || '扫荡失败');
             return;

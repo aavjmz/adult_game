@@ -64,6 +64,7 @@ export class BattleController extends Component {
         this.stageLabel.string = stage.name;
 
         const roster = await loadRoster();
+        if (!this.isValid) return;
         this.teamIds = formationUserCardIds(roster, MockStore.state.field);
         if (!this.teamIds.length) {
             showToast(this.overlay, '阵中无人，先去编伍点将');
@@ -79,6 +80,7 @@ export class BattleController extends Component {
         if (!stage) return;
 
         const res = await GameApi.startBattle(stage.id, this.teamIds);
+        if (!this.isValid) return;
         if (!res.success || !res.data) {
             showToast(this.overlay, res.error || '出征失败');
             this.scheduleOnce(() => SceneNav.go(SceneNav.CAMPAIGN), 1.8);
@@ -329,7 +331,7 @@ export class BattleController extends Component {
         const cellW = 100;
         stats.forEach(([k, v], i) => {
             const cell = createNode('Stat', cellW - 6, 52);
-            cell.setPosition(-cellW * 1.5 + cellW / 2 + i * cellW, 34);
+            cell.setPosition((i - (stats.length - 1) / 2) * cellW, 34);
             drawPanel(cell, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
             panel.addChild(cell);
             const kl = createLabel(k, { fontSize: 10, color: Theme.color.textDisabled, width: cellW - 14 });

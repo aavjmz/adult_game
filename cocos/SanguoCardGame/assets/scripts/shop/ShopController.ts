@@ -40,6 +40,7 @@ export class ShopController extends Component {
 
     async start(): Promise<void> {
         const ok = await this.topBar.refresh();
+        if (!this.isValid) return;
         if (!ok) {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.node, reason));
             return;

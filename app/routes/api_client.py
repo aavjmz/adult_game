@@ -457,6 +457,9 @@ def pve_battle_start():
         return fail(f'体力不足，需要 {stage.stamina_cost} 点，当前 {stamina_info["current"]} 点')
 
     battle = PVEBattle(user, stage, team)
+    if not battle.enemy_team:
+        # 敌军卡牌没种进库时敌方为空，战斗会一回合判胜、白拿奖励和星级
+        return fail('此关敌军尚未配置，请先在服务端运行 init_enemy_cards.py')
 
     # 双方阵容在构造时就已生成，趁 hp 还是满的先存下来
     allies = [_unit_payload(u) for u in battle.user_team_units]

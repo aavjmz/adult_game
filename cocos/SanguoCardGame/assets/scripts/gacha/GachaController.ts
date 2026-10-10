@@ -47,6 +47,7 @@ export class GachaController extends Component {
 
     async start(): Promise<void> {
         const ok = await this.topBar.refresh();
+        if (!this.isValid) return;
         if (!ok) {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.overlay, reason));
             return;
@@ -59,6 +60,7 @@ export class GachaController extends Component {
     /** 概率公示走后端 /config，避免客户端硬编码数值和服务端脱节 */
     private async loadRates(): Promise<void> {
         const res = await GameApi.fetchConfig();
+        if (!this.isValid) return;
         if (!res.success || !res.data || !this.ratesLabel?.isValid) return;
 
         const rarities = res.data.rarities as Record<string, { probability: number }> | undefined;
@@ -234,6 +236,7 @@ export class GachaController extends Component {
         this.setPulling(true);
 
         const res = await GameApi.pullGacha(type);
+        if (!this.isValid) return;
         this.setPulling(false);
 
         if (!res.success || !res.data) {

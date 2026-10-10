@@ -44,6 +44,7 @@ export class ArenaController extends Component {
 
     async start(): Promise<void> {
         const ok = await this.topBar.refresh();
+        if (!this.isValid) return;
         if (!ok) {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.node, reason));
             return;
@@ -51,6 +52,7 @@ export class ArenaController extends Component {
         this.topBar.setUnread(unreadMailCount());
 
         const roster = await loadRoster();
+        if (!this.isValid) return;
         const ownedById = new Map(roster.filter((e) => e.owned).map((e) => [e.hero.id, e.hero]));
         this.myPower = MockStore.state.field
             .filter((id) => id != null)

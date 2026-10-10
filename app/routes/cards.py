@@ -16,7 +16,7 @@ def index():
 @login_required
 def collection():
     """查看所有可收集的卡牌"""
-    all_cards = Card.query.all()
+    all_cards = Card.query.filter_by(is_enemy=False).all()
     user_card_ids = [uc.card_id for uc in current_user.user_cards.all()]
 
     cards_data = []
@@ -50,7 +50,7 @@ def detail(card_id):
 @bp.route('/api/all')
 def api_all_cards():
     """API: 获取所有卡牌"""
-    cards = Card.query.all()
+    cards = Card.query.filter_by(is_enemy=False).all()
     return jsonify([{
         'id': c.id,
         'name': c.name,
