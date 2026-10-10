@@ -1,6 +1,7 @@
 import { _decorator, Color, Component, Label, Node, UITransform, Vec2 } from 'cc';
 import { Theme } from '../core/UiTheme';
 import { MockStore } from '../core/MockStore';
+import { GameApi } from '../core/GameApi';
 import { showToast } from '../core/Toast';
 import {
     createButton, createLabel, createModalBackdrop, createNode, createScrollList,
@@ -46,14 +47,25 @@ const TABS: Record<string, Row[]> = {
         { name: '活动推送', desc: '限时招贤与礼包', kind: 'toggle', key: '活动推送' },
     ],
     '帐 号': [
-        { name: '主公名号', kind: 'text', key: '', value: '云长在上' },
-        { name: 'UID', kind: 'text', key: '', value: '3-0428-7716' },
-        { name: '绑定', kind: 'text', key: '', value: 'Apple ID' },
+        // 帐号信息取当前登录用户，key 对应 accountValue() 里的字段
+        { name: '主公名号', kind: 'text', key: 'username' },
+        { name: 'UID', kind: 'text', key: 'uid' },
+        // 第三方登录尚未接入后端，帐号只能用密码注册，不存在绑定关系
+        { name: '绑定', kind: 'text', key: '', value: '未绑定' },
         { name: '切换服务器', kind: 'action', key: 'switch_server' },
         { name: '客服与反馈', kind: 'action', key: 'support' },
         { name: '注销帐号', desc: '需七日冷静期', kind: 'action', key: 'delete_account', danger: true },
     ],
 };
+
+/** 帐号页的动态取值；未登录或非帐号字段返回 undefined */
+function accountValue(key: string): string | undefined {
+    const user = GameApi.user;
+    if (!user) return undefined;
+    if (key === 'username') return user.username;
+    if (key === 'uid') return String(user.id);
+    return undefined;
+}
 
 @ccclass('SettingsModal')
 class SettingsModalController extends Component {
@@ -191,7 +203,7 @@ class SettingsModalController extends Component {
         if (row.kind === 'toggle') node.addChild(this.buildToggle(row.key));
         else if (row.kind === 'level') node.addChild(this.buildLevels(row.key, row.options!));
         else if (row.kind === 'action') node.addChild(this.buildAction(row));
-        else node.addChild(this.buildText(row.value ?? '—'));
+        else node.addChild(this.buildText(accountValue(row.key) ?? row.value ?? '—'));
 
         return node;
     }
