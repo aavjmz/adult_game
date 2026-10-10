@@ -71,8 +71,13 @@ class PVEBattle:
         enemy_config = json.loads(self.stage.enemy_config)
 
         for enemy_data in enemy_config.get('enemies', []):
-            # 获取卡牌基础数据
-            card = Card.query.get(enemy_data.get('card_id'))
+            # 获取卡牌基础数据：init_stages.py 种的是 card_name，
+            # 跑过 fix_stage_enemy_config.py 后才是 card_id，两种都认
+            card = None
+            if enemy_data.get('card_id'):
+                card = Card.query.get(enemy_data['card_id'])
+            if not card and enemy_data.get('card_name'):
+                card = Card.query.filter_by(name=enemy_data['card_name']).first()
             if not card:
                 continue
 

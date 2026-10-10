@@ -331,7 +331,7 @@ export class BattleController extends Component {
         const cellW = 100;
         stats.forEach(([k, v], i) => {
             const cell = createNode('Stat', cellW - 6, 52);
-            cell.setPosition(-cellW * 1.5 + cellW / 2 + i * cellW, 34);
+            cell.setPosition((i - (stats.length - 1) / 2) * cellW, 34);
             drawPanel(cell, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
             panel.addChild(cell);
             const kl = createLabel(k, { fontSize: 10, color: Theme.color.textDisabled, width: cellW - 14 });
