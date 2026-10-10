@@ -169,6 +169,7 @@ export class TopBar extends Component {
         if (GameApi.user) this.apply(GameApi.user);
 
         const res = await GameApi.fetchUserInfo();
+        if (!this.isValid) return false;
         if (res.success && res.data) {
             this.apply(res.data);
             return true;

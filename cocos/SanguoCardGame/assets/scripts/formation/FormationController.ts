@@ -57,6 +57,7 @@ export class FormationController extends Component {
 
     async start(): Promise<void> {
         const ok = await this.topBar.refresh();
+        if (!this.isValid) return;
         if (!ok) {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.overlay, reason));
             return;
@@ -64,6 +65,7 @@ export class FormationController extends Component {
         this.topBar.setUnread(unreadMailCount());
 
         this.roster = await loadRoster();
+        if (!this.isValid) return;
         this.ownedById = new Map(this.roster.filter((e) => e.owned).map((e) => [e.hero.id, e.hero]));
 
         // 阵位里可能存着已经不再拥有的武将 id（理论上不会发生，双保险）

@@ -54,6 +54,7 @@ export class CampaignController extends Component {
 
     async start(): Promise<void> {
         const ok = await this.topBar.refresh();
+        if (!this.isValid) return;
         if (!ok) {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.overlay, reason));
             return;
@@ -61,6 +62,7 @@ export class CampaignController extends Component {
         this.topBar.setUnread(unreadMailCount());
 
         const roster = await loadRoster();
+        if (!this.isValid) return;
         const ownedById = new Map(roster.filter((e) => e.owned).map((e) => [e.hero.id, e.hero]));
         this.myPower = MockStore.state.field
             .filter((id) => id != null)
@@ -69,6 +71,7 @@ export class CampaignController extends Component {
             .reduce((t, h) => t + heroPower(h), 0);
 
         const res = await GameApi.fetchStages();
+        if (!this.isValid) return;
         if (!res.success || !res.data) {
             showToast(this.overlay, res.error || '关卡加载失败');
             return;
@@ -373,6 +376,7 @@ export class CampaignController extends Component {
         }
 
         const res = await GameApi.sweepStage(stage.id, 1);
+        if (!this.isValid) return;
         if (!res.success || !res.data) {
             showToast(this.overlay, res.error || '扫荡失败');
             return;

@@ -71,6 +71,7 @@ export class AuthController extends Component {
         // 本地已有令牌时尝试静默登录，跳过表单
         if (!GameApi.hasToken()) return;
         const res = await GameApi.fetchUserInfo();
+        if (!this.isValid) return;
         if (res.success) SceneNav.go(SceneNav.MAIN_MENU);
     }
 
@@ -469,6 +470,7 @@ export class AuthController extends Component {
 
             this.setBusy(true);
             const res = await GameApi.register(user, isEmail(id) ? id : `${user}@shizhou.local`, pwd);
+            if (!this.isValid) return;
             this.setBusy(false);
 
             if (res.success) {
@@ -491,6 +493,7 @@ export class AuthController extends Component {
 
         this.setBusy(true);
         const res = await GameApi.login(acct, pwd);
+        if (!this.isValid) return;
         this.setBusy(false);
 
         if (res.success) {
@@ -506,6 +509,7 @@ export class AuthController extends Component {
         this.setBusy(true);
         const guest = `guest_${Date.now().toString(36)}`;
         const res = await GameApi.register(guest, `${guest}@guest.local`, `Pwd${Math.random().toString(36).slice(2, 10)}`);
+        if (!this.isValid) return;
         this.setBusy(false);
 
         if (res.success) {

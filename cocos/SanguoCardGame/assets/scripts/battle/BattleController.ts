@@ -64,6 +64,7 @@ export class BattleController extends Component {
         this.stageLabel.string = stage.name;
 
         const roster = await loadRoster();
+        if (!this.isValid) return;
         this.teamIds = formationUserCardIds(roster, MockStore.state.field);
         if (!this.teamIds.length) {
             showToast(this.overlay, '阵中无人，先去编伍点将');
@@ -79,6 +80,7 @@ export class BattleController extends Component {
         if (!stage) return;
 
         const res = await GameApi.startBattle(stage.id, this.teamIds);
+        if (!this.isValid) return;
         if (!res.success || !res.data) {
             showToast(this.overlay, res.error || '出征失败');
             this.scheduleOnce(() => SceneNav.go(SceneNav.CAMPAIGN), 1.8);
