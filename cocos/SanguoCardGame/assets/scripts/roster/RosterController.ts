@@ -8,6 +8,7 @@ import { BottomNav } from '../core/BottomNav';
 import { unreadMailCount } from '../mail/MailModal';
 import { RARITY_TO_RANK, ROLE_NAME } from '../core/GameContent';
 import { loadRoster, RosterEntry } from './RosterData';
+import { GameApi } from '../core/GameApi';
 import { openHeroDetail } from './HeroDetailModal';
 import {
     createButton, createLabel, createNode, createScrollList, drawPanel, withAlpha,
@@ -122,6 +123,14 @@ export class RosterController extends Component {
         });
     }
 
+    /** 详情里升级 / 升星 / 装备后：顶栏资源用缓存刷新，卡格重新拉取等级星级 */
+    private async onHeroChanged(): Promise<void> {
+        if (GameApi.user) this.topBar.apply(GameApi.user);
+        this.roster = await loadRoster();
+        if (!this.isValid) return;
+        this.renderGrid();
+    }
+
     private renderGrid(): void {
         this.grid.removeAllChildren();
         const shown = this.roster.filter((e) => this.faction === '全' || e.hero.faction === this.faction);
@@ -179,7 +188,7 @@ export class RosterController extends Component {
             node.addChild(dim);
         }
 
-        node.on(Node.EventType.TOUCH_END, () => openHeroDetail(this.node, entry));
+        node.on(Node.EventType.TOUCH_END, () => openHeroDetail(this.node, entry, () => void this.onHeroChanged()));
         return node;
     }
 }

@@ -461,6 +461,14 @@ def get_card_stats(user_card_id):
         'main_skill_level': user_card.main_skill_level,
         'passive_skill_level': user_card.passive_skill_level,
         'max_level': get_max_level(user_card.breakthrough_level),
+        # 下一档升星 / 突破的材料需求（已到顶为 None），供客户端展示条件
+        'next_star_up': get_star_up_requirements(user_card.star_level) if user_card.star_level < 5 else None,
+        'next_breakthrough': get_breakthrough_requirements(user_card.breakthrough_level + 1),
+        'duplicates_owned': UserCard.query.filter(
+            UserCard.user_id == current_user.id,
+            UserCard.card_id == user_card.card_id,
+            UserCard.id != user_card.id,
+        ).count(),
         'final_stats': final_stats,
         'equipments': equipment_info
     })

@@ -46,7 +46,7 @@ def main():
         eq = Equipment(user_id=user.id, name='青釭剑', type='weapon', quality='rare')
         db.session.add(eq)
         db.session.commit()
-        uc_id, eq_id = uc.id, eq.id
+        uc_id, eq_id, user_id = uc.id, eq.id, user.id
 
     print('\n[认证]')
     res = client.get('/api/v1/growth/materials')
@@ -68,6 +68,21 @@ def main():
 
     body = client.get(f'/api/v1/growth/card-stats/{uc_id}', headers=auth).get_json()
     check(body['success'] and body['data'], '查询卡牌属性')
+    stats = body['data']
+    check(stats['next_star_up'] == {'duplicates': 1, 'star_stones': 10, 'coins': 50000},
+          f"附带下一档升星需求 {stats['next_star_up']}")
+    check(stats['next_breakthrough'] is not None and stats['duplicates_owned'] == 0, '附带突破需求与同名卡数')
+
+    body = client.post('/api/v1/growth/star-up', headers=auth,
+                       json={'user_card_id': uc_id, 'material_type': 'star_stone'}).get_json()
+    check(body['success'] is False and '星石不足' in body['error'], f"星石不足被拒：{body['error']}")
+    with app.app_context():
+        db.session.add(UserItem(user_id=user_id, item_type='star_stone', quantity=10))
+        db.session.commit()
+    body = client.post('/api/v1/growth/star-up', headers=auth,
+                       json={'user_card_id': uc_id, 'material_type': 'star_stone'}).get_json()
+    check(body['success'] and body['data']['new_star_level'] == 2, '星石升星 ★1 → ★2')
+    check(body['data']['user']['coins'] == 10_000_000 - 50000, '升星扣除银两并回传')
 
     body = client.get('/api/v1/growth/card-stats/999999', headers=auth).get_json()
     check(body['success'] is False and body['error'] == '卡牌不存在', '他人或不存在的卡被拒')
@@ -92,7 +107,7 @@ def main():
     body = client.post('/api/v1/equipment/enhance', headers=auth, json={'equipment_id': eq_id}).get_json()
     check(body['success'] and body['data']['result'] in ('success', 'fail', 'fail_protected'),
           f"强化（结果 {body['data'] and body['data'].get('result')}）")
-    check(body['data']['user']['coins'] < 10_000_000, '强化扣除银两并回传')
+    check(body['data']['user']['coins'] < 10_000_000 - 50000, '强化扣除银两并回传')
 
     body = client.post('/api/v1/equipment/unequip', headers=auth, json={'equipment_id': eq_id}).get_json()
     check(body['success'], f"卸下装备 {body.get('error') or ''}")

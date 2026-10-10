@@ -115,6 +115,47 @@ export interface SweepResult {
     user: UserInfo;
 }
 
+/** 一档材料需求，对应后端 growth_utils 的需求表 */
+export interface StarUpRequirement { duplicates: number; star_stones: number; coins: number }
+export interface BreakthroughRequirement { breakthrough_stones: number; duplicates: number; coins: number }
+
+/** /growth/card-stats：武将成长全貌 */
+export interface CardStats {
+    level: number;
+    exp: number;
+    exp_required: number;
+    max_level: number;
+    star_level: number;
+    awaken_level: number;
+    breakthrough_level: number;
+    /** 已到 ★5 为 null */
+    next_star_up: StarUpRequirement | null;
+    /** 已突破三次为 null */
+    next_breakthrough: BreakthroughRequirement | null;
+    /** 除本卡外的同名卡数量，升星 / 突破可消耗 */
+    duplicates_owned: number;
+    final_stats: { attack: number; defense: number; hp: number; [k: string]: number };
+}
+
+export type EquipSlot = 'weapon' | 'armor' | 'accessory' | 'treasure';
+
+export interface EquipmentData {
+    id: number;
+    name: string;
+    type: EquipSlot;
+    quality: string;
+    enhance_level: number;
+    is_locked?: boolean;
+    owner_card_id?: number | null;
+    power?: number;
+}
+
+/** 经验丹：item_type=exp_potion，item_subtype 为档位 */
+export interface ExpItem { item_type: string; item_subtype: string; quantity: number }
+
+/** 成长 / 装备写操作的公共返回：后端会附上最新 user */
+interface WithUser { user: UserInfo; message?: string }
+
 /**
  * 后端接口封装
  *
@@ -213,7 +254,66 @@ export class GameApi {
         return res;
     }
 
+    // ============ 成长 ============
+
+    static async fetchCardStats(userCardId: number): Promise<ApiResult<CardStats>> {
+        return Http.get(`/growth/card-stats/${userCardId}`);
+    }
+
+    /** 材料库存，key 形如 'exp_potion:small'、'star_stone' */
+    static async fetchMaterials(): Promise<ApiResult<{ materials: Record<string, number> }>> {
+        return Http.get('/growth/materials');
+    }
+
+    static async levelUp(userCardId: number, items: ExpItem[]): Promise<ApiResult<WithUser & { new_level: number; levels_gained: number }>> {
+        return this.postWithUser('/growth/level-up', { user_card_id: userCardId, exp_items: items });
+    }
+
+    /** @param material 'star_stone' 万能星石 / 'duplicate' 同名卡 */
+    static async starUp(userCardId: number, material: 'star_stone' | 'duplicate'): Promise<ApiResult<WithUser & { new_star_level: number }>> {
+        return this.postWithUser('/growth/star-up', { user_card_id: userCardId, material_type: material });
+    }
+
+    static async breakthrough(userCardId: number): Promise<ApiResult<WithUser & { breakthrough_level: number; new_max_level: number }>> {
+        return this.postWithUser('/growth/breakthrough', { user_card_id: userCardId });
+    }
+
+    // ============ 装备 ============
+
+    static async fetchEquipments(opts: { type?: EquipSlot; unequipped?: boolean } = {}): Promise<ApiResult<{ equipments: EquipmentData[] }>> {
+        const query: string[] = [];
+        if (opts.type) query.push(`type=${opts.type}`);
+        if (opts.unequipped) query.push('unequipped=true');
+        return Http.get(`/equipment/list${query.length ? '?' + query.join('&') : ''}`);
+    }
+
+    static async fetchCardEquipments(userCardId: number): Promise<ApiResult<{ equipments: EquipmentData[] }>> {
+        return Http.get(`/equipment/card/${userCardId}`);
+    }
+
+    static async equip(userCardId: number, equipmentId: number): Promise<ApiResult<WithUser>> {
+        return this.postWithUser('/equipment/equip', { user_card_id: userCardId, equipment_id: equipmentId });
+    }
+
+    static async unequip(equipmentId: number): Promise<ApiResult<WithUser>> {
+        return this.postWithUser('/equipment/unequip', { equipment_id: equipmentId });
+    }
+
+    /** 强化有成败：result 为 success / fail / fail_protected，失败也是 success:true */
+    static async enhanceEquipment(equipmentId: number): Promise<ApiResult<WithUser & { result: string; old_level: number; new_level: number }>> {
+        return this.postWithUser('/equipment/enhance', { equipment_id: equipmentId });
+    }
+
     // ============ 内部 ============
+
+    /** 成长 / 装备写操作：成功时用返回的 user 刷新缓存 */
+    private static async postWithUser<T extends WithUser>(path: string, body: object): Promise<ApiResult<T>> {
+        const res = await Http.post<T>(path, body);
+        if (res.success && res.data) {
+            this.user = res.data.user;
+        }
+        return res;
+    }
 
     private static saveAuth(res: ApiResult<AuthResult>) {
         if (res.success && res.data) {
