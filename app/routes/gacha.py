@@ -86,8 +86,8 @@ def pull():
 
 def perform_single_gacha(user, is_multi=False, position=1, total=1):
     """执行单次抽卡逻辑"""
-    # 获取所有卡牌
-    all_cards = Card.query.all()
+    # 获取卡池（敌军卡只用于关卡，不可招募）
+    all_cards = Card.query.filter_by(is_enemy=False).all()
     if not all_cards:
         raise ValueError("卡池为空")
 

@@ -150,6 +150,9 @@ class Card(db.Model):
     job_class = db.Column(db.String(20), default='武将')  # 武将、谋士、弓将、骑将、步将
     faction = db.Column(db.String(10), default='群')  # 魏、蜀、吴、群（势力）
 
+    # 敌军卡：只用于 PVE 关卡，不进招贤卡池与图鉴（见 app/enemy_cards.py）
+    is_enemy = db.Column(db.Boolean, default=False, nullable=False)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # 关系

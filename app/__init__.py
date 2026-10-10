@@ -58,11 +58,36 @@ def create_app(config_class=Config):
     # 创建数据库表
     with app.app_context():
         db.create_all()
+        migrate_card_enemy_flag()
         init_cards()
         migrate_cards_to_three_kingdoms()
         init_stages()
 
     return app
+
+def migrate_card_enemy_flag():
+    """给 cards 表补 is_enemy 列，并把已入库的敌军卡标出来（幂等）
+
+    db.create_all() 不会给已有表加列；这一列又被每次查询 Card 用到，
+    缺了整个应用都起不来，所以放在启动时自动补，而不是另写手动迁移脚本。
+    """
+    from sqlalchemy import inspect, text
+    from app.models import Card
+    from app.enemy_cards import ENEMY_ONLY_NAMES
+
+    columns = {c['name'] for c in inspect(db.engine).get_columns('cards')}
+    if 'is_enemy' not in columns:
+        db.session.execute(text('ALTER TABLE cards ADD COLUMN is_enemy BOOLEAN NOT NULL DEFAULT FALSE'))
+        db.session.commit()
+        print('[迁移] cards 表已添加 is_enemy 列')
+
+    # 早先跑过 init_enemy_cards.py 的库里，敌军卡还混在卡池中
+    marked = Card.query.filter(Card.name.in_(ENEMY_ONLY_NAMES), Card.is_enemy.is_(False)) \
+        .update({Card.is_enemy: True}, synchronize_session=False)
+    if marked:
+        db.session.commit()
+        print(f'[迁移] 已将 {marked} 张敌军卡移出招贤卡池')
+
 
 def init_cards():
     """初始化三国武将卡牌数据"""
