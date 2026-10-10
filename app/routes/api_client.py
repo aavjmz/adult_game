@@ -484,3 +484,73 @@ def pve_battle_start():
         'battle_log': result.get('battle_log', []),
         'user': _user_payload(user),
     })
+
+
+# ============ 成长 / 装备 ============
+#
+# 业务逻辑完全复用 Web 端 routes/growth.py、routes/equipment.py 的视图函数，
+# 不在这里再抄一份——两端数值、扣费、校验规则天然一致。
+#
+# 做法：令牌校验通过后把用户挂到 g._login_user（flask_login 的 current_user
+# 就从这里取），直接调用原视图，再把它的响应改写成客户端的信封格式：
+#   Web 端失败 {'error': ...} + 4xx  →  {success: false, error}
+#   Web 端成功 {'success': True, ...}  →  {success: true, data: {...}}
+# 写操作额外附上最新的 user，客户端顶栏的银两等资源直接刷新。
+
+from app.routes import equipment as _equipment_routes, growth as _growth_routes
+
+
+def _call_web_view(view, **kwargs):
+    if request.method == 'POST' and not isinstance(request.get_json(silent=True), dict):
+        return fail('请求体须为 JSON 对象')
+
+    g._login_user = g.current_user
+    resp = view(**kwargs)
+
+    status = None
+    if isinstance(resp, tuple):
+        resp, status = resp[0], resp[1]
+    status = status or resp.status_code
+    body = resp.get_json(silent=True) or {}
+
+    if status >= 400:
+        return fail(body.get('error') or body.get('message') or '操作失败', status)
+    if body.get('success') is False:
+        return fail(body.get('error') or body.get('message') or '操作失败')
+
+    body.pop('success', None)
+    if request.method == 'POST':
+        body['user'] = _user_payload(g.current_user)
+    return ok(body)
+
+
+def _expose(rule, view, methods=('GET',)):
+    """把一个 Web 端视图挂到 /api/v1 下，改走 Bearer Token 认证"""
+    @token_required
+    def handler(**kwargs):
+        return _call_web_view(view, **kwargs)
+
+    module = view.__module__.rsplit('.', 1)[-1]
+    bp.add_url_rule(rule, endpoint=f'{module}_{view.__name__}', view_func=handler, methods=list(methods))
+
+
+# 成长：升级 / 升星 / 技能 / 觉醒 / 突破，及属性与材料查询
+_expose('/growth/level-up', _growth_routes.level_up_card, ['POST'])
+_expose('/growth/star-up', _growth_routes.star_up_card, ['POST'])
+_expose('/growth/skill-upgrade', _growth_routes.upgrade_skill, ['POST'])
+_expose('/growth/awaken', _growth_routes.awaken_card, ['POST'])
+_expose('/growth/breakthrough', _growth_routes.breakthrough_card, ['POST'])
+_expose('/growth/card-stats/<int:user_card_id>', _growth_routes.get_card_stats)
+_expose('/growth/materials', _growth_routes.get_materials)
+
+# 装备：穿戴统一走 equipment 版（growth 里那套旧的 equip/unequip 不认装备模板）
+_expose('/equipment/list', _equipment_routes.list_equipments)
+_expose('/equipment/card/<int:user_card_id>', _equipment_routes.get_card_equipments)
+_expose('/equipment/templates', _equipment_routes.get_equipment_templates)
+_expose('/equipment/sets', _equipment_routes.get_equipment_sets)
+_expose('/equipment/enhance', _equipment_routes.enhance_equipment, ['POST'])
+_expose('/equipment/synthesize', _equipment_routes.synthesize_equipment, ['POST'])
+_expose('/equipment/dismantle', _equipment_routes.dismantle_equipment, ['POST'])
+_expose('/equipment/equip', _equipment_routes.equip_to_card, ['POST'])
+_expose('/equipment/unequip', _equipment_routes.unequip_from_card, ['POST'])
+_expose('/equipment/lock', _equipment_routes.lock_equipment, ['POST'])
