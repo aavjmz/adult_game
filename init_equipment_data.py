@@ -449,6 +449,59 @@ def init_legendary_equipments():
     print("✅ 传说级装备初始化完成")
 
 
+def init_basic_equipments():
+    """初始化普通 / 稀有 / 史诗装备
+
+    关卡掉落的碎片分五个品级，合成时消耗同品级碎片；原先只有传说、神话两档
+    模板，前三档碎片没东西可合。这里四个部位各补一件，属性逐档递增，
+    都低于传说级，没有专属效果与套装。
+    """
+    print("\n⚔️ 初始化普通 / 稀有 / 史诗装备...")
+
+    basic_data = [
+        # 普通
+        {'name': '环首刀', 'name_en': 'ring_pommel_dao', 'type': 'weapon', 'quality': 'common', 'element': '金',
+         'base_attack_pct': 0.08, 'description': '汉军制式佩刀，刀柄铸环，便于劈砍'},
+        {'name': '皮甲', 'name_en': 'leather_armor', 'type': 'armor', 'quality': 'common', 'element': '土',
+         'base_defense_pct': 0.08, 'base_hp_pct': 0.05, 'description': '鞣制牛皮缝成的轻甲'},
+        {'name': '铜带钩', 'name_en': 'bronze_belt_hook', 'type': 'accessory', 'quality': 'common', 'element': '金',
+         'base_attack_pct': 0.04, 'speed': 5, 'description': '青铜铸的腰带钩，士卒常佩'},
+        {'name': '竹简兵书', 'name_en': 'bamboo_manual', 'type': 'treasure', 'quality': 'common', 'element': '木',
+         'base_attack_pct': 0.04, 'base_defense_pct': 0.04, 'base_hp_pct': 0.04, 'description': '抄录兵法要略的竹简'},
+        # 稀有
+        {'name': '百炼环刀', 'name_en': 'refined_dao', 'type': 'weapon', 'quality': 'rare', 'element': '金',
+         'base_attack_pct': 0.15, 'crit_rate': 3.0, 'description': '百炼精钢锻成，锋利远胜寻常刀剑'},
+        {'name': '鱼鳞甲', 'name_en': 'fish_scale_armor', 'type': 'armor', 'quality': 'rare', 'element': '水',
+         'base_defense_pct': 0.15, 'base_hp_pct': 0.10, 'description': '甲片层叠如鱼鳞，兼顾防护与灵活'},
+        {'name': '青玉佩', 'name_en': 'jade_pendant', 'type': 'accessory', 'quality': 'rare', 'element': '木',
+         'base_attack_pct': 0.08, 'speed': 10, 'crit_dmg': 10.0, 'description': '青玉雕成的佩饰，君子比德于玉'},
+        {'name': '六韬', 'name_en': 'six_secret_teachings', 'type': 'treasure', 'quality': 'rare', 'element': '无',
+         'base_attack_pct': 0.08, 'base_defense_pct': 0.08, 'base_hp_pct': 0.08, 'description': '托名太公所著的兵书'},
+        # 史诗
+        {'name': '斩马刀', 'name_en': 'zhanma_dao', 'type': 'weapon', 'quality': 'epic', 'element': '金',
+         'base_attack_pct': 0.25, 'crit_rate': 6.0, 'crit_dmg': 10.0, 'description': '长柄重刀，可斩奔马'},
+        {'name': '明光铠', 'name_en': 'mingguang_armor', 'type': 'armor', 'quality': 'epic', 'element': '金',
+         'base_defense_pct': 0.25, 'base_hp_pct': 0.18, 'block_rate': 5.0, 'description': '胸背护镜光可鉴人，将领所服'},
+        {'name': '蟠螭玉环', 'name_en': 'panchi_jade_ring', 'type': 'accessory', 'quality': 'epic', 'element': '水',
+         'base_attack_pct': 0.12, 'speed': 18, 'crit_dmg': 18.0, 'description': '玉环上盘绕螭龙纹，王侯之器'},
+        {'name': '太公兵法', 'name_en': 'taigong_art_of_war', 'type': 'treasure', 'quality': 'epic', 'element': '无',
+         'base_attack_pct': 0.12, 'base_defense_pct': 0.12, 'base_hp_pct': 0.12, 'description': '张良圯上所受之书'},
+    ]
+
+    for equip_data in basic_data:
+        existing = EquipmentTemplate.query.filter_by(name=equip_data['name']).first()
+        if existing:
+            print(f"  ⏭️ 装备 {equip_data['name']} 已存在")
+            continue
+
+        equipment = EquipmentTemplate(**equip_data, max_enhance_level=30, obtain_method='碎片合成')
+        db.session.add(equipment)
+        print(f"  ✅ 添加{equip_data['quality']}装备: {equip_data['name']} ({equip_data['type']})")
+
+    db.session.commit()
+    print("✅ 普通 / 稀有 / 史诗装备初始化完成")
+
+
 def main():
     """主函数"""
     print("=" * 60)
@@ -464,6 +517,7 @@ def main():
         # 初始化装备
         init_mythic_equipments()
         init_legendary_equipments()
+        init_basic_equipments()
 
         # 统计
         sets_count = EquipmentSet.query.count()

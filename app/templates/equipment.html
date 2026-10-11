@@ -444,8 +444,10 @@ async function loadMaterials() {
         if (data.success) {
             document.getElementById('enhance-stones').textContent =
                 data.materials['enhance_stone'] || 0;
+            // 碎片按品级区分，这里显示总数；分品级明细见合成页
             document.getElementById('fragments').textContent =
-                data.materials['equipment_fragment:universal'] || 0;
+                ['common', 'rare', 'epic', 'legendary', 'mythic']
+                    .reduce((sum, q) => sum + (data.materials[`equipment_fragment:${q}`] || 0), 0);
         }
 
         // 获取金币

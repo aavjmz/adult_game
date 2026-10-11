@@ -180,7 +180,7 @@ def add_enhance_materials(cursor):
     # 强化石材料
     enhance_materials = [
         ('enhance_stone', None, 1000),  # 强化石 x1000
-        ('equipment_fragment', 'universal', 500),  # 通用装备碎片 x500
+        ('equipment_fragment', 'common', 500),  # 普通装备碎片 x500（合成按品级消耗同品级碎片）
     ]
 
     for user_id, username in users:

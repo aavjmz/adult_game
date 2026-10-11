@@ -271,7 +271,7 @@
                 <p style="color: #6b7280; margin-top: 5px;">使用碎片合成三国神兵利器</p>
             </div>
             <div class="materials-display">
-                <div class="material-badge">🔮 碎片: <span id="fragments">0</span></div>
+                <div class="material-badge">🔮 碎片: <span id="fragments">—</span></div>
                 <div class="material-badge">💰 金币: <span id="coins">0</span></div>
             </div>
         </div>
@@ -313,7 +313,9 @@
 {% block extra_js %}
 <script>
 let templates = [];
-let userFragments = 0;
+// 各品级碎片持有量：合成某品级装备只消耗同品级碎片
+let userFragments = {};
+const FRAGMENT_QUALITIES = ['common', 'rare', 'epic', 'legendary', 'mythic'];
 let userCoins = 0;
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -345,8 +347,12 @@ async function loadMaterials() {
         const data = await response.json();
 
         if (data.success) {
-            userFragments = data.materials['equipment_fragment:universal'] || 0;
-            document.getElementById('fragments').textContent = userFragments;
+            userFragments = {};
+            FRAGMENT_QUALITIES.forEach(q => {
+                userFragments[q] = data.materials[`equipment_fragment:${q}`] || 0;
+            });
+            document.getElementById('fragments').textContent = FRAGMENT_QUALITIES
+                .map(q => `${getQualityText(q)} ${userFragments[q]}`).join(' · ');
         }
 
         const userResponse = await fetch('/api/user/info');
@@ -376,8 +382,9 @@ function createTemplateCard(template) {
     div.dataset.quality = template.quality;
     div.dataset.type = template.type;
 
-    const cost = getCraftCost(template.quality);
-    const canCraft = userFragments >= cost.fragments && userCoins >= cost.coins;
+    const cost = template.synthesize_cost || getCraftCost(template.quality);
+    const owned = userFragments[template.quality] || 0;
+    const canCraft = owned >= cost.fragments && userCoins >= cost.coins;
 
     let statsHtml = '';
     if (template.base_attack_pct > 0) {
@@ -431,8 +438,8 @@ function createTemplateCard(template) {
 
         <div class="craft-cost">
             <div>
-                碎片: <span class="${userFragments >= cost.fragments ? 'cost-sufficient' : 'cost-insufficient'}">
-                    ${cost.fragments}
+                ${getQualityText(template.quality)}碎片: <span class="${owned >= cost.fragments ? 'cost-sufficient' : 'cost-insufficient'}">
+                    ${owned} / ${cost.fragments}
                 </span>
             </div>
             <div>
@@ -529,7 +536,7 @@ function setupFilters() {
     });
 }
 
-// 计算合成消耗
+// 计算合成消耗（后端 /equipment/templates 已返回 synthesize_cost，这里仅兜底）
 function getCraftCost(quality) {
     const costs = {
         'common': { fragments: 10, coins: 10000 },

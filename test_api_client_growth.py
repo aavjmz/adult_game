@@ -121,6 +121,37 @@ def main():
     for path in ('/api/v1/equipment/templates', '/api/v1/equipment/sets'):
         check(client.get(path, headers=auth).get_json()['success'], f'GET {path}')
 
+    print('\n[碎片合成：同品级碎片合同品级装备]')
+    from init_equipment_data import init_basic_equipments
+    with app.app_context():
+        init_basic_equipments()
+        db.session.add(UserItem(user_id=user_id, item_type='equipment_fragment', item_subtype='legendary', quantity=100))
+        db.session.commit()
+
+    templates = client.get('/api/v1/equipment/templates', headers=auth).get_json()['data']['templates']
+    common_tpl = next(t for t in templates if t['quality'] == 'common')
+    check(common_tpl['synthesize_cost'] == {'fragments': 10, 'coins': 10000}, f"模板附带合成花费 {common_tpl['synthesize_cost']}")
+    check({t['quality'] for t in templates} >= {'common', 'rare', 'epic'}, '已有普通 / 稀有 / 史诗模板')
+
+    body = client.post('/api/v1/equipment/synthesize', headers=auth, json={'template_id': common_tpl['id']}).get_json()
+    check(body['success'] is False and '普通碎片不足' in body['error'], f"传说碎片不能合普通装备：{body['error']}")
+
+    with app.app_context():
+        db.session.add(UserItem(user_id=user_id, item_type='equipment_fragment', item_subtype='common', quantity=10))
+        db.session.commit()
+    body = client.post('/api/v1/equipment/synthesize', headers=auth, json={'template_id': common_tpl['id']}).get_json()
+    check(body['success'], f"普通碎片合成 {common_tpl['name']}")
+    mats = client.get('/api/v1/growth/materials', headers=auth).get_json()['data']['materials']
+    check(mats.get('equipment_fragment:common') == 0 and mats.get('equipment_fragment:legendary') == 100,
+          '只扣普通碎片，传说碎片不动')
+
+    new_id = body['data']['equipment']['id']
+    body = client.post('/api/v1/equipment/dismantle', headers=auth, json={'equipment_id': new_id}).get_json()
+    mats = client.get('/api/v1/growth/materials', headers=auth).get_json()['data']['materials']
+    check(body['success'] and body['data']['fragment_quality'] == 'common'
+          and mats.get('equipment_fragment:common') == body['data']['fragments_gained'],
+          f"分解返还普通碎片：{body['data'] and body['data'].get('message')}")
+
     print()
     if failures:
         print(f'[失败] {len(failures)} 项未通过')

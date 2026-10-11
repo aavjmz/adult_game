@@ -38,8 +38,9 @@ const GEAR_SLOTS: Array<{ type: EquipSlot; name: string }> = [
     { type: 'treasure', name: '宝物' },
 ];
 
+/** 与后端 equipment_utils.QUALITY_NAMES、Web 端合成页一致 */
 const QUALITY_NAME: Record<string, string> = {
-    common: '凡品', rare: '良品', epic: '精品', legendary: '神品', mythic: '传世',
+    common: '普通', rare: '稀有', epic: '史诗', legendary: '传说', mythic: '神话',
 };
 
 @ccclass('HeroDetailModal')

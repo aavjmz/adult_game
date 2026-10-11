@@ -11,7 +11,8 @@ from app.models import db, Equipment, EquipmentTemplate, EquipmentSet, UserCard,
 from app.equipment_utils import (
     calc_equipment_bonus, calc_total_equipment_bonus, calc_set_bonus,
     check_exclusive_combo, apply_equipment_to_stats, calc_enhance_success_rate,
-    calc_enhance_cost, generate_random_stats, calc_equipment_power
+    calc_enhance_cost, generate_random_stats, calc_equipment_power,
+    QUALITY_NAMES, get_synthesize_cost,
 )
 
 bp = Blueprint('equipment', __name__, url_prefix='/equipment')
@@ -237,39 +238,28 @@ def synthesize_equipment():
     if not template:
         return jsonify({'error': '装备模板不存在'}), 404
 
-    # 计算合成消耗（基于品质）
-    fragment_costs = {
-        'common': 10,
-        'rare': 20,
-        'epic': 50,
-        'legendary': 100,
-        'mythic': 200
-    }
-
-    coin_costs = {
-        'common': 10000,
-        'rare': 50000,
-        'epic': 200000,
-        'legendary': 1000000,
-        'mythic': 5000000
-    }
-
-    fragments_required = fragment_costs.get(template.quality, 50)
-    coins_required = coin_costs.get(template.quality, 100000)
+    # 合成消耗：与装备同品级的碎片 + 银两（见 equipment_utils.SYNTHESIZE_COSTS）
+    cost = get_synthesize_cost(template.quality)
+    if not cost:
+        return jsonify({'error': f'未知装备品级 {template.quality}'}), 400
+    fragments_required = cost['fragments']
+    coins_required = cost['coins']
+    fragment_name = f"{QUALITY_NAMES.get(template.quality, template.quality)}碎片"
 
     # 检查金币
     if current_user.coins < coins_required:
         return jsonify({'error': f'金币不足，需要 {coins_required}'}), 400
 
-    # 检查碎片
+    # 检查碎片：品级与要合成的装备一致
     fragment = UserItem.query.filter_by(
         user_id=current_user.id,
         item_type='equipment_fragment',
-        item_subtype='universal'  # 通用碎片
+        item_subtype=template.quality
     ).first()
 
-    if not fragment or fragment.quantity < fragments_required:
-        return jsonify({'error': f'装备碎片不足，需要 {fragments_required}'}), 400
+    owned = fragment.quantity if fragment else 0
+    if owned < fragments_required:
+        return jsonify({'error': f'{fragment_name}不足，需要 {fragments_required}，当前 {owned}'}), 400
 
     # 消耗材料
     fragment.quantity -= fragments_required
@@ -345,18 +335,20 @@ def dismantle_equipment():
     # 强化等级加成
     fragments_gained += equipment.enhance_level * 2
 
-    # 获取或创建碎片记录
+    # 返还与装备同品级的碎片（旧式装备品级未知时按稀有算）
+    if quality not in QUALITY_NAMES:
+        quality = 'rare'
     fragment = UserItem.query.filter_by(
         user_id=current_user.id,
         item_type='equipment_fragment',
-        item_subtype='universal'
+        item_subtype=quality
     ).first()
 
     if not fragment:
         fragment = UserItem(
             user_id=current_user.id,
             item_type='equipment_fragment',
-            item_subtype='universal',
+            item_subtype=quality,
             quantity=0
         )
         db.session.add(fragment)
@@ -371,7 +363,8 @@ def dismantle_equipment():
     return jsonify({
         'success': True,
         'fragments_gained': fragments_gained,
-        'message': f'分解 {equipment_name} 获得 {fragments_gained} 个装备碎片'
+        'fragment_quality': quality,
+        'message': f'分解 {equipment_name} 获得 {fragments_gained} 个{QUALITY_NAMES[quality]}碎片'
     })
 
 
@@ -607,7 +600,9 @@ def get_equipment_templates():
             'exclusive_effect_desc': template.exclusive_effect_desc,
             'obtain_method': template.obtain_method,
             'description': template.description,
-            'lore': template.lore
+            'lore': template.lore,
+            # 合成花费：fragments 指同品级碎片
+            'synthesize_cost': get_synthesize_cost(template.quality),
         }
         template_list.append(template_data)
 

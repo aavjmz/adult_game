@@ -38,7 +38,12 @@ ITEMS = [
     ('skill_book', 'large', 10),
     ('enhance_stone', None, 500),
     ('protection_charm', None, 20),
-    ('equipment_fragment', 'universal', 300),  # 合成装备用通用碎片
+    # 合成装备消耗同品级碎片，够每档各合一件（普通 10 / 稀有 20 / 史诗 50 / 传说 100 / 神话 200）
+    ('equipment_fragment', 'common', 30),
+    ('equipment_fragment', 'rare', 60),
+    ('equipment_fragment', 'epic', 100),
+    ('equipment_fragment', 'legendary', 100),
+    ('equipment_fragment', 'mythic', 200),
 ]
 
 ITEM_NAME = {
