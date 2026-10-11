@@ -311,6 +311,13 @@ def _stage_payload(stage, progress):
         'stamina_cost': stage.stamina_cost,
         'enemy_config': json.loads(stage.enemy_config) if stage.enemy_config else None,
         'rewards': json.loads(stage.rewards) if stage.rewards else None,
+        # 可能掉落：按概率从高到低，客户端关卡详情展示用
+        'drops': sorted(
+            ({'item_type': d['item_type'], 'item_subtype': d.get('item_subtype'),
+              'probability': d['probability'], 'quantity': d.get('quantity')}
+             for d in (json.loads(stage.drop_config) if stage.drop_config else [])),
+            key=lambda d: -d['probability'],
+        ),
         'user_progress': {
             'is_cleared': progress.is_cleared if progress else False,
             'stars': progress.stars if progress else 0,

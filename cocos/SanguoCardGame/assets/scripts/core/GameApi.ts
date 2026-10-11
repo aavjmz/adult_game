@@ -62,6 +62,8 @@ export interface StageData {
     stamina_cost: number;
     enemy_config: { enemies: Array<{ level: number; card_name: string; position: number }>; ai_strategy: string } | null;
     rewards: { coins: { min: number; max: number }; exp: number } | null;
+    /** 可能掉落，按概率从高到低；probability 为 1 表示必掉 */
+    drops?: Array<{ item_type: string; item_subtype: string | null; probability: number; quantity: [number, number] | null }>;
     user_progress: { is_cleared: boolean; stars: number; total_attempts: number };
 }
 
