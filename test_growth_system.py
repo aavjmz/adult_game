@@ -108,6 +108,7 @@ def test_utility_functions():
         print(f"  突破{bt_level}次: Lv.{max_lvl}")
 
     print("\n✅ 工具函数测试通过")
+    return True
 
 
 def test_level_up():
@@ -366,6 +367,12 @@ def main():
     print("  🧪 三国卡牌游戏 - 成长系统测试")
     print("=" * 70)
     print()
+
+    # 空库时补齐测试账号（各项测试取 User.query.first()），不再依赖 init_database.py
+    from test_fixtures import ensure_test_user
+    with create_app().app_context():
+        if User.query.first() is None:
+            ensure_test_user('testuser', password='password123')
 
     # 执行测试
     tests = [

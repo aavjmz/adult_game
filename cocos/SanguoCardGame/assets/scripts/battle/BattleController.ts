@@ -94,8 +94,8 @@ export class BattleController extends Component {
         this.buildTeams(res.data);
 
         if (!res.data.battle_log.length) {
-            // 敌军为空时后端会直接判胜（关卡的 enemy_config 少了 card_id，
-            // 需要在服务端跑一次 fix_stage_enemy_config.py），这里直接出结算
+            // 战报为空（旧版后端在敌军未入库时会直接判胜；现在后端会改为报错
+            // 「此关敌军尚未配置」，需在服务端跑 init_enemy_cards.py），这里直接出结算
             this.showSettlement();
             return;
         }

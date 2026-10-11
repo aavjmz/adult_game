@@ -118,8 +118,7 @@ def test_battle_engine():
         print(f"  元素属性: {'✅ 存在' if has_element else '❌ 不存在'}")
 
         if not (has_speed and has_critical and has_element):
-            print("\n⚠️ 提示: 需要先运行数据库迁移脚本")
-            print("  python migrate_battle_v2.py")
+            print("\n⚠️ 提示: cards 表缺少战斗字段，旧库可运行 python migrate_complete.py 补齐")
 
 if __name__ == '__main__':
     test_battle_engine()

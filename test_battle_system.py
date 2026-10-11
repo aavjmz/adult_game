@@ -21,6 +21,9 @@ def test_battle_system():
     app = create_app()
 
     with app.app_context():
+        # 空库时补齐测试账号，不再依赖 setup_test_data.py
+        from test_fixtures import ensure_test_user
+        ensure_test_user('test_pve_user')
         print("[测试] 开始测试PVE战斗系统...")
 
         # 测试1: 战斗引擎测试

@@ -71,8 +71,8 @@ class PVEBattle:
         enemy_config = json.loads(self.stage.enemy_config)
 
         for enemy_data in enemy_config.get('enemies', []):
-            # 获取卡牌基础数据：init_stages.py 种的是 card_name，
-            # 跑过 fix_stage_enemy_config.py 后才是 card_id，两种都认
+            # 获取卡牌基础数据：关卡数据（app/stage_data.py）按 card_name 配置，
+            # 早期库里也可能是 card_id，两种都认
             card = None
             if enemy_data.get('card_id'):
                 card = Card.query.get(enemy_data['card_id'])

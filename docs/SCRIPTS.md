@@ -1,6 +1,6 @@
 # 脚本说明
 
-仓库根目录的 Python 脚本按用途分为六类。本文说明每个脚本做什么、什么时候跑、能不能重复跑。
+仓库根目录的 Python 脚本按用途分类说明。本文说明每个脚本做什么、什么时候跑、能不能重复跑。
 
 服务器上统一在容器内执行（数据库在挂载卷 `/app/data/game.db`）：
 
@@ -75,49 +75,33 @@ docker-compose exec game cp /app/data/game.db /app/data/game.db.bak
 
 ---
 
-## 四、运维与数据修复
+
+## 四、测试账号发材料
 
 | 脚本 | 用途 | 用法 | 可重复 |
 |---|---|---|---|
 | `grant_materials.py` | 给指定账号发一套养成材料，测试用：银两 1000 万、各档经验丹、星石、觉醒石、突破石、技能书、强化石、保护符、各品级碎片，另有四个部位各一件装备 | `python grant_materials.py aavjmz [--dup 关羽 5]`。`--dup` 额外发同名武将卡，觉醒需 1 张、突破需 3 张 | 是，每次叠加 |
-| `recycle_enemy_cards.py` | 回收玩家在敌军移出卡池之前抽到的敌军卡。删卡前先把装备卸回背包；抽卡记录保留 | 默认只预览；加 `--apply` 才执行 | 是 |
-| `convert_universal_fragments.py` | 把已作废的通用碎片按 1:1 换成普通碎片 | 默认只预览；加 `--apply` 才执行 | 是 |
 
 ---
 
 ## 五、数据库迁移（`migrate_*`）
 
-项目没有用 Alembic。**新建的数据库用不上这些脚本**：`db.create_all()` 会按当前模型建出带全部字段的表。它们只用于在这些功能上线之前就已经存在的旧库，给已有的表补字段。
+项目没有用 Alembic。**新建的数据库不需要任何迁移**：`db.create_all()` 会按当前模型建出带全部字段的表。下面两个脚本只用于在对应功能上线之前就已经存在的旧库，给已有的表补字段。
 
-| 脚本 | 补什么 | 数据库路径 | 现状 |
-|---|---|---|---|
-| `migrate_complete.py` | `cards` 表的三国主题字段（属性、五行、势力、职业等），并种卡牌 | `data/game.db` | `entrypoint.sh` 在新库上自动跑；旧库可以手动跑 |
-| `migrate_api_token.py` | `api_tokens` 表 | 走 `create_app()` | 已被 `db.create_all()` 覆盖，跑了也无害 |
-| `migrate_pve_system.py` / `migrate_pve_system_v2.py` | 用户体力、PVE 统计字段，关卡与进度表 | 走 `create_app()` | 只用于 PVE 上线前的旧库。加参数 `rollback` 为回滚，会交互询问确认 |
-| `migrate_growth_system.py` | 成长字段（星级、觉醒、突破、技能等级）与材料表 | ⚠️ 写死 `game.db` | 历史脚本 |
-| `migrate_equipment_system.py` | 装备模板、套装表，扩展装备表 | ⚠️ 写死 `game.db` | 历史脚本。会给所有用户发强化石和普通碎片 |
-| `migrate_battle_v2.py` | 战斗 v2 字段 | ⚠️ 写死 `game.db` | 历史脚本 |
-| `migrate_three_kingdoms.py` | 三国主题字段 | ⚠️ 写死 `game.db` | 历史脚本，已被 `migrate_complete.py` 覆盖 |
+| 脚本 | 补什么 | 说明 |
+|---|---|---|
+| `migrate_complete.py` | `cards` 表的三国主题字段（属性、五行、势力、职业等），并种卡牌 | `entrypoint.sh` 在新库上会自动跑一次，旧库可以手动跑。读写 `data/game.db` |
+| `migrate_pve_system.py` | 用户体力、PVE 统计字段，关卡与进度表 | 加参数 `check` 只检查状态；加参数 `rollback` 为回滚，会交互询问确认 |
 
-⚠️ 标注的四个脚本读写的是**工作目录下的 `game.db`**，而当前数据库在 `data/game.db`。直接运行只会提示「数据库文件不存在」。确实要用的话，先确认数据库位置。
+以后给**已有的表**加字段，不要再写独立的迁移脚本：在 `create_app()` 里加一段「检查列是否存在 → 不存在就 ALTER」的逻辑（参考 `app/__init__.py` 的 `migrate_card_enemy_flag()`）。这样部署时重启即可生效，也能安全地重复执行。
 
 ---
 
-## 六、测试数据
-
-| 脚本 | 内容 |
-|---|---|
-| `init_database.py` | 建测试账号 `testuser` / `password123`，1000 万银两、100 张抽卡券 |
-| `setup_test_data.py` | 建 PVE 测试账号 `test_pve_user` / `test123`，满体力，并发卡牌。账号已有卡时会交互询问是否重置 |
-| `add_test_cards.py` | 给 `testuser` 发测试卡牌 |
-
-这三个脚本都写**当前数据库**，正式服上慎用。
-
----
-
-## 七、测试脚本
+## 六、测试脚本
 
 测试都是独立脚本，没有接 pytest，直接 `python test_xxx.py` 运行。
+
+需要测试账号的测试，会在开头调用 `test_fixtures.py` 的 `ensure_test_user()`：账号不存在就创建，并发卡牌和一套材料。所以**空库也能直接跑**，不用事先准备数据。`test_fixtures.py` 本身不是测试。
 
 | 脚本 | 覆盖内容 | 数据库 |
 |---|---|---|
@@ -125,19 +109,20 @@ docker-compose exec game cp /app/data/game.db /app/data/game.db.bak
 | `test_api_client_shop.py` | `/api/v1` 市集：购买、限购、隔天重置 | ✅ 临时库 |
 | `test_api_client.py` | `/api/v1` 注册 → 登录 → 抽卡 → 收藏 → 登出 | ⚠️ 当前库，会注册随机账号 |
 | `test_pve_system.py` | PVE 表结构、关卡、战斗流程 | ⚠️ 当前库，会建测试用户 |
-| `test_equipment_system.py` | 装备强化、套装、属性计算 | ⚠️ 当前库，结束时交互询问是否清理 |
-| `test_growth_system.py` | 升级、升星、技能、觉醒、突破公式 | ⚠️ 当前库，依赖事先存在的测试用户；空库下有 6 项失败 |
-| `test_battle_system.py` / `test_battle_v2.py` / `test_three_kingdoms_battle.py` / `test_battle_debug.py` | 战斗引擎计算与调试 | ⚠️ 当前库 |
+| `test_equipment_system.py` | 装备强化、套装、属性计算；空库时会自动补装备模板 | ⚠️ 当前库，测试账号 `testuser`，结束时交互询问是否清理 |
+| `test_growth_system.py` | 升级、升星、技能、觉醒、突破公式 | ⚠️ 当前库，空库时建 `testuser` |
+| `test_battle_system.py` | PVE 战斗引擎 | ⚠️ 当前库，测试账号 `test_pve_user` |
+| `test_battle_v2.py` / `test_three_kingdoms_battle.py` | 战斗 v2、五行克制计算 | ⚠️ 当前库 |
 
 本地想让标「当前库」的测试也不碰开发库，可以临时指定库路径：
 
 ```bash
-DB_PATH=/tmp/test.db python test_pve_system.py
+DB_PATH=/tmp/test.db python test_growth_system.py
 ```
 
 ---
 
-## 八、其他
+## 七、其他
 
 | 文件 | 用途 |
 |---|---|
@@ -146,8 +131,21 @@ DB_PATH=/tmp/test.db python test_pve_system.py
 | `config.py` | 游戏配置：稀有度概率、抽卡价格、初始资源等 |
 | `generate_icons.py` | 生成 PWA 各尺寸图标，需要 Pillow |
 
-## 九、已过时
+---
 
-| 脚本 | 原因 |
+## 八、已删除的脚本
+
+下面这些脚本已经删除，需要时可以从 git 历史里找回（删除前的最后一个版本是提交 `307e415`）。
+
+| 脚本 | 删除原因 / 替代方式 |
 |---|---|
-| `fix_stage_enemy_config.py` | 原本把关卡敌军配置从卡名改成卡牌 id。现在战斗引擎直接按卡名查找；而且重跑 `init_stages.py` 会把敌军配置恢复成按卡名的写法，所以不需要再跑 |
+| `fix_stage_enemy_config.py` | 战斗引擎已直接按卡名查找敌军；而且重跑 `init_stages.py` 会把它的修改改回去 |
+| `migrate_three_kingdoms.py`、`migrate_battle_v2.py` | 补的字段已被 `migrate_complete.py` 覆盖；脚本里写死了旧路径 `game.db`，在当前目录找不到库时还会新建一个空库 |
+| `migrate_growth_system.py`、`migrate_equipment_system.py` | 只用于成长、装备上线前的旧库；同样写死旧路径 |
+| `migrate_api_token.py` | `api_tokens` 表由 `db.create_all()` 自动建。它附带的「批量清理过期令牌」没有保留：过期令牌目前只在被使用时删除 |
+| `migrate_pve_system_v2.py` | 已改名为 `migrate_pve_system.py`，旧的 v1 删除 |
+| `test_battle_debug.py` | 早期调试用的打印脚本，已被 `test_battle_v2.py` 覆盖 |
+| `recycle_enemy_cards.py`、`convert_universal_fragments.py` | 一次性数据修复（回收敌军卡、通用碎片 1:1 换普通碎片），已完成 |
+| `init_database.py`、`setup_test_data.py`、`add_test_cards.py` | 造测试账号的脚本。测试改用 `test_fixtures.py` 自动准备数据；手动给账号发东西用 `grant_materials.py` |
+
+根目录下一些早期的设计和实施文档（如 `PHASE1_IMPLEMENTATION_GUIDE.md`、`PVE_BATTLE_SYSTEM_SUMMARY.md`、`EQUIPMENT_IMPLEMENTATION.md`、`README_SETUP.md`）记录的是当时的做法，里面仍提到上述脚本，以本文为准。

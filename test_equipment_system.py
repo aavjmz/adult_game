@@ -449,6 +449,11 @@ def main():
     app = create_app()
 
     with app.app_context():
+        # 空库时补齐测试账号与装备模板，不再依赖 init_database.py 等脚本
+        from test_fixtures import ensure_equipment_templates, ensure_test_user
+        ensure_equipment_templates()
+        ensure_test_user('testuser', password='password123')
+
         try:
             # 运行测试
             test_equipment_templates()
