@@ -360,6 +360,73 @@ class ShopPurchase(db.Model):
         return f'<ShopPurchase user={self.user_id} {self.good_key} {self.day} x{self.count}>'
 
 
+class UserActivity(db.Model):
+    """玩家每日行为计数（出征、招贤、消耗兵力……），军令日常 / 周常的进度据此统计
+
+    key 见 app/orders_data.py 的 ACT_* 常量；day 为北京时间日期，周常按周一到周日求和。
+    """
+    __tablename__ = 'user_activities'
+    __table_args__ = (db.UniqueConstraint('user_id', 'key', 'day', name='uq_user_activity_day'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    key = db.Column(db.String(30), nullable=False)
+    day = db.Column(db.Date, nullable=False)
+    count = db.Column(db.Integer, default=0, nullable=False)
+
+    def __repr__(self):
+        return f'<UserActivity user={self.user_id} {self.key} {self.day} x{self.count}>'
+
+
+class OrderClaim(db.Model):
+    """军令领取记录：一道军令在一个周期内只能领一次
+
+    period 为周期标识：日常 d2026-10-11、周常 w2026-10-05（周一）、
+    通行证 s2026-10（按月）、成就 a（永久）；军功宝箱的 order_key 为 chest-30 等。
+    merit 记下当时得的军功，通行证按本季领取记录求和。
+    """
+    __tablename__ = 'order_claims'
+    __table_args__ = (db.UniqueConstraint('user_id', 'order_key', 'period', name='uq_order_claim_period'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    order_key = db.Column(db.String(50), nullable=False)
+    period = db.Column(db.String(20), nullable=False)
+    merit = db.Column(db.Integer, default=0, nullable=False)
+    day = db.Column(db.Date, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<OrderClaim user={self.user_id} {self.order_key} {self.period}>'
+
+
+class Mail(db.Model):
+    """军书（站内信）：系统发给玩家的信件，可带附物
+
+    attachments 为 JSON 奖励列表，格式见 app/rewards.py；领取后 claimed_at 记时间。
+    玩家「弃书」只做软删除（deleted_at），便于追查补偿是否已领。
+    """
+    __tablename__ = 'mails'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    title = db.Column(db.String(100), nullable=False)
+    sender = db.Column(db.String(50), nullable=False, default='军 府')
+    body = db.Column(db.Text, nullable=False, default='')
+    attachments = db.Column(db.Text, nullable=False, default='[]')
+    is_read = db.Column(db.Boolean, nullable=False, default=False)
+    claimed_at = db.Column(db.DateTime)
+    deleted_at = db.Column(db.DateTime)
+    # 过期后不再显示、不可领取；为空表示永不过期
+    expires_at = db.Column(db.DateTime)
+    # 系统信的去重标记（如 welcome、chapter-1），同一玩家同一 tag 只发一次；手发的信为空
+    tag = db.Column(db.String(50), index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def __repr__(self):
+        return f'<Mail {self.id} user={self.user_id} {self.title}>'
+
+
 class EquipmentSet(db.Model):
     """套装配置表"""
     __tablename__ = 'equipment_sets'

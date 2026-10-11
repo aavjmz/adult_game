@@ -115,7 +115,7 @@ export class TopBar extends Component {
 
     private onIcon(key: string): void {
         if (key === 'mail') {
-            openMailModal(this._overlayHost);
+            openMailModal(this._overlayHost, (unread) => this.setUnread(unread), (user) => this.apply(user));
         } else if (key === 'set') {
             openSettingsModal(this._overlayHost);
         } else {
@@ -184,6 +184,8 @@ export class TopBar extends Component {
         this.setChip('coins', formatNumber(user.coins));
         this.setChip('gems', formatNumber(user.gems));
         this.setChip('stamina', `${user.stamina}/${user.max_stamina}`);
+        // 只有 /user/info 带未读数；其他接口返回的 user 不带，保持角标不变
+        if (user.unread_mail !== undefined) this.setUnread(user.unread_mail);
     }
 
     setUnread(count: number): void {

@@ -27,6 +27,7 @@ docker-compose exec game cp /app/data/game.db /app/data/game.db.bak
 | 调装备属性、加新装备 | 改 `init_equipment_data.py` → 部署 → 重跑它 |
 | 调市集价格、限购 | 改 `app/shop_data.py` → 部署即可，不用跑脚本 |
 | 给测试账号发材料 | `grant_materials.py <用户名> [--dup <武将名> <张数>]` |
+| 给玩家发军书（补偿 / 公告） | `send_mail.py (--user <用户名> \| --all) --title <标题> [--gems N ...]` |
 
 ---
 
@@ -81,6 +82,7 @@ docker-compose exec game cp /app/data/game.db /app/data/game.db.bak
 | 脚本 | 用途 | 用法 | 可重复 |
 |---|---|---|---|
 | `grant_materials.py` | 给指定账号发一套养成材料，测试用：银两 1000 万、各档经验丹、星石、觉醒石、突破石、技能书、强化石、保护符、各品级碎片，另有四个部位各一件装备 | `python grant_materials.py aavjmz [--dup 关羽 5]`。`--dup` 额外发同名武将卡，觉醒需 1 张、突破需 3 张 | 是，每次叠加 |
+| `send_mail.py` | 给一名或全部玩家发军书（维护补偿、活动公告），可带银两、元宝、招贤令、背包道具附物，可设过期天数 | `python send_mail.py --all --title 维护补偿 --body "谨奉补偿" --gems 50 --days 7`；道具 `--item star_stone=2 --item exp_potion:large=3`；`--dry-run` 只预览 | 否，每跑一次发一封新信 |
 
 ---
 
@@ -107,6 +109,8 @@ docker-compose exec game cp /app/data/game.db /app/data/game.db.bak
 |---|---|---|
 | `test_api_client_growth.py` | `/api/v1` 成长、装备、碎片合成接口 | ✅ 临时库 |
 | `test_api_client_shop.py` | `/api/v1` 市集：购买、限购、隔天重置 | ✅ 临时库 |
+| `test_api_client_orders.py` | `/api/v1` 军令：玩法计入进度、领取、军功宝箱、日常 / 周常重置、成就 | ✅ 临时库 |
+| `test_api_client_mail.py` | `/api/v1` 军书：欢迎信、阅读、领取附物、弃书、过期、平定整章赏赐、send_mail.py 群发 | ✅ 临时库 |
 | `test_battle_skills.py` | 技能解析与等级换算、出手顺序与冷却、附加效果、自动 / 手动战斗与转托管 | ✅ 临时库 |
 | `test_battle_stats.py` | 出战属性：星级、觉醒、突破、装备、强化逐项生效，战斗单位与接口一致 | ✅ 临时库 |
 | `test_api_client_formation.py` | `/api/v1` 编伍：阵容读写、归属与重复校验、失效卡剔除、出征默认用服务端阵容 | ✅ 临时库 |

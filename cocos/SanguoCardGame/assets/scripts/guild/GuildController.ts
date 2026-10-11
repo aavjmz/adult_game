@@ -4,7 +4,6 @@ import { SceneNav } from '../core/SceneNav';
 import { showToast } from '../core/Toast';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
-import { unreadMailCount } from '../mail/MailModal';
 import { MockStore } from '../core/MockStore';
 import { baseChat, GUILD_ACTS, MEMBERS } from './GuildData';
 import {
@@ -42,7 +41,6 @@ export class GuildController extends Component {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.node, reason));
             return;
         }
-        this.topBar.setUnread(unreadMailCount());
         this.renderChat();
     }
 

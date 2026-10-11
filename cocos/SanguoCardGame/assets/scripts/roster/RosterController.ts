@@ -5,7 +5,6 @@ import { showToast } from '../core/Toast';
 import { ImageSlot } from '../core/ImageSlot';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
-import { unreadMailCount } from '../mail/MailModal';
 import { RARITY_TO_RANK, ROLE_NAME } from '../core/GameContent';
 import { loadRoster, RosterEntry } from './RosterData';
 import { GameApi } from '../core/GameApi';
@@ -46,7 +45,6 @@ export class RosterController extends Component {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.node, reason));
             return;
         }
-        this.topBar.setUnread(unreadMailCount());
 
         this.roster = await loadRoster();
         if (!this.isValid) return;

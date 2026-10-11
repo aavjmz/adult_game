@@ -5,7 +5,6 @@ import { showToast } from '../core/Toast';
 import { ImageSlot } from '../core/ImageSlot';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
-import { unreadMailCount } from '../mail/MailModal';
 import {
     BONDS, Hero, ROLE_NAME, heroPower,
 } from '../core/GameContent';
@@ -65,7 +64,6 @@ export class FormationController extends Component {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.overlay, reason));
             return;
         }
-        this.topBar.setUnread(unreadMailCount());
 
         this.roster = await loadRoster();
         if (!this.isValid) return;

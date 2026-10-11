@@ -13,6 +13,8 @@ import random
 from datetime import datetime
 from app.models import db, Card, UserCard, Stage, UserStageProgress, BattleRecord, UserItem
 from app.utils.stamina import StaminaSystem
+from app.utils import mail, orders
+from app.orders_data import ACT_WIN
 from app.utils import battle_core
 from app.skills import skill_profile
 
@@ -219,9 +221,13 @@ class PVEBattle:
         self.battle_log = state['events']
 
         result = self._settle_battle(state['result'] or 'lose')
+        if result['result'] == 'win':
+            orders.record(self.user.id, ACT_WIN)
         self._save_battle_record(result)
         if result['result'] == 'win':
             self._update_user_progress(result)
+            # 平定整章发军书赏赐（每章一次，随下面的发奖一起提交）
+            mail.check_chapter_cleared(self.user.id, self.stage)
             self._distribute_rewards(result)
         return result
 

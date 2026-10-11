@@ -88,6 +88,7 @@ adult_game/
 ├── init_equipment_data.py      # Sync equipment sets + templates (re-runnable)
 ├── init_enemy_cards.py         # Sync enemy cards from app/enemy_cards.py (re-runnable)
 ├── grant_materials.py          # Give a test account a full set of materials
+├── send_mail.py                # Send in-game mail (compensation / notices) to one or all players
 ├── test_fixtures.py            # Test data helpers (not a test): ensure_test_user() etc.
 ├── test_*.py                   # Test files (7 total, in root)
 └── docs/                       # Additional design documents
@@ -146,6 +147,8 @@ python test_three_kingdoms_battle.py
 python test_api_client.py
 python test_api_client_growth.py   # temp DB
 python test_api_client_shop.py     # temp DB
+python test_api_client_orders.py   # temp DB
+python test_api_client_mail.py     # temp DB
 python test_api_client_formation.py  # temp DB
 python test_battle_stats.py          # temp DB
 python test_battle_skills.py         # temp DB

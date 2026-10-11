@@ -10,7 +10,6 @@ import { showToast } from '../core/Toast';
 import { ImageSlot } from '../core/ImageSlot';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
-import { unreadMailCount } from '../mail/MailModal';
 import { formationPower, loadFormation, loadRoster } from '../roster/RosterData';
 import { chapterLabel, KIND_COLOR, kindOf, layoutStages } from './CampaignData';
 import {
@@ -58,7 +57,6 @@ export class CampaignController extends Component {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.overlay, reason));
             return;
         }
-        this.topBar.setUnread(unreadMailCount());
 
         const roster = await loadRoster();
         if (!this.isValid) return;
