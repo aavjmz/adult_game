@@ -11,6 +11,7 @@ from app.growth_utils import (
     get_skill_upgrade_cost, get_item_exp_value, get_card_sacrifice_exp,
     get_breakthrough_requirements, get_max_level
 )
+from app.utils.pve_battle import player_battle_stats
 from config import Config
 
 bp = Blueprint('growth', __name__, url_prefix='/growth')
@@ -476,6 +477,8 @@ def get_card_stats(user_card_id):
             UserCard.id != user_card.id,
         ).count(),
         'final_stats': final_stats,
+        # 出战时实际使用的属性（含星级、觉醒、突破、装备与套装），与 PVE 战斗一致
+        'battle_stats': player_battle_stats(user_card),
         'equipments': equipment_info
     })
 

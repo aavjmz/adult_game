@@ -147,6 +147,7 @@ python test_api_client.py
 python test_api_client_growth.py   # temp DB
 python test_api_client_shop.py     # temp DB
 python test_api_client_formation.py  # temp DB
+python test_battle_stats.py          # temp DB
 ```
 
 Tests validate database structure, card initialization, battle calculations, equipment functions, and growth formulas. Tests that need a test account create it via `test_fixtures.ensure_test_user()`, so they also run on an empty DB. Most tests write to the current DB; point them elsewhere with `DB_PATH=/tmp/test.db`.

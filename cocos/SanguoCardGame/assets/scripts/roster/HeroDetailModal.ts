@@ -284,6 +284,31 @@ class HeroDetailModalController extends Component {
             vl.setPosition(0, -8);
             cell.addChild(vl);
         });
+
+        // 出战属性：后端按全部养成算出的真实战斗数值（升星、觉醒、突破、装备后会变）
+        const bs = this.stats?.battle_stats;
+        if (!bs) return;
+        y -= 84;
+        const head = createLabel('出战属性 · 含星级、觉醒、突破与装备', {
+            fontSize: 11, color: Theme.color.textDisabled, width, align: Label.HorizontalAlign.LEFT,
+        });
+        head.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        head.setPosition(-width / 2, y);
+        this.body.addChild(head);
+        const items: Array<[string, number]> = [['生命', bs.hp], ['攻击', bs.attack], ['防御', bs.defense], ['速度', bs.speed]];
+        const bw = width / 4 - 6;
+        items.forEach(([k, v], i) => {
+            const cell = createNode('Battle', bw, 46);
+            cell.setPosition(-width / 2 + bw / 2 + i * (bw + 8), y - 36);
+            drawPanel(cell, { fill: Theme.color.panelSunken, stroke: withAlpha(Theme.color.gold, 120), lineWidth: 1, radius: 2 });
+            this.body.addChild(cell);
+            const kl = createLabel(k, { fontSize: 10, color: Theme.color.textDisabled, width: bw - 10 });
+            kl.setPosition(0, 11);
+            cell.addChild(kl);
+            const vl = createLabel(v.toLocaleString(), { fontSize: 14, bold: true, color: Theme.color.goldBright, width: bw - 10 });
+            vl.setPosition(0, -8);
+            cell.addChild(vl);
+        });
     }
 
     /**

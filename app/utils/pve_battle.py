@@ -15,6 +15,40 @@ from app.models import db, Card, UserCard, Stage, UserStageProgress, BattleRecor
 from app.utils.stamina import StaminaSystem
 
 
+def level_stat(base, level):
+    """战斗用的等级成长：每级 +10%（敌我双方共用，关卡难度按此标定）"""
+    return int(base * (1 + (level - 1) * 0.1))
+
+
+def player_battle_stats(user_card):
+    """玩家武将出战属性：等级 → 星级 → 觉醒 → 突破 → 装备（含套装）
+
+    等级部分沿用战斗公式（与敌军一致，不改变现有关卡难度），其余养成以倍率叠加：
+    星级 ×1.0~2.1、觉醒 ×1.3、突破每次 ×1.2（growth_utils），
+    装备攻 / 防 / 血百分比与速度（equipment_utils.apply_equipment_to_stats）。
+
+    Returns:
+        dict: {'hp', 'attack', 'defense', 'speed'}
+    """
+    from app.growth_utils import calc_awaken_bonus, calc_breakthrough_bonus, calc_star_bonus
+    from app.equipment_utils import apply_equipment_to_stats
+
+    card = user_card.card
+    stats = {}
+    for key in ('hp', 'attack', 'defense'):
+        value = level_stat(getattr(card, key), user_card.level)
+        value = calc_star_bonus(value, user_card.star_level or 1)
+        if user_card.awaken_level:
+            value = calc_awaken_bonus(value)
+        if user_card.breakthrough_level:
+            value = calc_breakthrough_bonus(value, user_card.breakthrough_level)
+        stats[key] = value
+    stats['speed'] = card.speed or 50
+
+    final = apply_equipment_to_stats(user_card, stats)
+    return {'hp': final['hp'], 'attack': final['attack'], 'defense': final['defense'], 'speed': int(final['speed'])}
+
+
 class PVEBattle:
     """PVE战斗引擎"""
 
@@ -48,19 +82,21 @@ class PVEBattle:
         self._generate_enemy_team()
 
     def _init_user_team_units(self):
-        """将UserCard ORM对象包装为战斗单位字典（与enemy_team结构一致）"""
+        """将UserCard ORM对象包装为战斗单位字典（与enemy_team结构一致）
+
+        属性含全部养成：等级、星级、觉醒、突破、装备与套装（见 player_battle_stats）
+        """
         for uc in self.user_team:
-            card = uc.card
-            level = uc.level
+            stats = player_battle_stats(uc)
             unit = {
                 'user_card': uc,
-                'card': card,
-                'level': level,
-                'hp': self._calculate_hp(card, level),
-                'max_hp': self._calculate_hp(card, level),
-                'attack': self._calculate_attack(card, level),
-                'defense': self._calculate_defense(card, level),
-                'speed': card.speed,
+                'card': uc.card,
+                'level': uc.level,
+                'hp': stats['hp'],
+                'max_hp': stats['hp'],
+                'attack': stats['attack'],
+                'defense': stats['defense'],
+                'speed': stats['speed'],
                 'is_alive': True,
                 'skill_cooldown': 0
             }
@@ -101,16 +137,16 @@ class PVEBattle:
         self.ai_strategy = enemy_config.get('ai_strategy', 'balanced')
 
     def _calculate_hp(self, card, level):
-        """计算单位HP"""
-        return int(card.hp * (1 + (level - 1) * 0.1))
+        """计算敌方单位HP（敌军只有等级成长）"""
+        return level_stat(card.hp, level)
 
     def _calculate_attack(self, card, level):
-        """计算单位攻击力"""
-        return int(card.attack * (1 + (level - 1) * 0.1))
+        """计算敌方单位攻击力"""
+        return level_stat(card.attack, level)
 
     def _calculate_defense(self, card, level):
-        """计算单位防御力"""
-        return int(card.defense * (1 + (level - 1) * 0.1))
+        """计算敌方单位防御力"""
+        return level_stat(card.defense, level)
 
     def start_battle(self):
         """

@@ -145,6 +145,8 @@ export interface CardStats {
     /** 除本卡外的同名卡数量，升星 / 突破可消耗 */
     duplicates_owned: number;
     final_stats: { attack: number; defense: number; hp: number; [k: string]: number };
+    /** 出战时实际使用的属性：等级、星级、觉醒、突破、装备与套装全部计入，与 PVE 战斗一致 */
+    battle_stats: { hp: number; attack: number; defense: number; speed: number };
 }
 
 export type EquipSlot = 'weapon' | 'armor' | 'accessory' | 'treasure';
