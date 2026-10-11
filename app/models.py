@@ -305,6 +305,26 @@ class UserItem(db.Model):
         return f'<UserItem user={self.user_id} {self.item_type}:{self.item_subtype} x{self.quantity}>'
 
 
+class BattleSession(db.Model):
+    """进行中的手动战斗：battle_core 状态存 JSON，玩家每下一次令推进一步
+
+    status: active（进行中）/ finished（已结算）/ abandoned（被新开的战斗顶替，不结算）
+    """
+    __tablename__ = 'battle_sessions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    stage_id = db.Column(db.Integer, db.ForeignKey('stages.id'), nullable=False)
+    team = db.Column(db.Text, nullable=False)     # JSON：出战 UserCard id 列表
+    state = db.Column(db.Text, nullable=False)    # JSON：battle_core 状态
+    status = db.Column(db.String(20), default='active', nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<BattleSession {self.id} user={self.user_id} {self.status}>'
+
+
 class UserFormation(db.Model):
     """编伍阵容：六个阵位（前排 0-1、中军 2-3、后阵 4-5）各放一张 UserCard 或空
 

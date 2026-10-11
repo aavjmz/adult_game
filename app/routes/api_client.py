@@ -416,7 +416,9 @@ def pve_sweep():
 
 def _unit_payload(unit):
     """战斗单位快照。必须在开打前取——战斗过程会就地把 hp 扣到 0"""
+    skill = unit['skill']
     return {
+        'id': unit['id'],
         'name': unit['card'].name,
         'level': unit['level'],
         'max_hp': unit['max_hp'],
@@ -425,65 +427,14 @@ def _unit_payload(unit):
         'speed': unit['speed'],
         'rarity': unit['card'].rarity,
         'image_url': unit['card'].image_url,
+        'skill': {k: skill[k] for k in ('name', 'description', 'multiplier', 'cooldown', 'target', 'level')},
     }
 
 
-@bp.route('/pve/battle/start', methods=['POST'])
-@token_required
-def pve_battle_start():
-    """出征：整场战斗在服务端一次算完，返回战报供客户端回放
-
-    请求：{"stage_id": 1, "team": [UserCard id, ...]}；不传 team 时用服务端编伍阵容
-
-    客户端的战斗界面是「回放服务端算好的 battle_log」，不是逐回合发指令——
-    PVEBattle 的设计就是一次跑完，要做成手动出招得先改战斗引擎。
-    """
-    from app.utils.pve_battle import PVEBattle
-
-    body = _json_body()
-    stage_id = body.get('stage_id')
-    team_ids = body.get('team')
-    if team_ids is None:
-        # 不传 team 时用服务端保存的编伍阵容
-        team_ids = [s for s in _load_formation(g.current_user.id) if s is not None]
-    team_ids = team_ids or []
-
-    stage = Stage.query.get(stage_id)
-    if not stage:
-        return fail('关卡不存在', 404)
-
-    if not team_ids:
-        return fail('请先在编伍中安排出战武将')
-
-    user = g.current_user
-    team = []
-    for user_card_id in team_ids:
-        user_card = UserCard.query.filter_by(id=user_card_id, user_id=user.id).first()
-        if not user_card:
-            return fail(f'卡牌 {user_card_id} 不存在或不属于你')
-        team.append(user_card)
-
-    stamina_info = StaminaSystem.get_stamina_info(user)
-    if stamina_info['current'] < stage.stamina_cost:
-        return fail(f'体力不足，需要 {stage.stamina_cost} 点，当前 {stamina_info["current"]} 点')
-
-    battle = PVEBattle(user, stage, team)
-    if not battle.enemy_team:
-        # 敌军卡牌没种进库时敌方为空，战斗会一回合判胜、白拿奖励和星级
-        return fail('此关敌军尚未配置，请先在服务端运行 init_enemy_cards.py')
-
-    # 双方阵容在构造时就已生成，趁 hp 还是满的先存下来
-    allies = [_unit_payload(u) for u in battle.user_team_units]
-    enemies = [_unit_payload(u) for u in battle.enemy_team]
-
-    result = battle.start_battle()
-    if not result.get('success'):
-        return fail(result.get('message') or '战斗未能开始')
-
-    return ok({
-        'stage': {'id': stage.id, 'name': stage.name},
-        'allies': allies,
-        'enemies': enemies,
+def _battle_result_payload(result, user):
+    """战斗结算的公共返回字段（自动一次返回；手动在最后一步返回）"""
+    return {
+        'finished': True,
         'result': result.get('result'),
         'stars': result.get('stars', 0),
         'turns': result.get('turns', 0),
@@ -494,7 +445,165 @@ def pve_battle_start():
         'drops': result.get('drops'),
         'battle_log': result.get('battle_log', []),
         'user': _user_payload(user),
+    }
+
+
+def _prepare_battle(user, stage_id, team_ids):
+    """校验关卡、阵容、体力并构造 PVEBattle；失败返回 (None, fail响应)"""
+    from app.utils.pve_battle import PVEBattle
+
+    if team_ids is None:
+        # 不传 team 时用服务端保存的编伍阵容
+        team_ids = [s for s in _load_formation(user.id) if s is not None]
+    team_ids = team_ids or []
+
+    stage = Stage.query.get(stage_id)
+    if not stage:
+        return None, fail('关卡不存在', 404)
+    if not team_ids:
+        return None, fail('请先在编伍中安排出战武将')
+
+    team = []
+    for user_card_id in team_ids:
+        user_card = UserCard.query.filter_by(id=user_card_id, user_id=user.id).first()
+        if not user_card:
+            return None, fail(f'卡牌 {user_card_id} 不存在或不属于你')
+        team.append(user_card)
+
+    stamina_info = StaminaSystem.get_stamina_info(user)
+    if stamina_info['current'] < stage.stamina_cost:
+        return None, fail(f'体力不足，需要 {stage.stamina_cost} 点，当前 {stamina_info["current"]} 点')
+
+    battle = PVEBattle(user, stage, team)
+    if not battle.enemy_team:
+        # 敌军卡牌没种进库时敌方为空，战斗会一回合判胜、白拿奖励和星级
+        return None, fail('此关敌军尚未配置，请先在服务端运行 init_enemy_cards.py')
+    return battle, None
+
+
+@bp.route('/pve/battle/start', methods=['POST'])
+@token_required
+def pve_battle_start():
+    """出征
+
+    请求：{"stage_id": 1, "team": [UserCard id, ...], "mode": "auto" | "manual"}
+    - team 不传时用服务端编伍阵容
+    - auto（默认）：整场在服务端算完，返回完整战报与结算，客户端回放
+    - manual：扣体力后推进到第一个我方武将出手前，返回 session_id 与 awaiting；
+      之后用 /pve/battle/action 逐个下令，/pve/battle/auto 可随时转托管
+    """
+    from app.models import BattleSession
+    from app.utils import battle_core
+
+    body = _json_body()
+    mode = body.get('mode', 'auto')
+    if mode not in ('auto', 'manual'):
+        return fail('mode 只能是 auto 或 manual')
+
+    user = g.current_user
+    battle, err = _prepare_battle(user, body.get('stage_id'), body.get('team'))
+    if err:
+        return err
+    stage = battle.stage
+
+    # 双方阵容在构造时就已生成，趁 hp 还是满的先存下来
+    allies = [_unit_payload(u) for u in battle.user_team_units]
+    enemies = [_unit_payload(u) for u in battle.enemy_team]
+    head = {'stage': {'id': stage.id, 'name': stage.name}, 'mode': mode, 'allies': allies, 'enemies': enemies}
+
+    if mode == 'auto':
+        result = battle.start_battle()
+        if not result.get('success'):
+            return fail(result.get('message') or '战斗未能开始')
+        return ok(dict(head, **_battle_result_payload(result, user)))
+
+    state, failed = battle.begin_manual()
+    if failed:
+        return fail(failed.get('message') or '战斗未能开始')
+
+    # 同一玩家只保留一场进行中的手动战斗，旧的作废（体力已扣，不结算）
+    BattleSession.query.filter_by(user_id=user.id, status='active').update({'status': 'abandoned'})
+    session = BattleSession(user_id=user.id, stage_id=stage.id,
+                            team=json.dumps([uc.id for uc in battle.user_team]), state='{}')
+    db.session.add(session)
+    return ok(dict(head, **_manual_step(session, battle, state, state['events'])))
+
+
+def _manual_step(session, battle, state, events):
+    """手动战斗推进后的统一处理：未结束则存档并返回待命信息，结束则结算"""
+    from app.utils import battle_core
+
+    payload = {'session_id': None, 'events': events, 'round': state['round']}
+    if state['finished']:
+        session.status = 'finished'
+        session.state = json.dumps(state)
+        db.session.commit()
+        payload['session_id'] = session.id
+        payload.update(_battle_result_payload(battle.finish(state), battle.user))
+        return payload
+
+    session.state = json.dumps(state)
+    db.session.commit()
+    payload.update({
+        'session_id': session.id,
+        'finished': False,
+        'awaiting': battle_core.awaiting_info(state),
+        'units': {uid: {'hp': u['hp'], 'alive': u['alive'], 'cd': u['cd'], 'stun': u['stun']}
+                  for uid, u in state['units'].items()},
+        'user': _user_payload(battle.user),
     })
+    return payload
+
+
+def _load_session(session_id):
+    """取当前用户进行中的手动战斗，并重建 PVEBattle 供结算；失败返回 (None, None, None, fail响应)"""
+    from app.models import BattleSession
+    from app.utils.pve_battle import PVEBattle
+
+    session = BattleSession.query.filter_by(id=session_id, user_id=g.current_user.id).first()
+    if not session:
+        return None, None, None, fail('战斗不存在', 404)
+    if session.status != 'active':
+        return None, None, None, fail('这场战斗已经结束' if session.status == 'finished' else '这场战斗已被新开的战斗替代')
+
+    stage = Stage.query.get(session.stage_id)
+    team = [uc for uc in (UserCard.query.get(i) for i in json.loads(session.team)) if uc]
+    battle = PVEBattle(g.current_user, stage, team)
+    return session, battle, json.loads(session.state), None
+
+
+@bp.route('/pve/battle/action', methods=['POST'])
+@token_required
+def pve_battle_action():
+    """手动战斗下令：{"session_id": 1, "action": "attack" | "skill", "target_id": "e0"}
+
+    target_id 可省略（自动选目标）；群攻技能忽略 target_id。
+    执行后推进到下一个我方武将出手前，返回这段时间的事件。
+    """
+    from app.utils import battle_core
+
+    body = _json_body()
+    session, battle, state, err = _load_session(body.get('session_id'))
+    if err:
+        return err
+    try:
+        events = battle_core.act(state, body.get('action'), body.get('target_id'))
+    except ValueError as e:
+        return fail(str(e))
+    return ok(_manual_step(session, battle, state, events))
+
+
+@bp.route('/pve/battle/auto', methods=['POST'])
+@token_required
+def pve_battle_auto():
+    """手动战斗转托管：{"session_id": 1}，剩余回合自动打完并结算"""
+    from app.utils import battle_core
+
+    session, battle, state, err = _load_session(_json_body().get('session_id'))
+    if err:
+        return err
+    events = battle_core.run(state, manual=False)
+    return ok(_manual_step(session, battle, state, events))
 
 
 # ============ 编伍 ============
