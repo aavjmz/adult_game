@@ -1,4 +1,5 @@
 import { _decorator, Component, Label, Node, UITransform, view } from 'cc';
+import { summarizeItems } from '../core/ItemNames';
 import { Theme } from '../core/UiTheme';
 import { BattleLogEntry, BattleResult, GameApi } from '../core/GameApi';
 import { BattleContext } from '../core/BattleContext';
@@ -343,13 +344,18 @@ export class BattleController extends Component {
         });
 
         const rewardText = win
-            ? `战利：银两 +${data.rewards?.coins ?? 0} · 经验 +${data.rewards?.exp ?? 0}` +
-              (data.drops && data.drops.length ? ` · 掉落 ${data.drops.length} 件` : '')
+            ? `战利：银两 +${data.rewards?.coins ?? 0} · 经验 +${data.rewards?.exp ?? 0}`
             : '败军之师，无所获';
         const reward = createLabel(rewardText, {
             fontSize: 12, color: win ? Theme.color.gold : Theme.color.textDisabled, width: 420,
         });
         reward.setPosition(0, -26);
+        const dropText = win ? summarizeItems(data.drops) : '';
+        if (dropText) {
+            const drops = createLabel(`掉落：${dropText}`, { fontSize: 11, color: Theme.color.textMuted, width: 420 });
+            drops.setPosition(0, -46);
+            panel.addChild(drops);
+        }
         panel.addChild(reward);
 
         const again = createButton('再 战', 180, 44, () => { layer.destroy(); this.fight(); }, {

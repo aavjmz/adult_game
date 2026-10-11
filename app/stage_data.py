@@ -882,6 +882,39 @@ def _chapter_3():
     return stages
 
 
+# ============ 养成材料掉落 ============
+#
+# 经验丹、万能星石按「章节 × 普通关/首领关」统一配置，追加到各关原有的碎片
+# 掉落之后（关卡数据里只写碎片）。调数值改这张表，再跑 init_stages.py 同步。
+# 战斗胜利与扫荡都按合并后的 drop_config 掉落。
+
+def _drop(item_type, subtype, probability, low, high):
+    return {"item_type": item_type, "item_subtype": subtype, "probability": probability, "quantity": [low, high]}
+
+
+MATERIAL_DROPS = {
+    1: {
+        'normal': [_drop('exp_potion', 'small', 0.8, 1, 2), _drop('star_stone', None, 0.15, 1, 1)],
+        'boss': [_drop('exp_potion', 'medium', 1.0, 2, 3), _drop('star_stone', None, 1.0, 3, 5)],
+    },
+    2: {
+        'normal': [_drop('exp_potion', 'medium', 0.7, 1, 2), _drop('star_stone', None, 0.25, 1, 2)],
+        'boss': [_drop('exp_potion', 'large', 1.0, 2, 3), _drop('star_stone', None, 1.0, 5, 8)],
+    },
+    3: {
+        'normal': [_drop('exp_potion', 'large', 0.6, 1, 2), _drop('star_stone', None, 0.35, 1, 3)],
+        'boss': [_drop('exp_potion', 'large', 1.0, 2, 3), _drop('exp_potion', 'xlarge', 0.6, 1, 1),
+                 _drop('star_stone', None, 1.0, 8, 12)],
+    },
+}
+
+
+def material_drops(chapter, difficulty):
+    """某关追加的养成材料掉落；首领关用 boss 档，其余用 normal 档"""
+    tier = 'boss' if difficulty == 'boss' else 'normal'
+    return MATERIAL_DROPS.get(chapter, {}).get(tier, [])
+
+
 def main_stages():
     """全部主线关卡：[(章节, 关卡数据), ...]"""
     return ([(1, s) for s in _chapter_1()]
@@ -905,7 +938,10 @@ def _stage_values(chapter, data):
         'stamina_cost': data.get('stamina_cost', 10),
         'enemy_config': data['enemy_config'],
         'rewards': data['rewards'],
-        'drop_config': data['drop_config'],
+        'drop_config': json.dumps(
+            json.loads(data['drop_config']) + material_drops(chapter, data.get('difficulty', 'normal')),
+            ensure_ascii=False,
+        ),
         'first_clear_rewards': data['first_clear_rewards'],
         'star_1_condition': '通关关卡',
         'star_2_condition': '无人阵亡',

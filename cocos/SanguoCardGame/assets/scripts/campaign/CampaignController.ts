@@ -1,6 +1,7 @@
 import {
     _decorator, Color, Component, Graphics, Label, Node, UITransform, Vec3, tween, view,
 } from 'cc';
+import { summarizeItems } from '../core/ItemNames';
 import { Theme } from '../core/UiTheme';
 import { GameApi, StageData } from '../core/GameApi';
 import { SceneNav } from '../core/SceneNav';
@@ -382,7 +383,8 @@ export class CampaignController extends Component {
             return;
         }
         this.topBar.apply(res.data.user);
-        showToast(this.overlay, `扫荡完毕 · 银两 +${res.data.rewards.coins}`);
+        const items = summarizeItems(res.data.rewards.items);
+        showToast(this.overlay, `扫荡完毕 · 银两 +${res.data.rewards.coins}${items ? ` · ${items}` : ''}`);
     }
 }
 
