@@ -66,7 +66,15 @@ adult_game/
 │   │   └── room_manager.py     # Battle room management
 │   ├── utils/                  # Utility modules
 │   │   ├── stamina.py          # Stamina/energy system
-│   │   └── pve_battle.py       # PVE battle engine (~300 lines)
+│   │   ├── battle_core.py      # Pausable, serializable turn-based battle (PVE + arena)
+│   │   ├── pve_battle.py       # PVE battle setup, settlement, rewards
+│   │   ├── orders.py           # 军令: activity counters, progress, claims
+│   │   ├── mail.py             # 军书: send / list / claim / delete
+│   │   ├── arena.py            # 军演: async PVP, Elo, tickets
+│   │   ├── guild.py            # 盟: membership, roles, donate, warehouse, chat
+│   │   └── formation.py        # Saved formation (shared by PVE and arena)
+│   ├── rewards.py              # Reward format + grant(), shared by orders/mail/arena/guild
+│   ├── *_data.py               # Balance tables (stage, enemy_cards, shop, orders, mail, arena, guild)
 │   ├── templates/              # Jinja2 HTML templates (27 files)
 │   │   ├── base.html           # Base layout
 │   │   └── pve/                # PVE-specific templates (10 files)
@@ -90,7 +98,7 @@ adult_game/
 ├── grant_materials.py          # Give a test account a full set of materials
 ├── send_mail.py                # Send in-game mail (compensation / notices) to one or all players
 ├── test_fixtures.py            # Test data helpers (not a test): ensure_test_user() etc.
-├── test_*.py                   # Test files (7 total, in root)
+├── test_*.py                   # Test files (17 total, in root)
 └── docs/                       # Additional design documents
 ```
 
@@ -122,6 +130,12 @@ All models are in `app/models.py`. Key models:
 | `Stage` | PVE stage definitions (30 stages, 3 chapters) |
 | `UserStageProgress` | Player progress per stage (stars, clears) |
 | `BattleRecord` | PVE battle logs |
+| `UserFormation` | Saved 6-slot formation |
+| `ShopPurchase` | Daily purchase counts (市集, also 盟仓 with `guild_` prefix) |
+| `UserActivity` / `OrderClaim` | 军令 activity counters per day / claims per period |
+| `Mail` | 军书 with JSON attachments |
+| `ArenaPlayer` / `ArenaRecord` | 军演 score, tickets, foe batch / battle reports |
+| `Guild` / `GuildMember` / `GuildDonation` / `GuildMessage` | 盟 and its chat (world channel = `guild_id` NULL) |
 
 ### Game Systems
 
@@ -132,6 +146,10 @@ All models are in `app/models.py`. Key models:
 - **Equipment:** Weapon/Armor/Accessory/Treasure with 5 quality tiers. Enhancement (+0 to +30), crafting, set bonuses, exclusive hero equipment.
 - **PVE:** 30 stages across 3 chapters with stamina system (auto-recovery: 1 per 6 min, max 120). AI strategies: balanced, aggressive, defensive. Star rating (1-3).
 - **PWA:** Full Progressive Web App support with service worker caching and install-to-home-screen.
+- **军令 (orders):** Daily / weekly / achievements / monthly pass. Gameplay endpoints call `orders.record()`; days reset at Beijing midnight (`orders_data.game_today()`).
+- **军书 (mail):** Welcome mail, chapter-clear rewards, `send_mail.py` for ops.
+- **军演 (arena):** Async PVP against real players' saved formations or generated NPC teams; Elo score; 5 tickets/day.
+- **盟 (guild):** Create/join/leave, roles, donations, daily guild order, warehouse, guild + world chat.
 
 ## Running Tests
 
@@ -226,6 +244,6 @@ docker-compose down        # Stop
 
 ## Project Status
 
-The game is approximately 40% complete. Fully implemented: auth, card collection, gacha, PWA. Partially implemented: battle systems, growth, equipment, PVE. Not yet started: PvP matchmaking, guilds, friends, leaderboards, real-time multiplayer.
+The main client is the Cocos app (`cocos/SanguoCardGame/`); all of its gameplay data is server-side via `/api/v1`. Implemented end to end: auth, gacha, heroes and growth, equipment, formation, PVE, shop, bag, orders, mail, async arena, guilds. Not yet started: monthly card, private messages, guild siege, friends, leaderboard page, real-time multiplayer. Most settings toggles have no effect yet.
 
 Refer to `PROJECT_STATUS.md` for detailed progress and `TODO.md` for the development roadmap.
