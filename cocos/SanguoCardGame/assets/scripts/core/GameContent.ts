@@ -94,31 +94,50 @@ export interface SkillDef {
 
 export const SKILLS: Record<Role, SkillDef[]> = {
     锋: [
-        { name: '无双·戟啸', kind: '主动', desc: '对单体造成 260% 武力伤害，若目标兵力低于 40% 则必暴击。', cost: 40, cd: 3 },
-        { name: '踏阵冲锋', kind: '主动', desc: '冲入敌阵，对横排三人造成 140% 伤害并降低其速度 20%。', cost: 30, cd: 2 },
-        { name: '背水一战', kind: '被动', desc: '自身兵力低于 50% 时，武力提升 25%，受伤降低 10%。', cost: 0, cd: 0 },
+        { name: '无双·戟啸', kind: '主动', desc: '对单体造成 {260}% 武力伤害，若目标兵力低于 40% 则必暴击。', cost: 40, cd: 3 },
+        { name: '踏阵冲锋', kind: '主动', desc: '冲入敌阵，对横排三人造成 {140}% 伤害并降低其速度 {20}%。', cost: 30, cd: 2 },
+        { name: '背水一战', kind: '被动', desc: '自身兵力低于 50% 时，武力提升 {25}%，受伤降低 {10}%。', cost: 0, cd: 0 },
     ],
     将: [
-        { name: '破军斩', kind: '主动', desc: '对敌方前排造成 210% 伤害，附加破甲 2 回合。', cost: 35, cd: 2 },
-        { name: '阵前督战', kind: '主动', desc: '全体我军攻击提升 18%，持续 3 回合。', cost: 45, cd: 4 },
-        { name: '铁壁', kind: '被动', desc: '受到伤害降低 12%，每回合恢复 4% 兵力。', cost: 0, cd: 0 },
+        { name: '破军斩', kind: '主动', desc: '对敌方前排造成 {210}% 伤害，附加破甲 2 回合。', cost: 35, cd: 2 },
+        { name: '阵前督战', kind: '主动', desc: '全体我军攻击提升 {18}%，持续 3 回合。', cost: 45, cd: 4 },
+        { name: '铁壁', kind: '被动', desc: '受到伤害降低 {12}%，每回合恢复 {4}% 兵力。', cost: 0, cd: 0 },
     ],
     谋: [
-        { name: '锦囊奇策', kind: '主动', desc: '对敌方全体造成 130% 智力伤害，并有 35% 概率使其沉默一回合。', cost: 50, cd: 4 },
-        { name: '观星', kind: '主动', desc: '为我方两名友军回复 20% 兵力并清除一个负面状态。', cost: 35, cd: 3 },
-        { name: '连环计', kind: '被动', desc: '敌方受控时，我军对其伤害提升 20%。', cost: 0, cd: 0 },
+        { name: '锦囊奇策', kind: '主动', desc: '对敌方全体造成 {130}% 智力伤害，并有 35% 概率使其沉默一回合。', cost: 50, cd: 4 },
+        { name: '观星', kind: '主动', desc: '为我方两名友军回复 {20}% 兵力并清除一个负面状态。', cost: 35, cd: 3 },
+        { name: '连环计', kind: '被动', desc: '敌方受控时，我军对其伤害提升 {20}%。', cost: 0, cd: 0 },
     ],
     守: [
-        { name: '磐石', kind: '主动', desc: '为我军前排张开护盾，吸收相当于自身统率 300% 的伤害。', cost: 40, cd: 3 },
-        { name: '固守待援', kind: '主动', desc: '自身进入守御，2 回合内受伤降低 45% 并嘲讽敌军。', cost: 30, cd: 3 },
-        { name: '鼓舞', kind: '被动', desc: '我军每损失一人，全体防御提升 8%，最多叠加三层。', cost: 0, cd: 0 },
+        { name: '磐石', kind: '主动', desc: '为我军前排张开护盾，吸收相当于自身统率 {300}% 的伤害。', cost: 40, cd: 3 },
+        { name: '固守待援', kind: '主动', desc: '自身进入守御，2 回合内受伤降低 {45}% 并嘲讽敌军。', cost: 30, cd: 3 },
+        { name: '鼓舞', kind: '被动', desc: '我军每损失一人，全体防御提升 {8}%，最多叠加三层。', cost: 0, cd: 0 },
     ],
     辅: [
-        { name: '妙手回春', kind: '主动', desc: '回复我方全体 18% 兵力，对濒危单位额外加成。', cost: 45, cd: 3 },
+        { name: '妙手回春', kind: '主动', desc: '回复我方全体 {18}% 兵力，对濒危单位额外加成。', cost: 45, cd: 3 },
         { name: '清心咒', kind: '主动', desc: '解除我方两个负面状态，并免疫控制 1 回合。', cost: 30, cd: 2 },
-        { name: '同心', kind: '被动', desc: '同阵营友军在场时，全体智力提升 12%。', cost: 0, cd: 0 },
+        { name: '同心', kind: '被动', desc: '同阵营友军在场时，全体智力提升 {12}%。', cost: 0, cd: 0 },
     ],
 };
+
+/**
+ * 技能描述按等级换算：desc 里用 {数值} 标出随技能等级变化的效果量
+ * （伤害、治疗、增减益、护盾），每级 +10%，与后端 growth_utils.calc_skill_level_bonus 一致；
+ * 触发门槛、概率、持续回合不加花括号，不随等级变。
+ */
+export function skillDesc(sk: SkillDef, level = 1): string {
+    const k = 1 + (Math.max(1, level) - 1) * 0.1;
+    return sk.desc.replace(/\{(\d+(?:\.\d+)?)\}/g, (_, n: string) => {
+        const v = Number(n) * k;
+        return Number.isInteger(v) ? String(v) : v >= 10 ? String(Math.round(v)) : v.toFixed(1);
+    });
+}
+
+/** 主动技能冷却：每 3 级减 1 回合，最少 1 回合（同 growth_utils.calc_skill_cooldown_reduction） */
+export function skillCooldown(sk: SkillDef, level = 1): number {
+    if (!sk.cd) return 0;
+    return Math.max(1, sk.cd - Math.floor((Math.max(1, level) - 1) / 3));
+}
 
 export interface BondDef {
     name: string;

@@ -3,7 +3,7 @@ import { Theme } from '../core/UiTheme';
 import { showToast } from '../core/Toast';
 import { ImageSlot } from '../core/ImageSlot';
 import {
-    BONDS, HEROES, RANK_NAME, RARITY_TO_RANK, ROLE_NAME, SKILLS, heroPower,
+    BONDS, HEROES, RANK_NAME, RARITY_TO_RANK, ROLE_NAME, SKILLS, heroPower, skillCooldown, skillDesc,
 } from '../core/GameContent';
 import { RosterEntry } from './RosterData';
 import { CardStats, EquipmentData, EquipSlot, GameApi } from '../core/GameApi';
@@ -296,6 +296,8 @@ class HeroDetailModalController extends Component {
         const width = this.body.getComponent(UITransform)!.width;
         let y = this.body.getComponent(UITransform)!.height / 2 - 40;
         for (const sk of SKILLS[hero.role]) {
+            // 未招募按 1 级展示；描述里的效果数值、冷却都按当前技能等级换算
+            const level = st ? (sk.kind === '被动' ? st.passive_skill_level : st.main_skill_level) : 1;
             const row = createNode('Skill', width, 68);
             row.setPosition(0, y);
             drawPanel(row, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
@@ -309,21 +311,22 @@ class HeroDetailModalController extends Component {
             row.addChild(name);
 
             if (st) {
-                const level = sk.kind === '被动' ? st.passive_skill_level : st.main_skill_level;
                 const lv = createLabel(`Lv.${level}`, { fontSize: 12, bold: true, color: Theme.color.text, width: 70, align: Label.HorizontalAlign.RIGHT });
                 lv.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
                 lv.setPosition(width / 2 - 12, 20);
                 row.addChild(lv);
             }
 
-            const desc = createLabel(sk.desc, {
+            const desc = createLabel(skillDesc(sk, level), {
                 fontSize: 11, color: Theme.color.textMuted, width: width - 24, align: Label.HorizontalAlign.LEFT,
             });
             desc.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
             desc.setPosition(-width / 2 + 12, -2);
             row.addChild(desc);
 
-            const cost = createLabel(sk.cost ? `耗能 ${sk.cost} · 冷却 ${sk.cd} 回合` : '被动', {
+            const cd = skillCooldown(sk, level);
+            const cdText = cd < sk.cd ? `冷却 ${cd} 回合（原 ${sk.cd}）` : `冷却 ${cd} 回合`;
+            const cost = createLabel(sk.cost ? `耗能 ${sk.cost} · ${cdText}` : '被动', {
                 fontSize: 9, color: Theme.color.textDisabled, width: 200, align: Label.HorizontalAlign.LEFT,
             });
             cost.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
@@ -366,9 +369,10 @@ class HeroDetailModalController extends Component {
             const next = st.next_skill_costs?.[t.type] ?? null;
             const bookKey = next ? `skill_book:${next.book_type}` : '';
             const have = next ? this.materials[bookKey] ?? 0 : 0;
+            const effect = `效果 +${(t.level - 1) * 10}%`;
             const need = next
-                ? `${BOOK_NAME[next.book_type] ?? next.book_type} ${have}/${next.book_count} · 银两 ${next.coins.toLocaleString()}`
-                : '已满级';
+                ? `${effect} → +${t.level * 10}% · ${BOOK_NAME[next.book_type] ?? next.book_type} ${have}/${next.book_count} · 银两 ${next.coins.toLocaleString()}`
+                : `${effect} · 已满级`;
             const sub = createLabel(need, { fontSize: 10, color: Theme.color.textDisabled, width: width - 150, align: Label.HorizontalAlign.LEFT });
             sub.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
             sub.setPosition(-width / 2 + 12, -12);
