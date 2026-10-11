@@ -72,6 +72,8 @@ def main():
     check(stats['next_star_up'] == {'duplicates': 1, 'star_stones': 10, 'coins': 50000},
           f"附带下一档升星需求 {stats['next_star_up']}")
     check(stats['next_breakthrough'] is not None and stats['duplicates_owned'] == 0, '附带突破需求与同名卡数')
+    check(stats['main_skill_level'] == 1 and stats['next_skill_costs']['main'] == {'book_type': 'small', 'book_count': 1, 'coins': 10000},
+          f"附带技能等级与下一级消耗 {stats['next_skill_costs']['main']}")
 
     body = client.post('/api/v1/growth/star-up', headers=auth,
                        json={'user_card_id': uc_id, 'material_type': 'star_stone'}).get_json()
@@ -83,6 +85,18 @@ def main():
                        json={'user_card_id': uc_id, 'material_type': 'star_stone'}).get_json()
     check(body['success'] and body['data']['new_star_level'] == 2, '星石升星 ★1 → ★2')
     check(body['data']['user']['coins'] == 10_000_000 - 50000, '升星扣除银两并回传')
+
+    body = client.post('/api/v1/growth/skill-upgrade', headers=auth,
+                       json={'user_card_id': uc_id, 'skill_type': 'main'}).get_json()
+    check(body['success'] is False and '技能书不足' in body['error'], f"无技能书被拒：{body['error']}")
+    with app.app_context():
+        db.session.add(UserItem(user_id=user_id, item_type='skill_book', item_subtype='small', quantity=1))
+        db.session.commit()
+    body = client.post('/api/v1/growth/skill-upgrade', headers=auth,
+                       json={'user_card_id': uc_id, 'skill_type': 'main'}).get_json()
+    check(body['success'] and body['data']['new_level'] == 2, '主动技能 Lv.1 → Lv.2')
+    stats = client.get(f'/api/v1/growth/card-stats/{uc_id}', headers=auth).get_json()['data']
+    check(stats['main_skill_level'] == 2 and stats['passive_skill_level'] == 1, '只升了主动，被动不变')
 
     body = client.get('/api/v1/growth/card-stats/999999', headers=auth).get_json()
     check(body['success'] is False and body['error'] == '卡牌不存在', '他人或不存在的卡被拒')

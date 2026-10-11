@@ -120,6 +120,9 @@ export interface SweepResult {
 /** 一档材料需求，对应后端 growth_utils 的需求表 */
 export interface StarUpRequirement { duplicates: number; star_stones: number; coins: number }
 export interface BreakthroughRequirement { breakthrough_stones: number; duplicates: number; coins: number }
+/** 技能升一级的消耗：book_type 为 small / medium / large（初 / 中 / 高级技能书） */
+export interface SkillUpgradeCost { book_type: string; book_count: number; coins: number }
+export type SkillType = 'main' | 'passive';
 
 /** /growth/card-stats：武将成长全貌 */
 export interface CardStats {
@@ -130,6 +133,11 @@ export interface CardStats {
     star_level: number;
     awaken_level: number;
     breakthrough_level: number;
+    /** 主动 / 被动技能等级（1~10，每级技能效果 +10%） */
+    main_skill_level: number;
+    passive_skill_level: number;
+    /** 各技能下一级的消耗，满级为 null */
+    next_skill_costs: Record<SkillType, SkillUpgradeCost | null>;
     /** 已到 ★5 为 null */
     next_star_up: StarUpRequirement | null;
     /** 已突破三次为 null */
@@ -309,6 +317,11 @@ export class GameApi {
     /** @param material 'star_stone' 万能星石 / 'duplicate' 同名卡 */
     static async starUp(userCardId: number, material: 'star_stone' | 'duplicate'): Promise<ApiResult<WithUser & { new_star_level: number }>> {
         return this.postWithUser('/growth/star-up', { user_card_id: userCardId, material_type: material });
+    }
+
+    /** 技能升级：消耗技能书与银两，主动 / 被动各自独立升级 */
+    static async upgradeSkill(userCardId: number, skillType: SkillType): Promise<ApiResult<WithUser & { new_level: number }>> {
+        return this.postWithUser('/growth/skill-upgrade', { user_card_id: userCardId, skill_type: skillType });
     }
 
     /** 觉醒：Lv.50、★3、觉醒石 50、同名卡 1、银两 100 万；突破的前置条件 */

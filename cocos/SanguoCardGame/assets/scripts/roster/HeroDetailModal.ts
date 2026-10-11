@@ -39,6 +39,8 @@ const GEAR_SLOTS: Array<{ type: EquipSlot; name: string }> = [
 ];
 
 /** 与后端 equipment_utils.QUALITY_NAMES、Web 端合成页一致 */
+const BOOK_NAME: Record<string, string> = { small: '初级技能书', medium: '中级技能书', large: '高级技能书' };
+
 const QUALITY_NAME: Record<string, string> = {
     common: '普通', rare: '稀有', epic: '史诗', legendary: '传说', mythic: '神话',
 };
@@ -284,8 +286,13 @@ class HeroDetailModalController extends Component {
         });
     }
 
+    /**
+     * 技能页：设计稿的三个技能（两个主动、一个被动）+ 技能升级区。
+     * 后端只有主动、被动两条等级：两个主动技能共用主动等级。
+     */
     private buildSkills(): void {
         const { hero } = this.entry;
+        const st = this.stats;
         const width = this.body.getComponent(UITransform)!.width;
         let y = this.body.getComponent(UITransform)!.height / 2 - 40;
         for (const sk of SKILLS[hero.role]) {
@@ -295,11 +302,19 @@ class HeroDetailModalController extends Component {
             this.body.addChild(row);
 
             const name = createLabel(`${sk.name}　${sk.kind}`, {
-                fontSize: 13, bold: true, color: Theme.color.goldBright, width: width - 20, align: Label.HorizontalAlign.LEFT,
+                fontSize: 13, bold: true, color: Theme.color.goldBright, width: width - 90, align: Label.HorizontalAlign.LEFT,
             });
             name.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
             name.setPosition(-width / 2 + 12, 20);
             row.addChild(name);
+
+            if (st) {
+                const level = sk.kind === '被动' ? st.passive_skill_level : st.main_skill_level;
+                const lv = createLabel(`Lv.${level}`, { fontSize: 12, bold: true, color: Theme.color.text, width: 70, align: Label.HorizontalAlign.RIGHT });
+                lv.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
+                lv.setPosition(width / 2 - 12, 20);
+                row.addChild(lv);
+            }
 
             const desc = createLabel(sk.desc, {
                 fontSize: 11, color: Theme.color.textMuted, width: width - 24, align: Label.HorizontalAlign.LEFT,
@@ -316,6 +331,57 @@ class HeroDetailModalController extends Component {
             row.addChild(cost);
 
             y -= 78;
+        }
+
+        // 升级区只对已招募且有后端卡牌的武将显示
+        const id = this.userCardId;
+        if (id == null || !st) return;
+        y -= 8;
+        const tip = createLabel('技能升级 · 每级技能效果 +10%，满级 Lv.10', {
+            fontSize: 11, color: Theme.color.textDisabled, width, align: Label.HorizontalAlign.LEFT,
+        });
+        tip.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        tip.setPosition(-width / 2, y);
+        this.body.addChild(tip);
+        y -= 34;
+
+        const tracks: Array<{ type: 'main' | 'passive'; label: string; level: number }> = [
+            { type: 'main', label: '主动技能', level: st.main_skill_level },
+            { type: 'passive', label: '被动技能', level: st.passive_skill_level },
+        ];
+        const coins = GameApi.user?.coins ?? 0;
+        for (const t of tracks) {
+            const row = createNode('SkillUp', width, 52);
+            row.setPosition(0, y);
+            drawPanel(row, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
+            this.body.addChild(row);
+
+            const title = createLabel(`${t.label}　Lv.${t.level} / 10`, {
+                fontSize: 12, bold: true, color: Theme.color.text, width: width - 150, align: Label.HorizontalAlign.LEFT,
+            });
+            title.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+            title.setPosition(-width / 2 + 12, 10);
+            row.addChild(title);
+
+            const next = st.next_skill_costs?.[t.type] ?? null;
+            const bookKey = next ? `skill_book:${next.book_type}` : '';
+            const have = next ? this.materials[bookKey] ?? 0 : 0;
+            const need = next
+                ? `${BOOK_NAME[next.book_type] ?? next.book_type} ${have}/${next.book_count} · 银两 ${next.coins.toLocaleString()}`
+                : '已满级';
+            const sub = createLabel(need, { fontSize: 10, color: Theme.color.textDisabled, width: width - 150, align: Label.HorizontalAlign.LEFT });
+            sub.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+            sub.setPosition(-width / 2 + 12, -12);
+            row.addChild(sub);
+
+            const btn = createButton(next ? '升 级' : '满 级', 96, 30, () => void this.act(
+                () => GameApi.upgradeSkill(id, t.type),
+                (d) => `${t.label}升至 Lv.${d.new_level}`,
+            ), { fill: Theme.color.goldBright, stroke: Theme.color.goldBright, textColor: Theme.color.bgDeep, fontSize: 12 });
+            btn.setPosition(width / 2 - 60, 0);
+            row.addChild(btn);
+            setButtonEnabled(btn, !!next && have >= next.book_count && coins >= next.coins);
+            y -= 60;
         }
     }
 
