@@ -3,16 +3,36 @@ import { Theme } from '../core/UiTheme';
 import { showToast } from '../core/Toast';
 import { ImageSlot } from '../core/ImageSlot';
 import {
-    BONDS, HEROES, RANK_NAME, RARITY_TO_RANK, ROLE_NAME, SKILLS, heroPower, skillCooldown, skillDesc,
+    BONDS, HEROES, RANK_NAME, RARITY_TO_RANK, ROLE_NAME, heroPower,
 } from '../core/GameContent';
 import { RosterEntry } from './RosterData';
-import { CardStats, EquipmentData, EquipSlot, GameApi } from '../core/GameApi';
+import { CardStats, EquipmentData, EquipSlot, GameApi, SkillProfile } from '../core/GameApi';
 import {
     createButton, createLabel, createModalBackdrop, createNode, createProgressBar, drawPanel, labelOf,
     setButtonEnabled, withAlpha,
 } from '../core/UIFactory';
 
 const { ccclass } = _decorator;
+
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+
+/** 技能附加效果的文字说明 */
+function effectTexts(effects: Record<string, number>): string[] {
+    const out: string[] = [];
+    for (const [k, v] of Object.entries(effects ?? {})) {
+        switch (k) {
+            case 'lifesteal': out.push(`吸血 ${pct(v)}`); break;
+            case 'team_heal': out.push(`全体回血 ${pct(v)}`); break;
+            case 'self_heal': out.push(`自身回血 ${pct(v)}`); break;
+            case 'ignore_def': out.push(v >= 1 ? '无视防御' : `无视 ${pct(v)} 防御`); break;
+            case 'def_down': out.push(`降防 ${pct(v)}（2 次出手）`); break;
+            case 'atk_down_all': out.push(`敌方全体降攻 ${pct(v)}（2 次出手）`); break;
+            case 'stun': out.push(`${pct(v)} 眩晕`); break;
+            case 'execute': out.push(`生命低于 ${pct(v)} 斩杀`); break;
+        }
+    }
+    return out;
+}
 
 const PANEL_H = 560;
 const LEFT_W = PANEL_H * 3 / 4;
@@ -60,6 +80,9 @@ class HeroDetailModalController extends Component {
     private materials: Record<string, number> = {};
     private equipped: EquipmentData[] = [];
     private busy = false;
+    /** 未招募武将的技能，取自卡牌图鉴 */
+    private catalogSkill: SkillProfile | null = null;
+    private catalogLoaded = false;
 
     private get userCardId(): number | undefined {
         return this.entry.owned ? this.entry.card?.user_card_id : undefined;
@@ -84,6 +107,15 @@ class HeroDetailModalController extends Component {
         this.buildRight(panel);
         this.selectTab('属性');
         void this.reload();
+    }
+
+    /** 未招募武将从卡牌图鉴里找技能；加载完若仍在技能页则重绘 */
+    private async loadCatalogSkill(): Promise<void> {
+        const cards = await GameApi.fetchCatalog();
+        if (!this.isValid) return;
+        this.catalogSkill = cards.find((c) => c.name === this.entry.hero.name)?.skill ?? null;
+        this.catalogLoaded = true;
+        if (this.tab === '技能') this.selectTab('技能');
     }
 
     /** 拉取成长、材料、装备数据；加载完重绘左侧与当前页签 */
@@ -312,60 +344,80 @@ class HeroDetailModalController extends Component {
     }
 
     /**
-     * 技能页：设计稿的三个技能（两个主动、一个被动）+ 技能升级区。
-     * 后端只有主动、被动两条等级：两个主动技能共用主动等级。
+     * 技能页：武将在战斗中实际使用的主动技能（后端卡牌自带，按技能等级换算倍率与冷却）
+     * + 技能升级区。已招募取 card-stats 的 skill（当前等级）与 skill_next（下一级预览），
+     * 未招募取卡牌图鉴里的 1 级参数；设计稿里有、后端还没有的武将显示「尚未开放」。
      */
     private buildSkills(): void {
-        const { hero } = this.entry;
         const st = this.stats;
         const width = this.body.getComponent(UITransform)!.width;
         let y = this.body.getComponent(UITransform)!.height / 2 - 40;
-        for (const sk of SKILLS[hero.role]) {
-            // 未招募按 1 级展示；描述里的效果数值、冷却都按当前技能等级换算
-            const level = st ? (sk.kind === '被动' ? st.passive_skill_level : st.main_skill_level) : 1;
-            const row = createNode('Skill', width, 68);
-            row.setPosition(0, y);
-            drawPanel(row, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
-            this.body.addChild(row);
+        const sk = st?.skill ?? this.entry.card?.skill ?? this.catalogSkill;
 
-            const name = createLabel(`${sk.name}　${sk.kind}`, {
-                fontSize: 13, bold: true, color: Theme.color.goldBright, width: width - 90, align: Label.HorizontalAlign.LEFT,
+        if (!sk) {
+            const hint = createLabel(this.catalogLoaded ? '该武将尚未开放，暂无技能数据' : '技能加载中…', {
+                fontSize: 12, color: Theme.color.textDisabled, width,
             });
-            name.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-            name.setPosition(-width / 2 + 12, 20);
-            row.addChild(name);
-
-            if (st) {
-                const lv = createLabel(`Lv.${level}`, { fontSize: 12, bold: true, color: Theme.color.text, width: 70, align: Label.HorizontalAlign.RIGHT });
-                lv.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
-                lv.setPosition(width / 2 - 12, 20);
-                row.addChild(lv);
-            }
-
-            const desc = createLabel(skillDesc(sk, level), {
-                fontSize: 11, color: Theme.color.textMuted, width: width - 24, align: Label.HorizontalAlign.LEFT,
-            });
-            desc.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-            desc.setPosition(-width / 2 + 12, -2);
-            row.addChild(desc);
-
-            const cd = skillCooldown(sk, level);
-            const cdText = cd < sk.cd ? `冷却 ${cd} 回合（原 ${sk.cd}）` : `冷却 ${cd} 回合`;
-            const cost = createLabel(sk.cost ? `耗能 ${sk.cost} · ${cdText}` : '被动', {
-                fontSize: 9, color: Theme.color.textDisabled, width: 200, align: Label.HorizontalAlign.LEFT,
-            });
-            cost.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-            cost.setPosition(-width / 2 + 12, -24);
-            row.addChild(cost);
-
-            y -= 78;
+            hint.setPosition(0, y - 20);
+            this.body.addChild(hint);
+            if (!this.catalogLoaded) void this.loadCatalogSkill();
+            return;
         }
+
+        const row = createNode('Skill', width, 96);
+        row.setPosition(0, y - 14);
+        drawPanel(row, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
+        this.body.addChild(row);
+
+        const scope = sk.target === 'all' ? '敌方全体' : '单体';
+        const name = createLabel(`${sk.name}　主动 · ${scope}`, {
+            fontSize: 13, bold: true, color: Theme.color.goldBright, width: width - 90, align: Label.HorizontalAlign.LEFT,
+        });
+        name.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        name.setPosition(-width / 2 + 12, 32);
+        row.addChild(name);
+
+        const lv = createLabel(`Lv.${sk.level}`, { fontSize: 12, bold: true, color: Theme.color.text, width: 70, align: Label.HorizontalAlign.RIGHT });
+        lv.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
+        lv.setPosition(width / 2 - 12, 32);
+        row.addChild(lv);
+
+        const desc = createLabel(sk.description, {
+            fontSize: 11, color: Theme.color.text, width: width - 24, align: Label.HorizontalAlign.LEFT,
+        });
+        desc.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        desc.setPosition(-width / 2 + 12, 10);
+        row.addChild(desc);
+
+        const cdText = sk.cooldown < sk.base_cooldown ? `冷却 ${sk.cooldown} 次出手（原 ${sk.base_cooldown}）` : `冷却 ${sk.cooldown} 次出手`;
+        const params = [`倍率 ${pct(sk.multiplier)}`, cdText, ...effectTexts(sk.effects)];
+        const info = createLabel(params.join(' · '), {
+            fontSize: 10, color: Theme.color.textMuted, width: width - 24, align: Label.HorizontalAlign.LEFT,
+        });
+        info.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        info.setPosition(-width / 2 + 12, -12);
+        row.addChild(info);
+
+        const nx = st?.skill_next;
+        const nextText = !st
+            ? '招募后可升级：每级倍率 +10%，每 3 级冷却 -1'
+            : nx
+                ? `下一级 Lv.${nx.level}：倍率 ${pct(nx.multiplier)} · 冷却 ${nx.cooldown} 次出手`
+                : '已满级';
+        const next = createLabel(nextText, {
+            fontSize: 10, color: Theme.color.textDisabled, width: width - 24, align: Label.HorizontalAlign.LEFT,
+        });
+        next.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        next.setPosition(-width / 2 + 12, -32);
+        row.addChild(next);
+
+        y -= 96;
 
         // 升级区只对已招募且有后端卡牌的武将显示
         const id = this.userCardId;
         if (id == null || !st) return;
         y -= 8;
-        const tip = createLabel('技能升级 · 每级技能效果 +10%，满级 Lv.10', {
+        const tip = createLabel('技能升级 · 每级倍率 +10%，每 3 级冷却 -1，满级 Lv.10', {
             fontSize: 11, color: Theme.color.textDisabled, width, align: Label.HorizontalAlign.LEFT,
         });
         tip.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
@@ -373,9 +425,9 @@ class HeroDetailModalController extends Component {
         this.body.addChild(tip);
         y -= 34;
 
+        // 被动技能在战斗中尚无效果，先不开放升级，免得白耗技能书
         const tracks: Array<{ type: 'main' | 'passive'; label: string; level: number }> = [
             { type: 'main', label: '主动技能', level: st.main_skill_level },
-            { type: 'passive', label: '被动技能', level: st.passive_skill_level },
         ];
         const coins = GameApi.user?.coins ?? 0;
         for (const t of tracks) {
@@ -394,7 +446,7 @@ class HeroDetailModalController extends Component {
             const next = st.next_skill_costs?.[t.type] ?? null;
             const bookKey = next ? `skill_book:${next.book_type}` : '';
             const have = next ? this.materials[bookKey] ?? 0 : 0;
-            const effect = `效果 +${(t.level - 1) * 10}%`;
+            const effect = `倍率加成 +${(t.level - 1) * 10}%`;
             const need = next
                 ? `${effect} → +${t.level * 10}% · ${BOOK_NAME[next.book_type] ?? next.book_type} ${have}/${next.book_count} · 银两 ${next.coins.toLocaleString()}`
                 : `${effect} · 已满级`;

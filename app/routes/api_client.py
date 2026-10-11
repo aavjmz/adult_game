@@ -17,6 +17,7 @@ from functools import wraps
 from flask import Blueprint, jsonify, request, g
 
 from app.models import db, User, Card, UserCard, ApiToken, Stage, UserStageProgress, UserItem
+from app.skills import skill_profile
 from app.utils.stamina import StaminaSystem
 from config import Config
 
@@ -106,6 +107,8 @@ def _card_payload(card):
         'image_url': card.image_url,
         'skill_name': card.skill_name,
         'skill_description': card.skill_description,
+        # 战斗中实际使用的技能参数（1 级）；已有卡按技能等级换算的版本见 /growth/card-stats
+        'skill': skill_profile(card),
     }
 
 
@@ -219,6 +222,14 @@ def my_cards():
 
 
 # ============ 抽卡 ============
+
+@bp.route('/cards/catalog', methods=['GET'])
+@token_required
+def card_catalog():
+    """全部玩家武将的卡牌模板（不含敌军），未招募的武将详情也能看技能"""
+    cards = Card.query.filter(db.or_(Card.is_enemy.is_(False), Card.is_enemy.is_(None))).order_by(Card.id).all()
+    return ok({'cards': [_card_payload(c) for c in cards]})
+
 
 @bp.route('/gacha/pull', methods=['POST'])
 @token_required

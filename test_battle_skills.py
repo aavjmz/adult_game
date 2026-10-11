@@ -184,6 +184,23 @@ def test_api(app):
     check(old['success'] is False and '替代' in old['error'], '新开战斗后旧的作废')
     check(post('/api/v1/pve/battle/start', {'stage_id': stage, 'mode': 'x'})['success'] is False, '非法 mode 被拒')
 
+    print('\n[接口：技能展示]')
+    with app.app_context():
+        uc = UserCard.query.filter_by(user_id=User.query.filter_by(username='skill_tester').first().id).first()
+        uc.main_skill_level = 4
+        db.session.commit()
+        uc_id, card_name = uc.id, uc.card.name
+    data = client.get(f'/api/v1/growth/card-stats/{uc_id}', headers=auth).get_json()['data']
+    sk, nxt = data['skill'], data['skill_next']
+    check(sk['level'] == 4 and abs(sk['multiplier'] - sk['base_multiplier'] * 1.3) < 1e-6,
+          f"card-stats.skill 按 Lv4 换算：{sk['name']} ×{sk['multiplier']}")
+    check(nxt['level'] == 5 and nxt['multiplier'] > sk['multiplier'], f"skill_next 预览 Lv5 ×{nxt['multiplier']}")
+    cat = client.get('/api/v1/cards/catalog', headers=auth).get_json()['data']['cards']
+    check(any(c['name'] == card_name and c['skill']['level'] == 1 for c in cat), f'卡牌图鉴含技能（{len(cat)} 张）')
+    with app.app_context():
+        enemy_names = {c.name for c in Card.query.filter_by(is_enemy=True)}
+    check(enemy_names and not enemy_names & {c['name'] for c in cat}, '图鉴不含敌军')
+
 
 def main():
     app = create_app()

@@ -31,6 +31,8 @@ export interface CardData {
     image_url: string | null;
     skill_name: string;
     skill_description: string;
+    /** 战斗中实际使用的技能（1 级参数） */
+    skill?: SkillProfile;
     /** 抽卡结果专有：是否为首次获得 */
     is_new?: boolean;
     /** 收藏列表专有：成长数据 */
@@ -68,7 +70,29 @@ export interface StageData {
 }
 
 /** 战斗单位快照，开打前的满血状态 */
+export interface UnitSkill {
+    name: string;
+    description: string;
+    multiplier: number;
+    cooldown: number;
+    target: 'single' | 'all';
+    level: number;
+}
+
+/**
+ * 技能完整参数（武将详情用）。effects 的键：lifesteal / team_heal / self_heal（回血比例）、
+ * ignore_def（无视防御比例）、def_down、atk_down_all（降防 / 降攻比例）、stun（眩晕概率）、
+ * execute（斩杀线）。
+ */
+export interface SkillProfile extends UnitSkill {
+    base_multiplier: number;
+    base_cooldown: number;
+    effects: Record<string, number>;
+}
+
 export interface BattleUnit {
+    /** 战斗内唯一标识：我方 a0、a1…，敌方 e0、e1… */
+    id: string;
     name: string;
     level: number;
     max_hp: number;
@@ -77,37 +101,78 @@ export interface BattleUnit {
     speed: number;
     rarity: string;
     image_url: string | null;
+    skill: UnitSkill;
+}
+
+export interface BattleHit {
+    target_id: string;
+    target: string;
+    damage: number;
+    crit: boolean;
+    killed: boolean;
+    executed: boolean;
+    /** 命中后目标剩余生命 */
+    hp: number;
 }
 
 /**
- * 战报的一条记录。
+ * 战报的一条记录（一次出手、一次眩晕跳过或一次阵亡）。
  *
- * 攻击条目带 actor/target/damage，阵亡等旁白只有 message；
- * 双方单位只以「姓名」标识，同名小兵（一关里常有三个黄巾贼兵）无法区分，
- * 客户端回放时按「同名且尚存活的第一个」结算，视觉上没有差别。
+ * 单位以 actor_id / target_id 标识，同名小兵也能区分；message 是后端拼好的文字。
  */
 export interface BattleLogEntry {
     turn: number;
-    actor?: string;
-    action?: string;
-    target?: string;
-    damage?: number;
-    message?: string;
+    actor_id: string;
+    actor: string;
+    side: 'ally' | 'enemy';
+    action: 'attack' | 'skill' | 'stunned' | 'death';
+    skill: string | null;
+    target: string | null;
+    damage: number | null;
+    hits: BattleHit[];
+    heals: Array<{ target_id: string; target: string; amount: number }>;
+    effects: Array<{ target_id: string; target: string; type: 'def_down' | 'atk_down' | 'stun'; value?: number }>;
+    message: string;
 }
 
-export interface BattleResult {
-    stage: { id: number; name: string };
-    allies: BattleUnit[];
-    enemies: BattleUnit[];
-    result: 'win' | 'lose';
-    stars: number;
-    turns: number;
-    damage_dealt: number;
-    damage_taken: number;
-    deaths: number;
-    rewards: { coins?: number; exp?: number; items?: any[] } | null;
-    drops: any[] | null;
-    battle_log: BattleLogEntry[];
+/** 手动模式下当前等待下令的武将 */
+export interface BattleAwaiting {
+    unit_id: string;
+    name: string;
+    skill: { name: string; ready: boolean; cooldown_left: number; target: 'single' | 'all'; description: string };
+    /** 可选目标（存活敌军 id） */
+    targets: string[];
+}
+
+export type BattleMode = 'auto' | 'manual';
+
+/**
+ * 出征 / 下令 / 转托管的统一返回。
+ *
+ * - 开局（start）额外带 stage、mode、allies、enemies 阵容快照；
+ * - 未结束（finished=false）：events 是这一步新发生的事件，awaiting 是下一个待命武将；
+ * - 结束（finished=true）：带结算字段，battle_log 是整场战报，手动模式下 events 仍是最后这一步的事件。
+ */
+export interface BattleStep {
+    stage?: { id: number; name: string };
+    mode?: BattleMode;
+    allies?: BattleUnit[];
+    enemies?: BattleUnit[];
+    session_id?: number | null;
+    events?: BattleLogEntry[];
+    round?: number;
+    finished: boolean;
+    awaiting?: BattleAwaiting | null;
+    units?: Record<string, { hp: number; alive: boolean; cd: number; stun: number }>;
+    result?: 'win' | 'lose';
+    stars?: number;
+    turns?: number;
+    damage_dealt?: number;
+    damage_taken?: number;
+    deaths?: number;
+    rewards?: { coins?: number; exp?: number; items?: any[] } | null;
+    drops?: any[] | null;
+    battle_log?: BattleLogEntry[];
     user: UserInfo;
 }
 
@@ -147,6 +212,10 @@ export interface CardStats {
     final_stats: { attack: number; defense: number; hp: number; [k: string]: number };
     /** 出战时实际使用的属性：等级、星级、觉醒、突破、装备与套装全部计入，与 PVE 战斗一致 */
     battle_stats: { hp: number; attack: number; defense: number; speed: number };
+    /** 战斗中实际使用的主动技能，按当前主动技能等级换算 */
+    skill: SkillProfile;
+    /** 下一级预览，满级为 null */
+    skill_next: SkillProfile | null;
 }
 
 export type EquipSlot = 'weapon' | 'armor' | 'accessory' | 'treasure';
@@ -253,6 +322,16 @@ export class GameApi {
         return res;
     }
 
+    private static catalog: CardData[] | null = null;
+
+    /** 全部玩家武将的卡牌模板（含技能），只拉一次 */
+    static async fetchCatalog(): Promise<CardData[]> {
+        if (this.catalog) return this.catalog;
+        const res = await Http.get<{ cards: CardData[] }>('/cards/catalog');
+        if (res.success && res.data) this.catalog = res.data.cards;
+        return this.catalog ?? [];
+    }
+
     static async fetchMyCards(): Promise<ApiResult<{ cards: CardData[]; total: number }>> {
         return Http.get('/cards/mine');
     }
@@ -284,12 +363,23 @@ export class GameApi {
      * @param teamIds 出战的 UserCard id 列表（编伍页存的是花名册 id，
      *                需先经 RosterData.formationUserCardIds() 换算）
      */
-    static async startBattle(stageId: number, teamIds: number[]): Promise<ApiResult<BattleResult>> {
-        const res = await Http.post<BattleResult>('/pve/battle/start', { stage_id: stageId, team: teamIds });
-        if (res.success && res.data) {
-            this.user = res.data.user;
-        }
-        return res;
+    /**
+     * 出征。auto 一次打完返回整场战报；manual 停在第一个我方武将出手前，
+     * 之后用 battleAction 逐个下令，battleAuto 随时转托管。
+     * teamIds 为空时后端用服务端保存的编伍阵容。
+     */
+    static async startBattle(stageId: number, teamIds: number[], mode: BattleMode = 'auto'): Promise<ApiResult<BattleStep>> {
+        return this.postWithUser('/pve/battle/start', { stage_id: stageId, team: teamIds, mode });
+    }
+
+    /** 手动战斗下令；群攻技能忽略 targetId */
+    static async battleAction(sessionId: number, action: 'attack' | 'skill', targetId?: string): Promise<ApiResult<BattleStep>> {
+        return this.postWithUser('/pve/battle/action', { session_id: sessionId, action, target_id: targetId });
+    }
+
+    /** 手动战斗转托管，剩余回合自动打完并结算 */
+    static async battleAuto(sessionId: number): Promise<ApiResult<BattleStep>> {
+        return this.postWithUser('/pve/battle/auto', { session_id: sessionId });
     }
 
     /** 扫荡已通关关卡；结算结果会刷新 GameApi.user 缓存 */

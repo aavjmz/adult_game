@@ -12,6 +12,7 @@ from app.growth_utils import (
     get_breakthrough_requirements, get_max_level
 )
 from app.utils.pve_battle import player_battle_stats
+from app.skills import skill_profile
 from config import Config
 
 bp = Blueprint('growth', __name__, url_prefix='/growth')
@@ -479,6 +480,9 @@ def get_card_stats(user_card_id):
         'final_stats': final_stats,
         # 出战时实际使用的属性（含星级、觉醒、突破、装备与套装），与 PVE 战斗一致
         'battle_stats': player_battle_stats(user_card),
+        # 战斗中实际使用的主动技能（按当前技能等级换算），以及下一级预览（满级为 None）
+        'skill': skill_profile(card, user_card.main_skill_level or 1),
+        'skill_next': skill_profile(card, user_card.main_skill_level + 1) if (user_card.main_skill_level or 1) < 10 else None,
         'equipments': equipment_info
     })
 
