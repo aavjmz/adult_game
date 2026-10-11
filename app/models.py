@@ -305,6 +305,61 @@ class UserItem(db.Model):
         return f'<UserItem user={self.user_id} {self.item_type}:{self.item_subtype} x{self.quantity}>'
 
 
+class BattleSession(db.Model):
+    """进行中的手动战斗：battle_core 状态存 JSON，玩家每下一次令推进一步
+
+    status: active（进行中）/ finished（已结算）/ abandoned（被新开的战斗顶替，不结算）
+    """
+    __tablename__ = 'battle_sessions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    stage_id = db.Column(db.Integer, db.ForeignKey('stages.id'), nullable=False)
+    team = db.Column(db.Text, nullable=False)     # JSON：出战 UserCard id 列表
+    state = db.Column(db.Text, nullable=False)    # JSON：battle_core 状态
+    status = db.Column(db.String(20), default='active', nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<BattleSession {self.id} user={self.user_id} {self.status}>'
+
+
+class UserFormation(db.Model):
+    """编伍阵容：六个阵位（前排 0-1、中军 2-3、后阵 4-5）各放一张 UserCard 或空
+
+    slots 存 JSON 数组，长度固定 6，元素为 UserCard.id 或 null。
+    读取时会剔除已不属于该玩家的卡（如升星消耗掉的同名卡）。
+    """
+    __tablename__ = 'user_formations'
+
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    slots = db.Column(db.Text, nullable=False, default='[null, null, null, null, null, null]')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<UserFormation user={self.user_id} {self.slots}>'
+
+
+class ShopPurchase(db.Model):
+    """市集购买记录：按自然日统计每件商品的已购次数，用于每日限购
+
+    商品定义在 app/shop_data.py（good_key 对应其 key）；day 为北京时间日期。
+    """
+    __tablename__ = 'shop_purchases'
+    __table_args__ = (db.UniqueConstraint('user_id', 'good_key', 'day', name='uq_shop_purchase_day'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    good_key = db.Column(db.String(50), nullable=False)
+    day = db.Column(db.Date, nullable=False)
+    count = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<ShopPurchase user={self.user_id} {self.good_key} {self.day} x{self.count}>'
+
+
 class EquipmentSet(db.Model):
     """套装配置表"""
     __tablename__ = 'equipment_sets'

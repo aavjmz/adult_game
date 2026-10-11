@@ -33,6 +33,8 @@ python run.py
 docker-compose up
 ```
 
+See `docs/SCRIPTS.md` for every root-level script: what it does, when to run it, whether it is safe to re-run, and which steps `create_app()` already does on startup (new deployments only need `init_enemy_cards.py` and `init_equipment_data.py`).
+
 The default port is **8080** (not 5000). Set `FLASK_PORT` and `FLASK_HOST` env vars to change.
 
 ## Repository Structure
@@ -80,14 +82,13 @@ adult_game/
 ├── Dockerfile                  # Python 3.12-slim container
 ├── docker-compose.yml          # Single-service orchestration (port 8080)
 ├── entrypoint.sh               # Docker startup (auto-initializes DB)
-├── migrate_complete.py         # Full DB migration script
-├── migrate_pve_system.py       # PVE tables migration
-├── migrate_three_kingdoms.py   # Three Kingdoms theme migration
-├── migrate_equipment_system.py # Equipment tables migration
-├── migrate_growth_system.py    # Growth tables migration
-├── init_stages.py              # Seed 30 PVE stages
-├── init_equipment_data.py      # Seed 30+ equipment templates
-├── init_enemy_cards.py         # Seed enemy card configs
+├── migrate_complete.py         # Adds card columns to old DBs (entrypoint runs it on a new DB)
+├── migrate_pve_system.py       # Adds PVE columns/tables to pre-PVE DBs
+├── init_stages.py              # Sync 30 PVE stages from app/stage_data.py (re-runnable)
+├── init_equipment_data.py      # Sync equipment sets + templates (re-runnable)
+├── init_enemy_cards.py         # Sync enemy cards from app/enemy_cards.py (re-runnable)
+├── grant_materials.py          # Give a test account a full set of materials
+├── test_fixtures.py            # Test data helpers (not a test): ensure_test_user() etc.
 ├── test_*.py                   # Test files (7 total, in root)
 └── docs/                       # Additional design documents
 ```
@@ -142,24 +143,24 @@ python test_battle_v2.py
 python test_equipment_system.py
 python test_growth_system.py
 python test_three_kingdoms_battle.py
-python test_battle_debug.py
+python test_api_client.py
+python test_api_client_growth.py   # temp DB
+python test_api_client_shop.py     # temp DB
+python test_api_client_formation.py  # temp DB
+python test_battle_stats.py          # temp DB
+python test_battle_skills.py         # temp DB
 ```
 
-Tests validate database structure, card initialization, battle calculations, equipment functions, and growth formulas.
+Tests validate database structure, card initialization, battle calculations, equipment functions, and growth formulas. Tests that need a test account create it via `test_fixtures.ensure_test_user()`, so they also run on an empty DB. Most tests write to the current DB; point them elsewhere with `DB_PATH=/tmp/test.db`.
 
 ## Database Migrations
 
-There is no Alembic/Flask-Migrate setup. Migrations are manual Python scripts:
+There is no Alembic/Flask-Migrate setup. A new database needs no migration: `db.create_all()` on startup builds every table with all current columns. The remaining scripts only add columns to databases created before a feature existed:
 
-1. `migrate_complete.py` — Primary migration (creates tables, seeds 14 cards, adds columns)
-2. `migrate_three_kingdoms.py` — Adds Three Kingdoms-specific fields
-3. `migrate_pve_system.py` — Creates PVE tables
-4. `migrate_equipment_system.py` — Creates equipment tables
-5. `migrate_growth_system.py` — Creates growth-related columns
+1. `migrate_complete.py` — card columns (Three Kingdoms attributes). The Docker entrypoint runs it on a new DB.
+2. `migrate_pve_system.py` — PVE columns/tables (`check` / `rollback` subcommands).
 
-Run `migrate_complete.py` first for a fresh setup. The Docker entrypoint runs it automatically.
-
-When modifying models, update the relevant migration script or create a new one. The app also calls `db.create_all()` on startup, which creates missing tables (but does not alter existing ones).
+`db.create_all()` creates missing tables but does not alter existing ones. When adding a column to an existing table, add an idempotent check-and-ALTER in `create_app()` (see `migrate_card_enemy_flag()` in `app/__init__.py`) so deployed databases pick it up on restart.
 
 ## Key Conventions
 

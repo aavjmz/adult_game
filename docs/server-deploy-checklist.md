@@ -57,21 +57,15 @@ supervisorctl restart adult_game   # supervisor
 ## 三、建表
 
 `app/__init__.py` 启动时会调 `db.create_all()`，`api_tokens` 表会自动创建，
-所以这一步**通常不用手动执行**。但跑一下可以明确确认建表结果、顺带清理过期令牌：
+**不需要手动执行任何脚本**（原 `migrate_api_token.py` 已删除）。
+
+确认建表结果：
 
 ```bash
-# Docker
-docker-compose exec game python migrate_api_token.py
-
-# 直接部署
-python migrate_api_token.py
+docker-compose exec game python -c "from app import create_app, db; app = create_app(); app.app_context().push(); print('api_tokens' in db.inspect(db.engine).get_table_names())"
 ```
 
-预期输出：
-```
-[完成] 已创建 api_tokens 表        （或 [跳过] api_tokens 表已存在）
-[状态] 当前有效令牌数: 0
-```
+预期最后一行输出 `True`。
 
 ---
 

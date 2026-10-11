@@ -409,3 +409,29 @@ def calc_equipment_power(equipment):
     power *= (1 + equipment.enhance_level * 0.05)
 
     return int(power)
+
+
+# ============ 碎片合成 ============
+
+# 装备品级 → 中文名，同时用作该品级碎片的名字（「传说碎片」）
+QUALITY_NAMES = {
+    'common': '普通',
+    'rare': '稀有',
+    'epic': '史诗',
+    'legendary': '传说',
+    'mythic': '神话',
+}
+
+# 合成一件某品级装备的消耗：同品级碎片（equipment_fragment:<品级>）+ 银两
+SYNTHESIZE_COSTS = {
+    'common': {'fragments': 10, 'coins': 10000},
+    'rare': {'fragments': 20, 'coins': 50000},
+    'epic': {'fragments': 50, 'coins': 200000},
+    'legendary': {'fragments': 100, 'coins': 1000000},
+    'mythic': {'fragments': 200, 'coins': 5000000},
+}
+
+
+def get_synthesize_cost(quality):
+    """合成某品级装备的消耗；碎片与装备同品级，不存在跨品级通用的碎片"""
+    return SYNTHESIZE_COSTS.get(quality)

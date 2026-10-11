@@ -11,6 +11,8 @@ from app.growth_utils import (
     get_skill_upgrade_cost, get_item_exp_value, get_card_sacrifice_exp,
     get_breakthrough_requirements, get_max_level
 )
+from app.utils.pve_battle import player_battle_stats
+from app.skills import skill_profile
 from config import Config
 
 bp = Blueprint('growth', __name__, url_prefix='/growth')
@@ -194,7 +196,8 @@ def upgrade_skill():
     ).first()
 
     if not user_item or user_item.quantity < cost['book_count']:
-        return jsonify({'error': f"技能书不足，需要 {cost['book_type']} x{cost['book_count']}"}), 400
+        book_name = {'small': '初级', 'medium': '中级', 'large': '高级'}.get(cost['book_type'], cost['book_type'])
+        return jsonify({'error': f"{book_name}技能书不足，需要 {cost['book_count']} 本"}), 400
 
     # 消耗材料
     user_item.quantity -= cost['book_count']
@@ -461,7 +464,25 @@ def get_card_stats(user_card_id):
         'main_skill_level': user_card.main_skill_level,
         'passive_skill_level': user_card.passive_skill_level,
         'max_level': get_max_level(user_card.breakthrough_level),
+        # 下一档升星 / 突破的材料需求（已到顶为 None），供客户端展示条件
+        'next_star_up': get_star_up_requirements(user_card.star_level) if user_card.star_level < 5 else None,
+        'next_breakthrough': get_breakthrough_requirements(user_card.breakthrough_level + 1),
+        # 主动 / 被动技能下一级的消耗（已满 10 级为 None）
+        'next_skill_costs': {
+            'main': get_skill_upgrade_cost(user_card.main_skill_level) if user_card.main_skill_level < 10 else None,
+            'passive': get_skill_upgrade_cost(user_card.passive_skill_level) if user_card.passive_skill_level < 10 else None,
+        },
+        'duplicates_owned': UserCard.query.filter(
+            UserCard.user_id == current_user.id,
+            UserCard.card_id == user_card.card_id,
+            UserCard.id != user_card.id,
+        ).count(),
         'final_stats': final_stats,
+        # 出战时实际使用的属性（含星级、觉醒、突破、装备与套装），与 PVE 战斗一致
+        'battle_stats': player_battle_stats(user_card),
+        # 战斗中实际使用的主动技能（按当前技能等级换算），以及下一级预览（满级为 None）
+        'skill': skill_profile(card, user_card.main_skill_level or 1),
+        'skill_next': skill_profile(card, user_card.main_skill_level + 1) if (user_card.main_skill_level or 1) < 10 else None,
         'equipments': equipment_info
     })
 

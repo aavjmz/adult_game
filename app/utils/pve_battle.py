@@ -13,6 +13,42 @@ import random
 from datetime import datetime
 from app.models import db, Card, UserCard, Stage, UserStageProgress, BattleRecord, UserItem
 from app.utils.stamina import StaminaSystem
+from app.utils import battle_core
+from app.skills import skill_profile
+
+
+def level_stat(base, level):
+    """战斗用的等级成长：每级 +10%（敌我双方共用，关卡难度按此标定）"""
+    return int(base * (1 + (level - 1) * 0.1))
+
+
+def player_battle_stats(user_card):
+    """玩家武将出战属性：等级 → 星级 → 觉醒 → 突破 → 装备（含套装）
+
+    等级部分沿用战斗公式（与敌军一致，不改变现有关卡难度），其余养成以倍率叠加：
+    星级 ×1.0~2.1、觉醒 ×1.3、突破每次 ×1.2（growth_utils），
+    装备攻 / 防 / 血百分比与速度（equipment_utils.apply_equipment_to_stats）。
+
+    Returns:
+        dict: {'hp', 'attack', 'defense', 'speed'}
+    """
+    from app.growth_utils import calc_awaken_bonus, calc_breakthrough_bonus, calc_star_bonus
+    from app.equipment_utils import apply_equipment_to_stats
+
+    card = user_card.card
+    stats = {}
+    for key in ('hp', 'attack', 'defense'):
+        value = level_stat(getattr(card, key), user_card.level)
+        value = calc_star_bonus(value, user_card.star_level or 1)
+        if user_card.awaken_level:
+            value = calc_awaken_bonus(value)
+        if user_card.breakthrough_level:
+            value = calc_breakthrough_bonus(value, user_card.breakthrough_level)
+        stats[key] = value
+    stats['speed'] = card.speed or 50
+
+    final = apply_equipment_to_stats(user_card, stats)
+    return {'hp': final['hp'], 'attack': final['attack'], 'defense': final['defense'], 'speed': int(final['speed'])}
 
 
 class PVEBattle:
@@ -48,19 +84,23 @@ class PVEBattle:
         self._generate_enemy_team()
 
     def _init_user_team_units(self):
-        """将UserCard ORM对象包装为战斗单位字典（与enemy_team结构一致）"""
-        for uc in self.user_team:
-            card = uc.card
-            level = uc.level
+        """将UserCard ORM对象包装为战斗单位字典（与enemy_team结构一致）
+
+        属性含全部养成：等级、星级、觉醒、突破、装备与套装（见 player_battle_stats）
+        """
+        for i, uc in enumerate(self.user_team):
+            stats = player_battle_stats(uc)
             unit = {
+                'id': f'a{i}',
+                'skill': skill_profile(uc.card, uc.main_skill_level or 1),
                 'user_card': uc,
-                'card': card,
-                'level': level,
-                'hp': self._calculate_hp(card, level),
-                'max_hp': self._calculate_hp(card, level),
-                'attack': self._calculate_attack(card, level),
-                'defense': self._calculate_defense(card, level),
-                'speed': card.speed,
+                'card': uc.card,
+                'level': uc.level,
+                'hp': stats['hp'],
+                'max_hp': stats['hp'],
+                'attack': stats['attack'],
+                'defense': stats['defense'],
+                'speed': stats['speed'],
                 'is_alive': True,
                 'skill_cooldown': 0
             }
@@ -71,8 +111,8 @@ class PVEBattle:
         enemy_config = json.loads(self.stage.enemy_config)
 
         for enemy_data in enemy_config.get('enemies', []):
-            # 获取卡牌基础数据：init_stages.py 种的是 card_name，
-            # 跑过 fix_stage_enemy_config.py 后才是 card_id，两种都认
+            # 获取卡牌基础数据：关卡数据（app/stage_data.py）按 card_name 配置，
+            # 早期库里也可能是 card_id，两种都认
             card = None
             if enemy_data.get('card_id'):
                 card = Card.query.get(enemy_data['card_id'])
@@ -81,8 +121,10 @@ class PVEBattle:
             if not card:
                 continue
 
-            # 创建敌方单位（临时对象，不保存到数据库）
+            # 创建敌方单位（临时对象，不保存到数据库）；敌军技能按 1 级
             enemy_unit = {
+                'id': f'e{len(self.enemy_team)}',
+                'skill': skill_profile(card, 1),
                 'card': card,
                 'level': enemy_data.get('level', 1),
                 'position': enemy_data.get('position', 1),
@@ -101,217 +143,90 @@ class PVEBattle:
         self.ai_strategy = enemy_config.get('ai_strategy', 'balanced')
 
     def _calculate_hp(self, card, level):
-        """计算单位HP"""
-        return int(card.hp * (1 + (level - 1) * 0.1))
+        """计算敌方单位HP（敌军只有等级成长）"""
+        return level_stat(card.hp, level)
 
     def _calculate_attack(self, card, level):
-        """计算单位攻击力"""
-        return int(card.attack * (1 + (level - 1) * 0.1))
+        """计算敌方单位攻击力"""
+        return level_stat(card.attack, level)
 
     def _calculate_defense(self, card, level):
-        """计算单位防御力"""
-        return int(card.defense * (1 + (level - 1) * 0.1))
+        """计算敌方单位防御力"""
+        return level_stat(card.defense, level)
+
+    # ============ 战斗流程 ============
+    #
+    # 战斗过程交给 battle_core（可序列化、可暂停）：
+    # - 自动：start_battle() 一次跑完并结算
+    # - 手动：begin_manual() 扣体力并推进到第一个我方单位出手前，状态由调用方存库；
+    #   之后 battle_core.act() 逐步推进，结束时用 finish(state) 结算
+
+    def build_state(self):
+        """由双方单位构建 battle_core 状态"""
+        def core_unit(u, side):
+            extra = {'level': u['level'], 'card_id': u['card'].id, 'rarity': u['card'].rarity,
+                     'image_url': u['card'].image_url}
+            if side == 'ally':
+                extra['user_card_id'] = u['user_card'].id
+            return battle_core.make_unit(u['id'], side, u['card'].name, u, u['skill'], **extra)
+
+        return battle_core.new_state(
+            [core_unit(u, 'ally') for u in self.user_team_units],
+            [core_unit(u, 'enemy') for u in self.enemy_team],
+            ai_strategy=self.ai_strategy, max_rounds=self.max_turns,
+        )
+
+    def _pay_stamina(self):
+        """检查并扣除体力；失败返回错误结果，成功返回 None"""
+        if not StaminaSystem.can_afford_stage(self.user, self.stage.stamina_cost):
+            return {'success': False, 'message': '体力不足'}
+        if not StaminaSystem.consume_stamina(self.user, self.stage.stamina_cost):
+            return {'success': False, 'message': '体力消耗失败'}
+        return None
 
     def start_battle(self):
-        """
-        开始战斗
+        """自动战斗：扣体力、一次跑完并结算
 
         Returns:
             dict: 战斗结果
         """
-        # 检查体力
-        if not StaminaSystem.can_afford_stage(self.user, self.stage.stamina_cost):
-            return {
-                'success': False,
-                'message': '体力不足'
-            }
+        failed = self._pay_stamina()
+        if failed:
+            return failed
+        state = self.build_state()
+        battle_core.run(state, manual=False)
+        return self.finish(state)
 
-        # 消耗体力
-        if not StaminaSystem.consume_stamina(self.user, self.stage.stamina_cost):
-            return {
-                'success': False,
-                'message': '体力消耗失败'
-            }
+    def begin_manual(self):
+        """手动战斗开局：扣体力，推进到第一个我方单位出手前
 
-        # 战斗主循环
-        while self.turn < self.max_turns:
-            self.turn += 1
+        Returns:
+            (state, None) 成功；(None, 错误结果) 失败
+        """
+        failed = self._pay_stamina()
+        if failed:
+            return None, failed
+        state = self.build_state()
+        battle_core.run(state, manual=True)
+        return state, None
 
-            # 检查战斗是否结束
-            if self._check_battle_end():
-                break
+    def finish(self, state):
+        """战斗结束后的结算：星级、奖励、掉落、记录与进度"""
+        self.turn = state['round']
+        self.damage_dealt = state['stats']['damage_dealt']
+        self.damage_taken = state['stats']['damage_taken']
+        self.deaths = state['stats']['deaths']
+        self.battle_log = state['events']
 
-            # 执行一回合
-            self._execute_turn()
-
-        # 战斗结算
-        result = self._settle_battle()
-
-        # 保存战斗记录
+        result = self._settle_battle(state['result'] or 'lose')
         self._save_battle_record(result)
-
-        # 更新用户进度并发放奖励
         if result['result'] == 'win':
             self._update_user_progress(result)
             self._distribute_rewards(result)
-
         return result
 
-    def _check_battle_end(self):
-        """检查战斗是否结束"""
-        # 检查我方是否全灭
-        user_alive = any(unit['is_alive'] for unit in self.user_team_units)
-        if not user_alive:
-            return True
-
-        # 检查敌方是否全灭
-        enemy_alive = any(unit['is_alive'] for unit in self.enemy_team)
-        if not enemy_alive:
-            return True
-
-        return False
-
-    def _execute_turn(self):
-        """执行一回合"""
-        # 获取所有存活单位
-        all_units = []
-
-        # 添加我方单位
-        for unit in self.user_team_units:
-            if unit['is_alive']:
-                all_units.append({
-                    'type': 'user',
-                    'unit': unit,
-                    'speed': unit['speed']
-                })
-
-        # 添加敌方单位
-        for enemy_unit in self.enemy_team:
-            if enemy_unit['is_alive']:
-                all_units.append({
-                    'type': 'enemy',
-                    'unit': enemy_unit,
-                    'speed': enemy_unit['speed']
-                })
-
-        # 按速度排序（速度高的先行动）
-        all_units.sort(key=lambda x: x['speed'], reverse=True)
-
-        # 执行行动
-        for unit_data in all_units:
-            if unit_data['type'] == 'user':
-                self._user_unit_action(unit_data['unit'])
-            else:
-                self._enemy_unit_action(unit_data['unit'])
-
-    def _user_unit_action(self, unit):
-        """用户单位行动"""
-        if not unit['is_alive']:
-            return
-
-        # 简化版：随机攻击一个敌人
-        alive_enemies = [e for e in self.enemy_team if e['is_alive']]
-        if not alive_enemies:
-            return
-
-        target = random.choice(alive_enemies)
-
-        # 计算伤害
-        damage = self._calculate_damage(unit['attack'], target['defense'])
-
-        # 应用伤害
-        target['hp'] -= damage
-        self.damage_dealt += damage
-
-        # 记录日志
-        self.battle_log.append({
-            'turn': self.turn,
-            'actor': unit['card'].name,
-            'action': 'attack',
-            'target': target['card'].name,
-            'damage': damage
-        })
-
-        # 检查目标是否死亡
-        if target['hp'] <= 0:
-            target['is_alive'] = False
-            self.battle_log.append({
-                'turn': self.turn,
-                'message': f"{target['card'].name} 被击败"
-            })
-
-    def _enemy_unit_action(self, enemy_unit):
-        """敌方单位行动"""
-        if not enemy_unit['is_alive']:
-            return
-
-        # 使用AI策略选择目标和行动
-        ai = EnemyAI(self.ai_strategy)
-        action = ai.choose_action(enemy_unit, self.user_team_units, self.enemy_team)
-
-        if action['type'] == 'attack':
-            self._enemy_attack(enemy_unit, action.get('target'))
-
-    def _enemy_attack(self, attacker, target):
-        """敌方攻击"""
-        if not target:
-            # 随机选择一个存活目标
-            alive_users = [u for u in self.user_team_units if u['is_alive']]
-            if not alive_users:
-                return
-            target = random.choice(alive_users)
-
-        # 计算伤害
-        damage = self._calculate_damage(attacker['attack'], target['defense'])
-
-        # 应用伤害
-        target['hp'] -= damage
-        self.damage_taken += damage
-
-        # 记录日志
-        self.battle_log.append({
-            'turn': self.turn,
-            'actor': attacker['card'].name,
-            'action': 'attack',
-            'target': target['card'].name,
-            'damage': damage
-        })
-
-        # 检查目标是否死亡
-        if target['hp'] <= 0:
-            target['is_alive'] = False
-            self.deaths += 1
-            self.battle_log.append({
-                'turn': self.turn,
-                'message': f"{target['card'].name} 阵亡"
-            })
-
-    def _calculate_damage(self, attack, defense):
-        """计算伤害"""
-        base_damage = max(1, attack - defense * 0.5)
-
-        # 暴击判定（10%概率，1.5倍伤害）
-        if random.random() < 0.1:
-            base_damage *= 1.5
-
-        # 随机波动 (90%-110%)
-        damage = int(base_damage * random.uniform(0.9, 1.1))
-
-        return max(1, damage)
-
-    def _settle_battle(self):
-        """战斗结算"""
-        # 判断胜负
-        user_alive = any(unit['is_alive'] for unit in self.user_team_units)
-        enemy_alive = any(unit['is_alive'] for unit in self.enemy_team)
-
-        if not enemy_alive:
-            result = 'win'
-        elif not user_alive or self.turn >= self.max_turns:
-            result = 'lose'
-        else:
-            result = 'lose'
-
+    def _settle_battle(self, result):
+        """战斗结算；result 为 battle_core 给出的胜负（'win' / 'lose'）"""
         # 计算星级
         stars = 0
         if result == 'win':

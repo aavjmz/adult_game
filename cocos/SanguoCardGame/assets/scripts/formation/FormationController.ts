@@ -6,11 +6,10 @@ import { ImageSlot } from '../core/ImageSlot';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
 import { unreadMailCount } from '../mail/MailModal';
-import { MockStore } from '../core/MockStore';
 import {
     BONDS, Hero, ROLE_NAME, heroPower,
 } from '../core/GameContent';
-import { loadRoster, RosterEntry } from '../roster/RosterData';
+import { EMPTY_FIELD, loadFormation, loadRoster, RosterEntry, saveFormation } from '../roster/RosterData';
 import {
     createButton, createLabel, createNode, createScrollList, drawPanel, withAlpha,
 } from '../core/UIFactory';
@@ -30,9 +29,9 @@ const RANK_ORDER = ['天', '地', '玄', '黄'];
 /**
  * 编伍（对应原型 isForm）：三列阵型（前/中/后军各两位）+ 待命武将列表 + 羁绊统计。
  *
- * 当前后端没有阵容/编队接口（对应 CLAUDE.md「未开始」清单），阵位数据存在
- * MockStore.state.field 里（六个槽位存武将 id）；军演的胜算计算会读这份数据，
- * 后端补上编队接口后把这里的读写换成真实请求即可，字段形状已经按同样思路设计。
+ * 阵容存服务端（/api/v1/formation）。界面按花名册武将 id 操作，每次改动即保存，
+ * 换算与读写在 RosterData 的 loadFormation / saveFormation。出征、征伐与军演的
+ * 我军战力都读同一份服务端阵容。
  */
 @ccclass('FormationController')
 export class FormationController extends Component {
@@ -49,6 +48,10 @@ export class FormationController extends Component {
     private ownedById = new Map<number, Hero>();
     private sort: SortKey = '战力';
     private held: number | null = null;
+    /** 当前阵容（花名册武将 id × 6），与服务端同步 */
+    private field: Array<number | null> = EMPTY_FIELD.slice();
+    /** 保存序号：连续操作时只认最后一次保存的结果 */
+    private saveSeq = 0;
 
     onLoad(): void {
         const size = this.node.getComponent(UITransform)?.contentSize ?? view.getVisibleSize();
@@ -68,10 +71,10 @@ export class FormationController extends Component {
         if (!this.isValid) return;
         this.ownedById = new Map(this.roster.filter((e) => e.owned).map((e) => [e.hero.id, e.hero]));
 
-        // 阵位里可能存着已经不再拥有的武将 id（理论上不会发生，双保险）
-        const s = MockStore.state;
-        s.field = s.field.map((id) => (id != null && this.ownedById.has(id) ? id : null));
-        MockStore.save();
+        // 服务端已剔除不属于玩家的卡；这里再滤掉没匹配上花名册的阵位
+        const field = await loadFormation(this.roster);
+        if (!this.isValid) return;
+        this.field = field.map((id) => (id != null && this.ownedById.has(id) ? id : null));
 
         this.renderAll();
     }
@@ -241,7 +244,7 @@ export class FormationController extends Component {
     }
 
     private renderField(): void {
-        const field = MockStore.state.field;
+        const field = this.field;
         let power = 0;
         for (let i = 0; i < 6; i++) {
             const slot = this.fieldHost.getChildByName(`Slot_${i}`)!;
@@ -289,7 +292,7 @@ export class FormationController extends Component {
         this.synergyHost.removeAllChildren();
         const width = this.synergyHost.getComponent(UITransform)!.width;
 
-        const field = MockStore.state.field.filter((id) => id != null).map((id) => this.ownedById.get(id!)).filter((h): h is Hero => !!h);
+        const field = this.field.filter((id) => id != null).map((id) => this.ownedById.get(id!)).filter((h): h is Hero => !!h);
         const counts: Record<string, number> = {};
         field.forEach((h) => { counts[h.faction] = (counts[h.faction] ?? 0) + 1; });
         const names = field.map((h) => h.name);
@@ -327,7 +330,7 @@ export class FormationController extends Component {
 
     private renderBench(): void {
         this.benchList.removeAllChildren();
-        const field = MockStore.state.field;
+        const field = this.field;
         const owned = this.roster.filter((e) => e.owned).map((e) => e.hero);
         this.benchCountLabel.string = `${owned.length} 员`;
 
@@ -390,31 +393,29 @@ export class FormationController extends Component {
     // ============ 交互 ============
 
     private onSlotTap(index: number): void {
-        const s = MockStore.state;
         if (this.held != null) {
             this.place(index, this.held);
             return;
         }
-        if (s.field[index] != null) {
-            s.field[index] = null;
-            MockStore.save();
-            this.renderAll();
+        if (this.field[index] != null) {
+            const field = this.field.slice();
+            field[index] = null;
+            this.commit(field);
         } else {
             showToast(this.overlay, '先自右侧择一员武将');
         }
     }
 
     private onBenchTap(heroId: number): void {
-        const s = MockStore.state;
-        const at = s.field.indexOf(heroId);
+        const at = this.field.indexOf(heroId);
         if (at >= 0) {
-            s.field[at] = null;
-            MockStore.save();
+            const field = this.field.slice();
+            field[at] = null;
             this.held = null;
-            this.renderAll();
+            this.commit(field);
             return;
         }
-        const empty = s.field.indexOf(null);
+        const empty = this.field.indexOf(null);
         if (empty >= 0) {
             this.place(empty, heroId);
         } else {
@@ -424,33 +425,42 @@ export class FormationController extends Component {
     }
 
     private place(index: number, heroId: number): void {
-        const s = MockStore.state;
-        const field = s.field.slice();
+        const field = this.field.slice();
         const at = field.indexOf(heroId);
         if (at >= 0) field[at] = field[index];
         field[index] = heroId;
-        s.field = field;
-        MockStore.save();
         this.held = null;
-        this.renderAll();
+        this.commit(field);
     }
 
     private autoFill(): void {
         const owned = this.roster.filter((e) => e.owned).map((e) => e.hero);
         const top = owned.slice().sort((a, b) => heroPower(b) - heroPower(a)).slice(0, 6).map((h) => h.id);
-        const s = MockStore.state;
-        s.field = [top[0] ?? null, top[3] ?? null, top[1] ?? null, top[4] ?? null, top[2] ?? null, top[5] ?? null];
-        MockStore.save();
         this.held = null;
-        this.renderAll();
+        this.commit([top[0] ?? null, top[3] ?? null, top[1] ?? null, top[4] ?? null, top[2] ?? null, top[5] ?? null]);
         showToast(this.overlay, '已按战力布阵');
     }
 
     private clearField(): void {
-        const s = MockStore.state;
-        s.field = [null, null, null, null, null, null];
-        MockStore.save();
         this.held = null;
+        this.commit(EMPTY_FIELD.slice());
+    }
+
+    /**
+     * 先改界面再存服务端（操作不用等网络）。保存失败时提示并以服务端为准重新载入；
+     * 连续操作只处理最后一次保存的结果，避免旧请求晚到把新阵容覆盖回去。
+     */
+    private commit(field: Array<number | null>): void {
+        this.field = field;
         this.renderAll();
+        const seq = ++this.saveSeq;
+        void saveFormation(this.roster, field).then(async (res) => {
+            if (!this.isValid || seq !== this.saveSeq || res.success) return;
+            showToast(this.overlay, res.error || '阵容保存失败');
+            const fresh = await loadFormation(this.roster);
+            if (!this.isValid || seq !== this.saveSeq) return;
+            this.field = fresh;
+            this.renderAll();
+        });
     }
 }

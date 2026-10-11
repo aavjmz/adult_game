@@ -1,6 +1,12 @@
 """
-装备数据初始化脚本
+装备数据初始化 / 同步脚本
 初始化套装和装备模板数据
+
+按名字匹配，可重复执行：
+- 新名字：新建
+- 已存在：以本脚本里的数据为准逐列同步，只改有变化的列并打印字段名；
+  脚本里没写的列恢复为该列默认值（删掉某个属性也能同步）
+- 只增改，不删除：从脚本里去掉的套装 / 模板在库里保留不动
 """
 
 import sys
@@ -16,6 +22,31 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app
 from app.models import db, EquipmentSet, EquipmentTemplate
+from app.utils.seed_sync import sync_columns
+
+
+# 同步时不覆盖的列：主键、用作匹配键的名字、创建时间
+_SYNC_SKIP = {'id', 'name', 'created_at'}
+
+
+def sync_row(model, data, label):
+    """按 name 新建或同步一条套装 / 装备模板
+
+    Returns:
+        'added' / 'updated' / 'same'
+    """
+    row = model.query.filter_by(name=data['name']).first()
+    if row is None:
+        db.session.add(model(**data))
+        print(f"  ✅ 添加{label}: {data['name']}")
+        return 'added'
+
+    changed = sync_columns(row, data, _SYNC_SKIP)
+    if changed:
+        print(f"  🔄 更新{label}: {data['name']}（{', '.join(changed)}）")
+        return 'updated'
+    print(f"  ⏭️ {label} {data['name']} 无变化")
+    return 'same'
 
 
 def init_equipment_sets():
@@ -81,14 +112,7 @@ def init_equipment_sets():
     ]
 
     for set_data in sets_data:
-        existing = EquipmentSet.query.filter_by(name=set_data['name']).first()
-        if existing:
-            print(f"  ⏭️ 套装 {set_data['name']} 已存在")
-            continue
-
-        equipment_set = EquipmentSet(**set_data)
-        db.session.add(equipment_set)
-        print(f"  ✅ 添加套装: {set_data['name']}")
+        sync_row(EquipmentSet, set_data, '套装')
 
     db.session.commit()
     print("✅ 套装配置初始化完成")
@@ -221,14 +245,7 @@ def init_mythic_equipments():
     ]
 
     for equip_data in mythic_data:
-        existing = EquipmentTemplate.query.filter_by(name=equip_data['name']).first()
-        if existing:
-            print(f"  ⏭️ 装备 {equip_data['name']} 已存在")
-            continue
-
-        equipment = EquipmentTemplate(**equip_data)
-        db.session.add(equipment)
-        print(f"  ✅ 添加神话装备: {equip_data['name']} ({equip_data['type']})")
+        sync_row(EquipmentTemplate, equip_data, '神话装备')
 
     db.session.commit()
     print("✅ 神话级装备初始化完成")
@@ -436,17 +453,59 @@ def init_legendary_equipments():
     ]
 
     for equip_data in legendary_data:
-        existing = EquipmentTemplate.query.filter_by(name=equip_data['name']).first()
-        if existing:
-            print(f"  ⏭️ 装备 {equip_data['name']} 已存在")
-            continue
-
-        equipment = EquipmentTemplate(**equip_data)
-        db.session.add(equipment)
-        print(f"  ✅ 添加传说装备: {equip_data['name']} ({equip_data['type']})")
+        sync_row(EquipmentTemplate, equip_data, '传说装备')
 
     db.session.commit()
     print("✅ 传说级装备初始化完成")
+
+
+def init_basic_equipments():
+    """初始化普通 / 稀有 / 史诗装备
+
+    关卡掉落的碎片分五个品级，合成时消耗同品级碎片；原先只有传说、神话两档
+    模板，前三档碎片没东西可合。这里四个部位各补一件，属性逐档递增，
+    都低于传说级，没有专属效果与套装。
+    """
+    print("\n⚔️ 初始化普通 / 稀有 / 史诗装备...")
+
+    basic_data = [
+        # 普通
+        {'name': '环首刀', 'name_en': 'ring_pommel_dao', 'type': 'weapon', 'quality': 'common', 'element': '金',
+         'base_attack_pct': 0.08, 'description': '汉军制式佩刀，刀柄铸环，便于劈砍'},
+        {'name': '皮甲', 'name_en': 'leather_armor', 'type': 'armor', 'quality': 'common', 'element': '土',
+         'base_defense_pct': 0.08, 'base_hp_pct': 0.05, 'description': '鞣制牛皮缝成的轻甲'},
+        {'name': '铜带钩', 'name_en': 'bronze_belt_hook', 'type': 'accessory', 'quality': 'common', 'element': '金',
+         'base_attack_pct': 0.04, 'speed': 5, 'description': '青铜铸的腰带钩，士卒常佩'},
+        {'name': '竹简兵书', 'name_en': 'bamboo_manual', 'type': 'treasure', 'quality': 'common', 'element': '木',
+         'base_attack_pct': 0.04, 'base_defense_pct': 0.04, 'base_hp_pct': 0.04, 'description': '抄录兵法要略的竹简'},
+        # 稀有
+        {'name': '百炼环刀', 'name_en': 'refined_dao', 'type': 'weapon', 'quality': 'rare', 'element': '金',
+         'base_attack_pct': 0.15, 'crit_rate': 3.0, 'description': '百炼精钢锻成，锋利远胜寻常刀剑'},
+        {'name': '鱼鳞甲', 'name_en': 'fish_scale_armor', 'type': 'armor', 'quality': 'rare', 'element': '水',
+         'base_defense_pct': 0.15, 'base_hp_pct': 0.10, 'description': '甲片层叠如鱼鳞，兼顾防护与灵活'},
+        {'name': '青玉佩', 'name_en': 'jade_pendant', 'type': 'accessory', 'quality': 'rare', 'element': '木',
+         'base_attack_pct': 0.08, 'speed': 10, 'crit_dmg': 10.0, 'description': '青玉雕成的佩饰，君子比德于玉'},
+        {'name': '六韬', 'name_en': 'six_secret_teachings', 'type': 'treasure', 'quality': 'rare', 'element': '无',
+         'base_attack_pct': 0.08, 'base_defense_pct': 0.08, 'base_hp_pct': 0.08, 'description': '托名太公所著的兵书'},
+        # 史诗
+        {'name': '斩马刀', 'name_en': 'zhanma_dao', 'type': 'weapon', 'quality': 'epic', 'element': '金',
+         'base_attack_pct': 0.25, 'crit_rate': 6.0, 'crit_dmg': 10.0, 'description': '长柄重刀，可斩奔马'},
+        {'name': '明光铠', 'name_en': 'mingguang_armor', 'type': 'armor', 'quality': 'epic', 'element': '金',
+         'base_defense_pct': 0.25, 'base_hp_pct': 0.18, 'block_rate': 5.0, 'description': '胸背护镜光可鉴人，将领所服'},
+        {'name': '蟠螭玉环', 'name_en': 'panchi_jade_ring', 'type': 'accessory', 'quality': 'epic', 'element': '水',
+         'base_attack_pct': 0.12, 'speed': 18, 'crit_dmg': 18.0, 'description': '玉环上盘绕螭龙纹，王侯之器'},
+        {'name': '太公兵法', 'name_en': 'taigong_art_of_war', 'type': 'treasure', 'quality': 'epic', 'element': '无',
+         'base_attack_pct': 0.12, 'base_defense_pct': 0.12, 'base_hp_pct': 0.12, 'description': '张良圯上所受之书'},
+    ]
+
+    quality_label = {'common': '普通装备', 'rare': '稀有装备', 'epic': '史诗装备'}
+    for equip_data in basic_data:
+        # 这两项三档共用，并进数据里一起参与同步
+        data = dict(equip_data, max_enhance_level=30, obtain_method='碎片合成')
+        sync_row(EquipmentTemplate, data, quality_label[equip_data['quality']])
+
+    db.session.commit()
+    print("✅ 普通 / 稀有 / 史诗装备初始化完成")
 
 
 def main():
@@ -464,6 +523,7 @@ def main():
         # 初始化装备
         init_mythic_equipments()
         init_legendary_equipments()
+        init_basic_equipments()
 
         # 统计
         sets_count = EquipmentSet.query.count()

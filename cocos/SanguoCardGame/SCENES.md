@@ -67,11 +67,9 @@
 
 ## 战斗场景的两个前提
 
-- **关卡敌军配置要先修过**：`PVEBattle._generate_enemy_team()` 按
-  `enemy_config.enemies[].card_id` 取敌方卡牌，而 `init_stages.py` 里种的是
-  `card_name`。服务端如果没跑过 `init_enemy_cards.py` + `fix_stage_enemy_config.py`，
-  敌军会是空的，战斗直接判胜、战报为空（这种情况战斗界面会显示「此关未配置敌军」
-  并直接出结算，不会白屏）。
+- **敌军卡牌要先入库**：关卡按 `card_name` 配置敌军，对应的敌军卡由
+  `init_enemy_cards.py` 写入。服务端没跑过它时，出征会返回「此关敌军尚未配置」，
+  不会扣体力也不会判胜。
 - **出战阵容取自编伍页**：战斗接口要的是玩家名下真实卡牌的 UserCard id，编伍页
   存的是花名册 id，中间经 `RosterData.formationUserCardIds()` 换算，只有匹配到
   后端真实卡牌的阵位才会上场。阵中无人时会提示并跳去编伍。

@@ -736,7 +736,11 @@ function getDropName(itemType, itemSubtype) {
         'skill_book:large': '📘 高级技能书',
         'star_stone': '⭐ 万能星石',
         'enhance_stone': '🔮 强化石',
-        'equipment_fragment:universal': '⚙️ 万能碎片',
+        'equipment_fragment:common': '⚙️ 普通碎片',
+        'equipment_fragment:rare': '⚙️ 稀有碎片',
+        'equipment_fragment:epic': '⚙️ 史诗碎片',
+        'equipment_fragment:legendary': '⚙️ 传说碎片',
+        'equipment_fragment:mythic': '⚙️ 神话碎片',
     };
     const key = itemSubtype ? `${itemType}:${itemSubtype}` : itemType;
     return names[key] || `📦 ${itemType}`;

@@ -1,6 +1,7 @@
 import {
     _decorator, Color, Component, Graphics, Label, Node, UITransform, Vec3, tween, view,
 } from 'cc';
+import { itemName, summarizeItems } from '../core/ItemNames';
 import { Theme } from '../core/UiTheme';
 import { GameApi, StageData } from '../core/GameApi';
 import { SceneNav } from '../core/SceneNav';
@@ -10,9 +11,7 @@ import { ImageSlot } from '../core/ImageSlot';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
 import { unreadMailCount } from '../mail/MailModal';
-import { heroPower } from '../core/GameContent';
-import { loadRoster } from '../roster/RosterData';
-import { MockStore } from '../core/MockStore';
+import { formationPower, loadFormation, loadRoster } from '../roster/RosterData';
 import { chapterLabel, KIND_COLOR, kindOf, layoutStages } from './CampaignData';
 import {
     createButton, createLabel, createNode, drawPanel, graphicsOf, labelOf, withAlpha,
@@ -63,12 +62,9 @@ export class CampaignController extends Component {
 
         const roster = await loadRoster();
         if (!this.isValid) return;
-        const ownedById = new Map(roster.filter((e) => e.owned).map((e) => [e.hero.id, e.hero]));
-        this.myPower = MockStore.state.field
-            .filter((id) => id != null)
-            .map((id) => ownedById.get(id!))
-            .filter((h): h is NonNullable<typeof h> => !!h)
-            .reduce((t, h) => t + heroPower(h), 0);
+        const field = await loadFormation(roster);
+        if (!this.isValid) return;
+        this.myPower = formationPower(roster, field);
 
         const res = await GameApi.fetchStages();
         if (!this.isValid) return;
@@ -329,6 +325,19 @@ export class CampaignController extends Component {
             y -= 34;
         }
 
+        const dropText = describeDrops(stage.drops);
+        if (dropText) {
+            // 紧接战利之后；同名道具（如两档概率的碎片）只列一次
+            y += 14;
+            const dropRow = createLabel(`可能掉落：${dropText}`, {
+                fontSize: 10, color: Theme.color.textMuted, width: width - 28, align: Label.HorizontalAlign.LEFT,
+            });
+            dropRow.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+            dropRow.setPosition(-width / 2 + 14, y);
+            this.detailPanel.addChild(dropRow);
+            y -= 30;
+        }
+
         const needH = 52;
         const needRow = createNode('Need', width - 28, needH);
         needRow.setPosition(0, y - needH / 2 + 15);
@@ -382,7 +391,8 @@ export class CampaignController extends Component {
             return;
         }
         this.topBar.apply(res.data.user);
-        showToast(this.overlay, `扫荡完毕 · 银两 +${res.data.rewards.coins}`);
+        const items = summarizeItems(res.data.rewards.items);
+        showToast(this.overlay, `扫荡完毕 · 银两 +${res.data.rewards.coins}${items ? ` · ${items}` : ''}`);
     }
 }
 
@@ -402,4 +412,14 @@ function drawDashed(g: Graphics, from: { x: number; y: number }, to: { x: number
         g.lineTo(from.x + ux * e, from.y + uy * e);
         t += dash + gap;
     }
+}
+
+/** 关卡可能掉落 → 「中经验丹(必掉)、史诗碎片、传说碎片」，按概率从高到低、同名去重 */
+function describeDrops(drops: StageData['drops']): string {
+    const seen = new Map<string, boolean>();
+    for (const d of drops ?? []) {
+        const name = itemName(d.item_type, d.item_subtype);
+        seen.set(name, (seen.get(name) ?? false) || d.probability >= 1);
+    }
+    return [...seen].map(([name, sure]) => (sure ? `${name}(必掉)` : name)).join('、');
 }

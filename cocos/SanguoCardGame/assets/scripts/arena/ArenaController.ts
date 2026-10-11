@@ -6,8 +6,7 @@ import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
 import { unreadMailCount } from '../mail/MailModal';
 import { MockStore } from '../core/MockStore';
-import { heroPower } from '../core/GameContent';
-import { loadRoster } from '../roster/RosterData';
+import { formationPower, loadFormation, loadRoster } from '../roster/RosterData';
 import { ARENA_POOL, ArenaFoe, TIER_COLOR, tierOf } from './ArenaData';
 import {
     createButton, createLabel, createNode, createScrollList, drawPanel, setButtonEnabled, withAlpha,
@@ -20,7 +19,7 @@ const { ccclass } = _decorator;
  *
  * 后端没有竞技场/匹配系统（CLAUDE.md「未开始」清单：PvP matchmaking），
  * 名次、积分、对手池都是本地模拟；胜负按胜算掷骰，胜算由编伍页的真实阵中
- * 战力算出（读 MockStore.state.field），不是拍脑袋数字。状态存
+ * 战力算出（读服务端编伍阵容），不是拍脑袋数字。状态存
  * MockStore.state.arena*。
  */
 @ccclass('ArenaController')
@@ -53,12 +52,9 @@ export class ArenaController extends Component {
 
         const roster = await loadRoster();
         if (!this.isValid) return;
-        const ownedById = new Map(roster.filter((e) => e.owned).map((e) => [e.hero.id, e.hero]));
-        this.myPower = MockStore.state.field
-            .filter((id) => id != null)
-            .map((id) => ownedById.get(id!))
-            .filter((h): h is NonNullable<typeof h> => !!h)
-            .reduce((t, h) => t + heroPower(h), 0);
+        const field = await loadFormation(roster);
+        if (!this.isValid) return;
+        this.myPower = formationPower(roster, field);
         this.powerLabel.string = `我军战力 ${this.myPower.toLocaleString()}`;
 
         this.renderAll();

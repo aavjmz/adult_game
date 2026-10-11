@@ -3,22 +3,67 @@ import { Theme } from '../core/UiTheme';
 import { showToast } from '../core/Toast';
 import { ImageSlot } from '../core/ImageSlot';
 import {
-    BONDS, HEROES, RANK_NAME, RARITY_TO_RANK, ROLE_NAME, SKILLS, heroPower,
+    BONDS, HEROES, RANK_NAME, RARITY_TO_RANK, ROLE_NAME, heroPower,
 } from '../core/GameContent';
 import { RosterEntry } from './RosterData';
+import { CardStats, EquipmentData, EquipSlot, GameApi, SkillProfile } from '../core/GameApi';
 import {
-    createButton, createLabel, createModalBackdrop, createNode, createProgressBar, drawPanel, withAlpha,
+    createButton, createLabel, createModalBackdrop, createNode, createProgressBar, drawPanel, labelOf,
+    setButtonEnabled, withAlpha,
 } from '../core/UIFactory';
 
 const { ccclass } = _decorator;
+
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+
+/** 技能附加效果的文字说明 */
+function effectTexts(effects: Record<string, number>): string[] {
+    const out: string[] = [];
+    for (const [k, v] of Object.entries(effects ?? {})) {
+        switch (k) {
+            case 'lifesteal': out.push(`吸血 ${pct(v)}`); break;
+            case 'team_heal': out.push(`全体回血 ${pct(v)}`); break;
+            case 'self_heal': out.push(`自身回血 ${pct(v)}`); break;
+            case 'ignore_def': out.push(v >= 1 ? '无视防御' : `无视 ${pct(v)} 防御`); break;
+            case 'def_down': out.push(`降防 ${pct(v)}（2 次出手）`); break;
+            case 'atk_down_all': out.push(`敌方全体降攻 ${pct(v)}（2 次出手）`); break;
+            case 'stun': out.push(`${pct(v)} 眩晕`); break;
+            case 'execute': out.push(`生命低于 ${pct(v)} 斩杀`); break;
+        }
+    }
+    return out;
+}
 
 const PANEL_H = 560;
 const LEFT_W = PANEL_H * 3 / 4;
 const RIGHT_W = 700;
 const PANEL_W = LEFT_W + RIGHT_W;
 
-const TABS = ['属性', '技能', '羁绊', '宝物', '传记', '突破'] as const;
+const TABS = ['属性', '技能', '羁绊', '宝物', '传记', '升级', '突破'] as const;
 type Tab = typeof TABS[number];
+
+/** 经验丹档位，经验值与后端 growth_utils.get_item_exp_value 一致 */
+const POTIONS: Array<{ subtype: string; name: string; exp: number }> = [
+    { subtype: 'small', name: '小经验丹', exp: 1000 },
+    { subtype: 'medium', name: '中经验丹', exp: 5000 },
+    { subtype: 'large', name: '大经验丹', exp: 20000 },
+    { subtype: 'xlarge', name: '特大经验丹', exp: 100000 },
+];
+
+/** 宝物页四个槽位，对应后端装备 type */
+const GEAR_SLOTS: Array<{ type: EquipSlot; name: string }> = [
+    { type: 'weapon', name: '兵刃' },
+    { type: 'armor', name: '铠甲' },
+    { type: 'accessory', name: '饰品' },
+    { type: 'treasure', name: '宝物' },
+];
+
+/** 与后端 equipment_utils.QUALITY_NAMES、Web 端合成页一致 */
+const BOOK_NAME: Record<string, string> = { small: '初级技能书', medium: '中级技能书', large: '高级技能书' };
+
+const QUALITY_NAME: Record<string, string> = {
+    common: '普通', rare: '稀有', epic: '史诗', legendary: '传说', mythic: '神话',
+};
 
 @ccclass('HeroDetailModal')
 class HeroDetailModalController extends Component {
@@ -26,9 +71,26 @@ class HeroDetailModalController extends Component {
     private tab: Tab = '属性';
     private tabsHost: Node = null!;
     private body: Node = null!;
+    private starsLabel: Label | null = null;
+    private metaLabel: Label | null = null;
+    private onChanged: (() => void) | undefined;
 
-    build(host: Node, entry: RosterEntry): void {
+    /** 成长 / 装备数据，仅已招募且后端有对应卡牌时加载 */
+    private stats: CardStats | null = null;
+    private materials: Record<string, number> = {};
+    private equipped: EquipmentData[] = [];
+    private busy = false;
+    /** 未招募武将的技能，取自卡牌图鉴 */
+    private catalogSkill: SkillProfile | null = null;
+    private catalogLoaded = false;
+
+    private get userCardId(): number | undefined {
+        return this.entry.owned ? this.entry.card?.user_card_id : undefined;
+    }
+
+    build(host: Node, entry: RosterEntry, onChanged?: () => void): void {
         this.entry = entry;
+        this.onChanged = onChanged;
 
         const backdrop = createModalBackdrop(
             host.getComponent(UITransform)!.width, host.getComponent(UITransform)!.height,
@@ -44,6 +106,74 @@ class HeroDetailModalController extends Component {
         this.buildLeft(panel);
         this.buildRight(panel);
         this.selectTab('属性');
+        void this.reload();
+    }
+
+    /** 未招募武将从卡牌图鉴里找技能；加载完若仍在技能页则重绘 */
+    private async loadCatalogSkill(): Promise<void> {
+        const cards = await GameApi.fetchCatalog();
+        if (!this.isValid) return;
+        this.catalogSkill = cards.find((c) => c.name === this.entry.hero.name)?.skill ?? null;
+        this.catalogLoaded = true;
+        if (this.tab === '技能') this.selectTab('技能');
+    }
+
+    /** 拉取成长、材料、装备数据；加载完重绘左侧与当前页签 */
+    private async reload(): Promise<void> {
+        const id = this.userCardId;
+        if (id == null) return;
+        const [stats, mats, gear] = await Promise.all([
+            GameApi.fetchCardStats(id), GameApi.fetchMaterials(), GameApi.fetchCardEquipments(id),
+        ]);
+        // 弹层可能已被关掉
+        if (!this.isValid) return;
+        if (stats.success && stats.data) this.stats = stats.data;
+        if (mats.success && mats.data) this.materials = mats.data.materials;
+        if (gear.success && gear.data) this.equipped = gear.data.equipments;
+        this.refreshLeft();
+        this.selectTab(this.tab);
+    }
+
+    /**
+     * 执行一次成长 / 装备写操作：防连点、提示后端返回的信息，
+     * 成功后重新拉数据并通知将台刷新顶栏与卡格
+     */
+    private async act<T extends { message?: string }>(
+        call: () => Promise<{ success: boolean; data: T | null; error: string | null }>,
+        okText?: (data: T) => string,
+    ): Promise<void> {
+        if (this.busy) return;
+        this.busy = true;
+        const res = await call();
+        if (!this.isValid) return;
+        this.busy = false;
+        if (!res.success || !res.data) {
+            showToast(this.node, res.error || '操作失败');
+            return;
+        }
+        showToast(this.node, okText ? okText(res.data) : (res.data.message || '已完成'));
+        await this.reload();
+        if (!this.isValid) return;
+        this.onChanged?.();
+    }
+
+    private refreshLeft(): void {
+        if (!this.stats) return;
+        const { hero } = this.entry;
+        const star = this.stats.star_level;
+        if (this.starsLabel) this.starsLabel.string = '★'.repeat(star) + '☆'.repeat(Math.max(0, 5 - star));
+        if (this.metaLabel) this.metaLabel.string = `${hero.faction} · ${ROLE_NAME[hero.role]} · LV.${this.stats.level}`;
+    }
+
+    private notOwnedHint(): void {
+        const hint = createLabel(this.entry.owned ? '此武将尚无对应卡牌数据' : '尚未招募此武将', {
+            fontSize: 13, color: Theme.color.textDisabled, width: 400,
+        });
+        this.body.addChild(hint);
+    }
+
+    private loadingHint(): void {
+        this.body.addChild(createLabel('载入中……', { fontSize: 13, color: Theme.color.textDisabled, width: 400 }));
     }
 
     private buildLeft(panel: Node): void {
@@ -78,7 +208,9 @@ class HeroDetailModalController extends Component {
         tagBg.addChild(rankTag);
         left.addChild(tagBg);
 
-        const stars = createLabel('★'.repeat(star) + '☆'.repeat(6 - star), { fontSize: 12, color: Theme.color.gold, width: 100 });
+        // 后端星级上限 ★5
+        const stars = createLabel('★'.repeat(star) + '☆'.repeat(Math.max(0, 5 - star)), { fontSize: 12, color: Theme.color.gold, width: 100 });
+        this.starsLabel = labelOf(stars);
         stars.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
         stars.setPosition(-LEFT_W / 2 + 70, -PANEL_H / 2 + 38);
         left.addChild(stars);
@@ -90,6 +222,7 @@ class HeroDetailModalController extends Component {
         meta.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
         meta.setPosition(-LEFT_W / 2 + 16, -PANEL_H / 2 + 16);
         left.addChild(meta);
+        this.metaLabel = labelOf(meta);
 
         const close = createButton('✕', 28, 28, () => this.node.destroy(), {
             fill: withAlpha(Theme.color.bgDeep, 180), stroke: Theme.color.gold, textColor: Theme.color.gold,
@@ -139,6 +272,7 @@ class HeroDetailModalController extends Component {
             羁绊: () => this.buildBonds(),
             宝物: () => this.buildGear(),
             传记: () => this.buildBio(),
+            升级: () => this.buildLevel(),
             突破: () => this.buildBreak(),
         };
         build[tab]();
@@ -182,40 +316,153 @@ class HeroDetailModalController extends Component {
             vl.setPosition(0, -8);
             cell.addChild(vl);
         });
+
+        // 出战属性：后端按全部养成算出的真实战斗数值（升星、觉醒、突破、装备后会变）
+        const bs = this.stats?.battle_stats;
+        if (!bs) return;
+        y -= 84;
+        const head = createLabel('出战属性 · 含星级、觉醒、突破与装备', {
+            fontSize: 11, color: Theme.color.textDisabled, width, align: Label.HorizontalAlign.LEFT,
+        });
+        head.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        head.setPosition(-width / 2, y);
+        this.body.addChild(head);
+        const items: Array<[string, number]> = [['生命', bs.hp], ['攻击', bs.attack], ['防御', bs.defense], ['速度', bs.speed]];
+        const bw = width / 4 - 6;
+        items.forEach(([k, v], i) => {
+            const cell = createNode('Battle', bw, 46);
+            cell.setPosition(-width / 2 + bw / 2 + i * (bw + 8), y - 36);
+            drawPanel(cell, { fill: Theme.color.panelSunken, stroke: withAlpha(Theme.color.gold, 120), lineWidth: 1, radius: 2 });
+            this.body.addChild(cell);
+            const kl = createLabel(k, { fontSize: 10, color: Theme.color.textDisabled, width: bw - 10 });
+            kl.setPosition(0, 11);
+            cell.addChild(kl);
+            const vl = createLabel(v.toLocaleString(), { fontSize: 14, bold: true, color: Theme.color.goldBright, width: bw - 10 });
+            vl.setPosition(0, -8);
+            cell.addChild(vl);
+        });
     }
 
+    /**
+     * 技能页：武将在战斗中实际使用的主动技能（后端卡牌自带，按技能等级换算倍率与冷却）
+     * + 技能升级区。已招募取 card-stats 的 skill（当前等级）与 skill_next（下一级预览），
+     * 未招募取卡牌图鉴里的 1 级参数；设计稿里有、后端还没有的武将显示「尚未开放」。
+     */
     private buildSkills(): void {
-        const { hero } = this.entry;
+        const st = this.stats;
         const width = this.body.getComponent(UITransform)!.width;
         let y = this.body.getComponent(UITransform)!.height / 2 - 40;
-        for (const sk of SKILLS[hero.role]) {
-            const row = createNode('Skill', width, 68);
+        const sk = st?.skill ?? this.entry.card?.skill ?? this.catalogSkill;
+
+        if (!sk) {
+            const hint = createLabel(this.catalogLoaded ? '该武将尚未开放，暂无技能数据' : '技能加载中…', {
+                fontSize: 12, color: Theme.color.textDisabled, width,
+            });
+            hint.setPosition(0, y - 20);
+            this.body.addChild(hint);
+            if (!this.catalogLoaded) void this.loadCatalogSkill();
+            return;
+        }
+
+        const row = createNode('Skill', width, 96);
+        row.setPosition(0, y - 14);
+        drawPanel(row, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
+        this.body.addChild(row);
+
+        const scope = sk.target === 'all' ? '敌方全体' : '单体';
+        const name = createLabel(`${sk.name}　主动 · ${scope}`, {
+            fontSize: 13, bold: true, color: Theme.color.goldBright, width: width - 90, align: Label.HorizontalAlign.LEFT,
+        });
+        name.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        name.setPosition(-width / 2 + 12, 32);
+        row.addChild(name);
+
+        const lv = createLabel(`Lv.${sk.level}`, { fontSize: 12, bold: true, color: Theme.color.text, width: 70, align: Label.HorizontalAlign.RIGHT });
+        lv.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
+        lv.setPosition(width / 2 - 12, 32);
+        row.addChild(lv);
+
+        const desc = createLabel(sk.description, {
+            fontSize: 11, color: Theme.color.text, width: width - 24, align: Label.HorizontalAlign.LEFT,
+        });
+        desc.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        desc.setPosition(-width / 2 + 12, 10);
+        row.addChild(desc);
+
+        const cdText = sk.cooldown < sk.base_cooldown ? `冷却 ${sk.cooldown} 次出手（原 ${sk.base_cooldown}）` : `冷却 ${sk.cooldown} 次出手`;
+        const params = [`倍率 ${pct(sk.multiplier)}`, cdText, ...effectTexts(sk.effects)];
+        const info = createLabel(params.join(' · '), {
+            fontSize: 10, color: Theme.color.textMuted, width: width - 24, align: Label.HorizontalAlign.LEFT,
+        });
+        info.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        info.setPosition(-width / 2 + 12, -12);
+        row.addChild(info);
+
+        const nx = st?.skill_next;
+        const nextText = !st
+            ? '招募后可升级：每级倍率 +10%，每 3 级冷却 -1'
+            : nx
+                ? `下一级 Lv.${nx.level}：倍率 ${pct(nx.multiplier)} · 冷却 ${nx.cooldown} 次出手`
+                : '已满级';
+        const next = createLabel(nextText, {
+            fontSize: 10, color: Theme.color.textDisabled, width: width - 24, align: Label.HorizontalAlign.LEFT,
+        });
+        next.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        next.setPosition(-width / 2 + 12, -32);
+        row.addChild(next);
+
+        y -= 96;
+
+        // 升级区只对已招募且有后端卡牌的武将显示
+        const id = this.userCardId;
+        if (id == null || !st) return;
+        y -= 8;
+        const tip = createLabel('技能升级 · 每级倍率 +10%，每 3 级冷却 -1，满级 Lv.10', {
+            fontSize: 11, color: Theme.color.textDisabled, width, align: Label.HorizontalAlign.LEFT,
+        });
+        tip.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        tip.setPosition(-width / 2, y);
+        this.body.addChild(tip);
+        y -= 34;
+
+        // 被动技能在战斗中尚无效果，先不开放升级，免得白耗技能书
+        const tracks: Array<{ type: 'main' | 'passive'; label: string; level: number }> = [
+            { type: 'main', label: '主动技能', level: st.main_skill_level },
+        ];
+        const coins = GameApi.user?.coins ?? 0;
+        for (const t of tracks) {
+            const row = createNode('SkillUp', width, 52);
             row.setPosition(0, y);
             drawPanel(row, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
             this.body.addChild(row);
 
-            const name = createLabel(`${sk.name}　${sk.kind}`, {
-                fontSize: 13, bold: true, color: Theme.color.goldBright, width: width - 20, align: Label.HorizontalAlign.LEFT,
+            const title = createLabel(`${t.label}　Lv.${t.level} / 10`, {
+                fontSize: 12, bold: true, color: Theme.color.text, width: width - 150, align: Label.HorizontalAlign.LEFT,
             });
-            name.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-            name.setPosition(-width / 2 + 12, 20);
-            row.addChild(name);
+            title.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+            title.setPosition(-width / 2 + 12, 10);
+            row.addChild(title);
 
-            const desc = createLabel(sk.desc, {
-                fontSize: 11, color: Theme.color.textMuted, width: width - 24, align: Label.HorizontalAlign.LEFT,
-            });
-            desc.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-            desc.setPosition(-width / 2 + 12, -2);
-            row.addChild(desc);
+            const next = st.next_skill_costs?.[t.type] ?? null;
+            const bookKey = next ? `skill_book:${next.book_type}` : '';
+            const have = next ? this.materials[bookKey] ?? 0 : 0;
+            const effect = `倍率加成 +${(t.level - 1) * 10}%`;
+            const need = next
+                ? `${effect} → +${t.level * 10}% · ${BOOK_NAME[next.book_type] ?? next.book_type} ${have}/${next.book_count} · 银两 ${next.coins.toLocaleString()}`
+                : `${effect} · 已满级`;
+            const sub = createLabel(need, { fontSize: 10, color: Theme.color.textDisabled, width: width - 150, align: Label.HorizontalAlign.LEFT });
+            sub.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+            sub.setPosition(-width / 2 + 12, -12);
+            row.addChild(sub);
 
-            const cost = createLabel(sk.cost ? `耗能 ${sk.cost} · 冷却 ${sk.cd} 回合` : '被动', {
-                fontSize: 9, color: Theme.color.textDisabled, width: 200, align: Label.HorizontalAlign.LEFT,
-            });
-            cost.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-            cost.setPosition(-width / 2 + 12, -24);
-            row.addChild(cost);
-
-            y -= 78;
+            const btn = createButton(next ? '升 级' : '满 级', 96, 30, () => void this.act(
+                () => GameApi.upgradeSkill(id, t.type),
+                (d) => `${t.label}升至 Lv.${d.new_level}`,
+            ), { fill: Theme.color.goldBright, stroke: Theme.color.goldBright, textColor: Theme.color.bgDeep, fontSize: 12 });
+            btn.setPosition(width / 2 - 60, 0);
+            row.addChild(btn);
+            setButtonEnabled(btn, !!next && have >= next.book_count && coins >= next.coins);
+            y -= 60;
         }
     }
 
@@ -264,26 +511,113 @@ class HeroDetailModalController extends Component {
     }
 
     private buildGear(): void {
+        if (this.userCardId == null) return this.notOwnedHint();
+        if (!this.stats) return this.loadingHint();
+
         const width = this.body.getComponent(UITransform)!.width;
-        const slots = ['兵刃', '铠甲', '坐骑', '宝物'];
+        const top = this.body.getComponent(UITransform)!.height / 2;
         const cellW = width / 2 - 6;
-        const cellH = 74;
-        slots.forEach((slot, i) => {
-            const col = i % 2;
-            const row = Math.floor(i / 2);
+        const cellH = 96;
+        GEAR_SLOTS.forEach((slot, i) => {
             const cell = createNode('Gear', cellW, cellH);
-            cell.setPosition(-width / 2 + cellW / 2 + col * (cellW + 12), this.body.getComponent(UITransform)!.height / 2 - 44 - row * (cellH + 10));
+            cell.setPosition(-width / 2 + cellW / 2 + (i % 2) * (cellW + 12), top - 54 - Math.floor(i / 2) * (cellH + 10));
             drawPanel(cell, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
-            cell.on(Node.EventType.TOUCH_END, () => showToast(this.node, '该功能尚在筹备'));
             this.body.addChild(cell);
 
-            const label = createLabel(slot, { fontSize: 10, color: Theme.color.textDisabled, width: cellW - 20 });
-            label.setPosition(0, 14);
+            const label = createLabel(slot.name, { fontSize: 10, color: Theme.color.textDisabled, width: cellW - 20 });
+            label.setPosition(0, 32);
             cell.addChild(label);
-            const value = createLabel('空位 · 点击装备', { fontSize: 12, color: Theme.color.textMuted, width: cellW - 20 });
-            value.setPosition(0, -10);
-            cell.addChild(value);
+
+            const eq = this.equipped.find((e) => e.type === slot.type);
+            if (!eq) {
+                const empty = createLabel('空位 · 点击装备', { fontSize: 12, color: Theme.color.textMuted, width: cellW - 20 });
+                empty.setPosition(0, 0);
+                cell.addChild(empty);
+                cell.on(Node.EventType.TOUCH_END, () => void this.openGearPicker(slot.type, slot.name));
+                return;
+            }
+
+            const name = createLabel(`${eq.name}  +${eq.enhance_level}`, { fontSize: 13, bold: true, color: Theme.color.goldBright, width: cellW - 20 });
+            name.setPosition(0, 10);
+            cell.addChild(name);
+            const quality = createLabel(QUALITY_NAME[eq.quality] ?? eq.quality, { fontSize: 10, color: Theme.color.textMuted, width: cellW - 20 });
+            quality.setPosition(0, -8);
+            cell.addChild(quality);
+
+            const style = { fill: Theme.color.panel, stroke: Theme.color.gold, textColor: Theme.color.gold, fontSize: 11 };
+            const enhance = createButton('强 化', 70, 24, () => void this.act(
+                () => GameApi.enhanceEquipment(eq.id),
+                (d) => d.result === 'success' ? `强化成功 +${d.old_level} → +${d.new_level}` : (d.message || '强化失败'),
+            ), style);
+            enhance.setPosition(-40, -32);
+            cell.addChild(enhance);
+            const off = createButton('卸 下', 70, 24, () => void this.act(() => GameApi.unequip(eq.id), () => `已卸下 ${eq.name}`), style);
+            off.setPosition(40, -32);
+            cell.addChild(off);
         });
+
+        const hint = createLabel('强化消耗银两与强化石；+10 以上失败可能掉级', {
+            fontSize: 10, color: Theme.color.textDisabled, width: width - 20,
+        });
+        hint.setPosition(0, top - 54 - 2 * (cellH + 10) + 20);
+        this.body.addChild(hint);
+    }
+
+    /** 空槽位点开：列出行囊里同类型、未穿戴的装备，点选即穿上 */
+    private async openGearPicker(type: EquipSlot, slotName: string): Promise<void> {
+        const id = this.userCardId;
+        if (id == null || this.busy) return;
+        const res = await GameApi.fetchEquipments({ type, unequipped: true });
+        if (!this.isValid || this.tab !== '宝物') return;
+
+        this.body.removeAllChildren();
+        const width = this.body.getComponent(UITransform)!.width;
+        let y = this.body.getComponent(UITransform)!.height / 2 - 20;
+
+        const title = createLabel(`选择${slotName}`, { fontSize: 14, bold: true, color: Theme.color.goldBright, width: 200, align: Label.HorizontalAlign.LEFT });
+        title.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        title.setPosition(-width / 2, y);
+        this.body.addChild(title);
+        const back = createButton('返 回', 70, 26, () => this.selectTab('宝物'), {
+            fill: Theme.color.panelSunken, stroke: Theme.color.gold, textColor: Theme.color.gold, fontSize: 11,
+        });
+        back.setPosition(width / 2 - 35, y);
+        this.body.addChild(back);
+        y -= 40;
+
+        const list = res.success && res.data ? res.data.equipments : [];
+        if (!list.length) {
+            const empty = createLabel(res.success ? `行囊中没有可用的${slotName}` : (res.error || '装备加载失败'), {
+                fontSize: 12, color: Theme.color.textDisabled, width,
+            });
+            empty.setPosition(0, y - 20);
+            this.body.addChild(empty);
+            return;
+        }
+
+        // 面板高度有限，按战力取前 7 件
+        for (const eq of list.slice(0, 7)) {
+            const row = createNode('Pick', width, 54);
+            row.setPosition(0, y - 22);
+            drawPanel(row, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
+            this.body.addChild(row);
+            const name = createLabel(`${eq.name}  +${eq.enhance_level}`, { fontSize: 13, color: Theme.color.text, width: width - 140, align: Label.HorizontalAlign.LEFT });
+            name.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+            name.setPosition(-width / 2 + 12, 8);
+            row.addChild(name);
+            const sub = createLabel(`${QUALITY_NAME[eq.quality] ?? eq.quality} · 战力 ${eq.power ?? '—'}`, {
+                fontSize: 10, color: Theme.color.textDisabled, width: width - 140, align: Label.HorizontalAlign.LEFT,
+            });
+            sub.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+            sub.setPosition(-width / 2 + 12, -12);
+            row.addChild(sub);
+            const btn = createButton('装 备', 76, 28, () => void this.act(() => GameApi.equip(id, eq.id)), {
+                fill: Theme.color.goldBright, stroke: Theme.color.goldBright, textColor: Theme.color.bgDeep, fontSize: 12,
+            });
+            btn.setPosition(width / 2 - 50, 0);
+            row.addChild(btn);
+            y -= 62;
+        }
     }
 
     private buildBio(): void {
@@ -322,67 +656,191 @@ class HeroDetailModalController extends Component {
         }
     }
 
-    private buildBreak(): void {
-        const { hero, owned, card } = this.entry;
-        const width = this.body.getComponent(UITransform)!.width;
-        const star = owned && card?.star_level != null ? card.star_level : hero.star;
-        const y0 = this.body.getComponent(UITransform)!.height / 2 - 30;
+    /** 升级页：经验条 + 按档位使用经验丹 */
+    private buildLevel(): void {
+        const id = this.userCardId;
+        if (id == null) return this.notOwnedHint();
+        const st = this.stats;
+        if (!st) return this.loadingHint();
 
-        const cellW = width / 6 - 4;
-        for (let i = 0; i < 6; i++) {
-            const cell = createNode('Break', cellW, 44);
-            cell.setPosition(-width / 2 + cellW / 2 + i * (cellW + 4), y0);
-            const filled = i < star;
+        const width = this.body.getComponent(UITransform)!.width;
+        let y = this.body.getComponent(UITransform)!.height / 2 - 24;
+
+        const lv = createLabel(`LV.${st.level}`, { fontSize: 22, bold: true, color: Theme.color.goldBright, width: 160, align: Label.HorizontalAlign.LEFT });
+        lv.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        lv.setPosition(-width / 2, y);
+        this.body.addChild(lv);
+        const cap = createLabel(`等级上限 ${st.max_level}`, { fontSize: 11, color: Theme.color.textMuted, width: 200, align: Label.HorizontalAlign.RIGHT });
+        cap.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
+        cap.setPosition(width / 2, y);
+        this.body.addChild(cap);
+        y -= 30;
+
+        const atCap = st.level >= st.max_level;
+        const bar = createProgressBar(width, 8, atCap ? 1 : st.exp / Math.max(1, st.exp_required), { fillColor: Theme.color.goldBright });
+        bar.track.setPosition(0, y);
+        this.body.addChild(bar.track);
+        y -= 18;
+        const expText = createLabel(atCap ? '已达等级上限，需突破' : `经验 ${st.exp.toLocaleString()} / ${st.exp_required.toLocaleString()}`, {
+            fontSize: 10, color: Theme.color.textDisabled, width, align: Label.HorizontalAlign.LEFT,
+        });
+        expText.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+        expText.setPosition(-width / 2, y);
+        this.body.addChild(expText);
+        y -= 40;
+
+        for (const p of POTIONS) {
+            const have = this.materials[`exp_potion:${p.subtype}`] ?? 0;
+            const row = createNode('Potion', width, 58);
+            row.setPosition(0, y);
+            drawPanel(row, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
+            this.body.addChild(row);
+
+            const name = createLabel(p.name, { fontSize: 13, color: Theme.color.text, width: 200, align: Label.HorizontalAlign.LEFT });
+            name.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+            name.setPosition(-width / 2 + 12, 9);
+            row.addChild(name);
+            const sub = createLabel(`每个 +${p.exp.toLocaleString()} 经验 · 持有 ${have}`, {
+                fontSize: 10, color: Theme.color.textDisabled, width: 260, align: Label.HorizontalAlign.LEFT,
+            });
+            sub.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+            sub.setPosition(-width / 2 + 12, -12);
+            row.addChild(sub);
+
+            const use = (qty: number) => {
+                if (qty <= 0) { showToast(this.node, `${p.name}不足`); return; }
+                if (atCap) { showToast(this.node, '已达等级上限，需先突破'); return; }
+                void this.act(
+                    () => GameApi.levelUp(id, [{ item_type: 'exp_potion', item_subtype: p.subtype, quantity: qty }]),
+                    (d) => d.levels_gained > 0 ? `升至 LV.${d.new_level}` : '经验已增加',
+                );
+            };
+            const style = { fill: Theme.color.panel, stroke: Theme.color.gold, textColor: Theme.color.gold, fontSize: 11 };
+            const one = createButton('用 1 个', 76, 28, () => use(Math.min(1, have)), style);
+            one.setPosition(width / 2 - 136, 0);
+            row.addChild(one);
+            const ten = Math.min(10, have);
+            const many = createButton(`用 ${Math.max(ten, 1)} 个`, 76, 28, () => use(ten), style);
+            many.setPosition(width / 2 - 50, 0);
+            row.addChild(many);
+            if (!have || atCap) { setButtonEnabled(one, false); setButtonEnabled(many, false); }
+            y -= 66;
+        }
+    }
+
+    /** 突破页：升星（★1→★5）与突破（提升等级上限）两段，条件与材料由后端给出 */
+    private buildBreak(): void {
+        const id = this.userCardId;
+        if (id == null) return this.notOwnedHint();
+        const st = this.stats;
+        if (!st) return this.loadingHint();
+
+        const width = this.body.getComponent(UITransform)!.width;
+        const coins = GameApi.user?.coins ?? 0;
+        let y = this.body.getComponent(UITransform)!.height / 2 - 26;
+
+        const cellW = width / 5 - 4;
+        for (let i = 0; i < 5; i++) {
+            const cell = createNode('Star', cellW, 40);
+            cell.setPosition(-width / 2 + cellW / 2 + i * (cellW + 5), y);
+            const filled = i < st.star_level;
             drawPanel(cell, {
                 fill: filled ? withAlpha(Theme.color.gold, 40) : Theme.color.panelSunken,
                 stroke: filled ? Theme.color.gold : Theme.color.divider, lineWidth: 1, radius: 2,
             });
             this.body.addChild(cell);
             const mark = createLabel(filled ? '★' : '☆', { fontSize: 16, color: filled ? Theme.color.goldBright : Theme.color.textDisabled, width: cellW - 4 });
-            mark.setPosition(0, 6);
+            mark.setPosition(0, 5);
             cell.addChild(mark);
-            const label = createLabel(`第${'一二三四五六'[i]}阶`, { fontSize: 9, color: Theme.color.textDisabled, width: cellW - 4 });
+            const label = createLabel(`${i + 1} 星`, { fontSize: 9, color: Theme.color.textDisabled, width: cellW - 4 });
             label.setPosition(0, -12);
             cell.addChild(label);
         }
+        y -= 40;
 
-        const soul = Math.min(60, star * 12);
-        const info = createNode('Info', width, 90);
-        info.setPosition(0, y0 - 80);
-        drawPanel(info, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
-        this.body.addChild(info);
-        const title = createLabel(`下阶突破 · 第${'一二三四五六'[Math.min(5, star)]}阶`, {
-            fontSize: 12, color: Theme.color.goldBright, width: width - 100, align: Label.HorizontalAlign.LEFT,
-        });
-        title.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        title.setPosition(-width / 2 + 12, 26);
-        info.addChild(title);
-        const soulLabel = createLabel(`魂石 ${soul} / 60`, { fontSize: 11, color: Theme.color.textMuted, width: 120, align: Label.HorizontalAlign.RIGHT });
-        soulLabel.getComponent(UITransform)!.setAnchorPoint(1, 0.5);
-        soulLabel.setPosition(width / 2 - 12, 26);
-        info.addChild(soulLabel);
-        const bar = createProgressBar(width - 24, 6, soul / 60, { fillColor: Theme.color.goldBright });
-        bar.track.setPosition(0, 6);
-        info.addChild(bar.track);
-        const desc = createLabel(`突破后解锁 ${SKILLS[hero.role][2].name}，全属性提升 8%。`, {
-            fontSize: 10, color: Theme.color.textDisabled, width: width - 24, align: Label.HorizontalAlign.LEFT,
-        });
-        desc.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
-        desc.setPosition(-width / 2 + 12, -14);
-        info.addChild(desc);
+        const fmt = (have: number, need: number) => `${have.toLocaleString()} / ${need.toLocaleString()}`;
+        const section = (h: number, title: string, lines: string[]) => {
+            const box = createNode('Section', width, h);
+            box.setPosition(0, y - h / 2);
+            drawPanel(box, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
+            this.body.addChild(box);
+            const t = createLabel(title, { fontSize: 13, bold: true, color: Theme.color.goldBright, width: width - 24, align: Label.HorizontalAlign.LEFT });
+            t.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+            t.setPosition(-width / 2 + 12, h / 2 - 18);
+            box.addChild(t);
+            lines.forEach((line, i) => {
+                const l = createLabel(line, { fontSize: 11, color: Theme.color.textMuted, width: width - 24, align: Label.HorizontalAlign.LEFT });
+                l.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
+                l.setPosition(-width / 2 + 12, h / 2 - 42 - i * 20);
+                box.addChild(l);
+            });
+            y -= h + 10;
+            return box;
+        };
+        const goldBtn = { fill: Theme.color.goldBright, stroke: Theme.color.goldBright, textColor: Theme.color.bgDeep, fontSize: 12 };
 
-        const btn = createButton('突 破', width - 24, 40, () => showToast(this.node, '该功能尚在筹备'), {
-            fill: Theme.color.goldBright, stroke: Theme.color.goldBright, textColor: Theme.color.bgDeep,
-        });
-        btn.setPosition(0, y0 - 160);
-        this.body.addChild(btn);
+        // 升星
+        const su = st.next_star_up;
+        if (su) {
+            const stones = this.materials['star_stone'] ?? 0;
+            const box = section(124, `升星 ★${st.star_level} → ★${st.star_level + 1}`, [
+                `银两 ${fmt(coins, su.coins)}`,
+                `万能星石 ${fmt(stones, su.star_stones)}　或　同名卡 ${fmt(st.duplicates_owned, su.duplicates)}`,
+            ]);
+            const a = createButton('星石升星', 120, 30, () => void this.act(() => GameApi.starUp(id, 'star_stone')), goldBtn);
+            a.setPosition(-70, -40);
+            box.addChild(a);
+            const b = createButton('同名卡升星', 120, 30, () => void this.act(() => GameApi.starUp(id, 'duplicate')), goldBtn);
+            b.setPosition(70, -40);
+            box.addChild(b);
+            setButtonEnabled(a, coins >= su.coins && stones >= su.star_stones);
+            setButtonEnabled(b, coins >= su.coins && st.duplicates_owned >= su.duplicates);
+        } else {
+            section(56, '升星 · 已达 ★5', []);
+        }
+
+        // 觉醒是突破的前置，未觉醒时这一段先显示觉醒；需求与后端 growth.awaken_card 一致
+        if (st.awaken_level < 1) {
+            const stones = this.materials['awaken_stone'] ?? 0;
+            const box = section(150, '觉醒 · 完成后开放突破', [
+                `前置：LV.${st.level}/50　★${st.star_level}/3`,
+                `觉醒石 ${fmt(stones, 50)}　同名卡 ${fmt(st.duplicates_owned, 1)}　银两 ${fmt(coins, 1_000_000)}`,
+            ]);
+            const btn = createButton('觉 醒', width - 24, 34, () => void this.act(() => GameApi.awaken(id)), goldBtn);
+            btn.setPosition(0, -150 / 2 + 26);
+            box.addChild(btn);
+            setButtonEnabled(btn, st.level >= 50 && st.star_level >= 3 && stones >= 50
+                && st.duplicates_owned >= 1 && coins >= 1_000_000);
+            return;
+        }
+
+        // 突破
+        const bt = st.next_breakthrough;
+        if (bt) {
+            const stones = this.materials['breakthrough_stone'] ?? 0;
+            const box = section(186, `突破 ${st.breakthrough_level} / 3 · 成功后等级上限 +20`, [
+                `前置：LV.${st.level}/${st.max_level}　★${st.star_level}/5　觉醒 ${st.awaken_level >= 1 ? '已完成' : '未完成'}`,
+                `突破石 ${fmt(stones, bt.breakthrough_stones)}　同名卡 ${fmt(st.duplicates_owned, bt.duplicates)}`,
+                `银两 ${fmt(coins, bt.coins)}`,
+            ]);
+            const btn = createButton('突 破', width - 24, 34, () => void this.act(() => GameApi.breakthrough(id)), goldBtn);
+            btn.setPosition(0, -186 / 2 + 26);
+            box.addChild(btn);
+            setButtonEnabled(btn, st.level >= st.max_level && st.star_level >= 5 && st.awaken_level >= 1
+                && stones >= bt.breakthrough_stones && st.duplicates_owned >= bt.duplicates && coins >= bt.coins);
+        } else {
+            section(56, '突破 · 已达最高（3 / 3）', []);
+        }
     }
 }
 
-export function openHeroDetail(host: Node, entry: RosterEntry): void {
+/**
+ * @param onChanged 升级 / 升星 / 装备等写操作成功后回调，供将台刷新顶栏资源与卡格
+ */
+export function openHeroDetail(host: Node, entry: RosterEntry, onChanged?: () => void): void {
     const node = createNode('HeroDetailModal', host.getComponent(UITransform)!.width, host.getComponent(UITransform)!.height);
     host.addChild(node);
-    node.addComponent(HeroDetailModalController).build(host, entry);
+    node.addComponent(HeroDetailModalController).build(host, entry, onChanged);
 }
 
 /** 供编伍等界面直接按 heroId 打开详情 */
