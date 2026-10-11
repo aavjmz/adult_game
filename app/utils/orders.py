@@ -10,7 +10,8 @@ from collections import defaultdict
 
 from sqlalchemy.exc import IntegrityError
 
-from app.models import db, Card, OrderClaim, Stage, UserActivity, UserCard, UserItem, UserStageProgress
+from app.models import db, Card, OrderClaim, Stage, UserActivity, UserCard, UserStageProgress
+from app.rewards import grant
 from app.orders_data import (
     ACT_CHECKIN, CHESTS, CHESTS_BY_STEP, DAILY_MERIT_MAX, ORDER_TABS, ORDERS, ORDERS_BY_KEY,
     game_today, period_of, season_name, season_start, week_start,
@@ -155,24 +156,6 @@ def _chest_key(step):
     return f'chest-{step}'
 
 
-def _grant(user, rewards):
-    for r in rewards:
-        kind, qty = r['kind'], r['quantity']
-        if kind == 'coins':
-            user.coins = (user.coins or 0) + qty
-        elif kind == 'gems':
-            user.gems = (user.gems or 0) + qty
-        elif kind == 'tickets':
-            user.tickets = (user.tickets or 0) + qty
-        elif kind == 'item':
-            row = UserItem.query.filter_by(
-                user_id=user.id, item_type=r['item_type'], item_subtype=r['item_subtype']).first()
-            if row is None:
-                row = UserItem(user_id=user.id, item_type=r['item_type'], item_subtype=r['item_subtype'], quantity=0)
-                db.session.add(row)
-            row.quantity = (row.quantity or 0) + qty
-
-
 def _commit_claims():
     """提交领取；并发重复领取撞唯一约束时回滚，返回 False"""
     try:
@@ -202,7 +185,7 @@ def claim(user, keys):
         db.session.add(OrderClaim(user_id=user.id, order_key=key, period=period_of(order['tab'], ctx.today),
                                   merit=order['merit'], day=ctx.today))
         ctx.claimed.add((key, period_of(order['tab'], ctx.today)))
-        _grant(user, order['rewards'])
+        grant(user, order['rewards'])
         claimed.append({'key': key, 'merit': order['merit'], 'rewards': order['rewards']})
 
     if not _commit_claims():
@@ -229,7 +212,7 @@ def open_chest(user, step):
         return None, f'军功未足 {step}'
 
     db.session.add(OrderClaim(user_id=user.id, order_key=_chest_key(step), period=period, merit=0, day=ctx.today))
-    _grant(user, chest['rewards'])
+    grant(user, chest['rewards'])
     if not _commit_claims():
         return None, '此箱已启'
     return chest['rewards'], None

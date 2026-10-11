@@ -6,7 +6,6 @@ import { showToast } from '../core/Toast';
 import { ImageSlot } from '../core/ImageSlot';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
-import { unreadMailCount } from '../mail/MailModal';
 import { createButton, createLabel, createNode, createProgressBar, drawPanel, withAlpha } from '../core/UIFactory';
 
 const { ccclass } = _decorator;
@@ -35,7 +34,6 @@ export class HubController extends Component {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.overlay, reason));
             return;
         }
-        this.topBar.setUnread(unreadMailCount());
     }
 
     private build(width: number, height: number): void {

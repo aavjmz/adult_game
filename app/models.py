@@ -400,6 +400,33 @@ class OrderClaim(db.Model):
         return f'<OrderClaim user={self.user_id} {self.order_key} {self.period}>'
 
 
+class Mail(db.Model):
+    """军书（站内信）：系统发给玩家的信件，可带附物
+
+    attachments 为 JSON 奖励列表，格式见 app/rewards.py；领取后 claimed_at 记时间。
+    玩家「弃书」只做软删除（deleted_at），便于追查补偿是否已领。
+    """
+    __tablename__ = 'mails'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    title = db.Column(db.String(100), nullable=False)
+    sender = db.Column(db.String(50), nullable=False, default='军 府')
+    body = db.Column(db.Text, nullable=False, default='')
+    attachments = db.Column(db.Text, nullable=False, default='[]')
+    is_read = db.Column(db.Boolean, nullable=False, default=False)
+    claimed_at = db.Column(db.DateTime)
+    deleted_at = db.Column(db.DateTime)
+    # 过期后不再显示、不可领取；为空表示永不过期
+    expires_at = db.Column(db.DateTime)
+    # 系统信的去重标记（如 welcome、chapter-1），同一玩家同一 tag 只发一次；手发的信为空
+    tag = db.Column(db.String(50), index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def __repr__(self):
+        return f'<Mail {self.id} user={self.user_id} {self.title}>'
+
+
 class EquipmentSet(db.Model):
     """套装配置表"""
     __tablename__ = 'equipment_sets'

@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 from app.models import db, Stage, UserCard, UserStageProgress, UserItem, Card, BattleRecord
 from app.utils.pve_battle import PVEBattle
 from app.utils.stamina import StaminaSystem
-from app.utils import orders
+from app.utils import mail, orders
 from app.orders_data import ACT_WIN
 import json
 import random
@@ -557,6 +557,7 @@ def settle_card_battle():
             current_user.main_stage_progress = max(
                 current_user.main_stage_progress, stage.stage_number
             )
+        mail.check_chapter_cleared(current_user.id, stage)
 
     # 更新统计
     current_user.total_pve_battles += 1

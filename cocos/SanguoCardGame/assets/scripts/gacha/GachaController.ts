@@ -6,7 +6,6 @@ import { showToast } from '../core/Toast';
 import { ImageSlot } from '../core/ImageSlot';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
-import { unreadMailCount } from '../mail/MailModal';
 import { GachaCardSlot } from './GachaCardSlot';
 import {
     createButton, createLabel, createModalBackdrop, createNode, createProgressBar,
@@ -52,7 +51,6 @@ export class GachaController extends Component {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.overlay, reason));
             return;
         }
-        this.topBar.setUnread(unreadMailCount());
         this.renderUser();
         this.loadRates();
     }

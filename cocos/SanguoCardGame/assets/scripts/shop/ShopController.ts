@@ -5,7 +5,6 @@ import { SceneNav } from '../core/SceneNav';
 import { showToast } from '../core/Toast';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
-import { unreadMailCount } from '../mail/MailModal';
 import { CURRENCY_COLOR, goodColor, goodMark } from './ShopData';
 import {
     createButton, createLabel, createNode, createScrollList, drawPanel, setButtonEnabled, withAlpha,
@@ -43,7 +42,6 @@ export class ShopController extends Component {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.node, reason));
             return;
         }
-        this.topBar.setUnread(unreadMailCount());
         this.renderPurses();
 
         const res = await GameApi.fetchShop();

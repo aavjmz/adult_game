@@ -4,9 +4,8 @@ import { SceneNav } from '../core/SceneNav';
 import { showToast } from '../core/Toast';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
-import { unreadMailCount } from '../mail/MailModal';
 import { GameApi, OrderData, OrdersState } from '../core/GameApi';
-import { rewardText } from './OrdersData';
+import { rewardText } from '../core/ItemNames';
 import {
     createButton, createLabel, createNode, createProgressBar, createScrollList,
     drawPanel, setProgressRatio, withAlpha,
@@ -62,7 +61,6 @@ export class OrdersController extends Component {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.node, reason));
             return;
         }
-        this.topBar.setUnread(unreadMailCount());
 
         const res = await GameApi.fetchOrders();
         if (!this.isValid) return;

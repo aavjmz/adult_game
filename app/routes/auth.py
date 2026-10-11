@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models import db, User
+from app.mail_data import WELCOME
+from app.utils.mail import send_template
 from app.utils.orders import mark_checkin
 from config import Config
 
@@ -45,6 +47,8 @@ def register():
         user.set_password(password)
 
         db.session.add(user)
+        db.session.flush()
+        send_template(user.id, WELCOME)
         db.session.commit()
 
         flash('注册成功！请登录', 'success')

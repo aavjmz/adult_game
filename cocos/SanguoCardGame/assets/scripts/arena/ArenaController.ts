@@ -4,7 +4,6 @@ import { SceneNav } from '../core/SceneNav';
 import { showToast } from '../core/Toast';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
-import { unreadMailCount } from '../mail/MailModal';
 import { MockStore } from '../core/MockStore';
 import { formationPower, loadFormation, loadRoster } from '../roster/RosterData';
 import { ARENA_POOL, ArenaFoe, TIER_COLOR, tierOf } from './ArenaData';
@@ -48,7 +47,6 @@ export class ArenaController extends Component {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.node, reason));
             return;
         }
-        this.topBar.setUnread(unreadMailCount());
 
         const roster = await loadRoster();
         if (!this.isValid) return;

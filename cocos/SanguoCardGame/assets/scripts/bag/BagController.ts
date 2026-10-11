@@ -4,7 +4,6 @@ import { SceneNav } from '../core/SceneNav';
 import { showToast } from '../core/Toast';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
-import { unreadMailCount } from '../mail/MailModal';
 import { EquipmentTemplateData, GameApi } from '../core/GameApi';
 import { BAG_TABS, BagEntry, buildBag, isFragment, QUALITY_NAME, TIER_COLOR, TIER_NAME } from './BagData';
 import {
@@ -52,7 +51,6 @@ export class BagController extends Component {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.node, reason));
             return;
         }
-        this.topBar.setUnread(unreadMailCount());
         await this.reload();
     }
 

@@ -18,7 +18,8 @@ from flask import Blueprint, jsonify, request, g
 
 from app.models import db, User, Card, UserCard, ApiToken, Stage, UserStageProgress, UserItem
 from app.skills import skill_profile
-from app.utils import orders
+from app.mail_data import WELCOME
+from app.utils import mail, orders
 from app.orders_data import ACT_GACHA, ACT_GACHA_MULTI, ACT_SHOP, ACT_WIN
 from app.utils.stamina import StaminaSystem
 from config import Config
@@ -146,6 +147,7 @@ def register():
     user.set_password(password)
     db.session.add(user)
     db.session.flush()  # 取得user.id用于签发令牌
+    mail.send_template(user.id, WELCOME)
 
     token = ApiToken.generate(user, device)
     db.session.commit()
@@ -198,7 +200,8 @@ def logout():
 def user_info():
     """获取当前用户资源；客户端每次启动都会调，顺带记当日点卯"""
     orders.mark_checkin(g.current_user.id)
-    return ok(_user_payload(g.current_user))
+    # 未读军书数只在这里带上，顶栏据此显示角标
+    return ok(dict(_user_payload(g.current_user), unread_mail=mail.unread_count(g.current_user.id)))
 
 
 @bp.route('/cards/mine', methods=['GET'])
@@ -813,6 +816,72 @@ def orders_chest():
     if err:
         return fail(err)
     return ok({'rewards': rewards, 'state': orders.orders_state(user), 'user': _user_payload(user)})
+
+
+# ============ 军书 ============
+#
+# 发信与信件内容见 app/utils/mail.py、app/mail_data.py；运维补偿用 send_mail.py。
+# 写操作都返回最新的整页数据（state），客户端直接重绘。
+
+def _mail_ids(body, all_ids):
+    """请求里的 {"id": 1} 或 {"all": true}；返回 id 列表，参数不对返回 None"""
+    if body.get('all') is True:
+        return all_ids()
+    mail_id = body.get('id')
+    if isinstance(mail_id, int) and not isinstance(mail_id, bool):
+        return [mail_id]
+    return None
+
+
+@bp.route('/mail', methods=['GET'])
+@token_required
+def mail_list():
+    """军书列表（新的在前，最多 100 封）与未读数"""
+    return ok(mail.mail_state(g.current_user.id))
+
+
+@bp.route('/mail/read', methods=['POST'])
+@token_required
+def mail_read():
+    """标记已读：{"id": 1}"""
+    err = mail.mark_read(g.current_user.id, _json_body().get('id'))
+    if err:
+        return fail(err, 404)
+    return ok(mail.mail_state(g.current_user.id))
+
+
+@bp.route('/mail/claim', methods=['POST'])
+@token_required
+def mail_claim():
+    """领取附物：{"id": 1} 一封，或 {"all": true} 一键领取全部"""
+    user = g.current_user
+    body = _json_body()
+    ids = _mail_ids(body, lambda: mail.claimable_ids(user.id))
+    if ids is None:
+        return fail('请指定 id 或 all')
+    if body.get('id') is not None and mail.get_mail(user.id, ids[0]) is None:
+        return fail('军书不存在', 404)
+
+    rewards, count = mail.claim(user, ids)
+    if not count:
+        return fail('无附物可领')
+    return ok({'rewards': rewards, 'count': count, 'state': mail.mail_state(user.id), 'user': _user_payload(user)})
+
+
+@bp.route('/mail/delete', methods=['POST'])
+@token_required
+def mail_delete():
+    """弃书：{"id": 1} 一封，或 {"all": true} 清掉全部已阅且无未领附物的信"""
+    user_id = g.current_user.id
+    ids = _mail_ids(_json_body(), lambda: mail.read_ids(user_id))
+    if ids is None:
+        return fail('请指定 id 或 all')
+    count, err = mail.delete(user_id, ids)
+    if err:
+        return fail(err)
+    if not count:
+        return fail('无已阅之书可清')
+    return ok({'count': count, 'state': mail.mail_state(user_id)})
 
 
 # ============ 成长 / 装备 ============

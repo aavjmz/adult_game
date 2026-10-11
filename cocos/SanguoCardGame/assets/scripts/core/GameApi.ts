@@ -14,6 +14,8 @@ export interface UserInfo {
     main_stage_progress: number;
     sr_pity_count: number;
     ssr_pity_count: number;
+    /** 未读军书数，只有 /user/info 返回 */
+    unread_mail?: number;
 }
 
 /** 卡牌数据 */
@@ -269,8 +271,8 @@ export interface ShopGood {
     remaining: number;
 }
 
-/** 军令奖励，对应后端 app/orders_data.py：kind 为 coins 银两 / gems 元宝 / tickets 招贤令 / item 背包道具 */
-export interface OrderReward {
+/** 奖励（军令、军书附物共用），对应后端 app/rewards.py：kind 为 coins 银两 / gems 元宝 / tickets 招贤令 / item 背包道具 */
+export interface Reward {
     kind: 'coins' | 'gems' | 'tickets' | 'item';
     quantity: number;
     item_type: string | null;
@@ -287,7 +289,7 @@ export interface OrderData {
     target: number;
     /** 领取得到的军功（成就、通行证为 0） */
     merit: number;
-    rewards: OrderReward[];
+    rewards: Reward[];
     claimed: boolean;
     /** 已完成且未领 */
     ready: boolean;
@@ -298,10 +300,27 @@ export interface OrdersState {
     tabs: string[];
     orders: OrderData[];
     /** 今日军功（日常领取所得）与军功宝箱 */
-    merit: { today: number; max: number; chests: Array<{ step: number; rewards: OrderReward[]; claimed: boolean; ready: boolean }> };
+    merit: { today: number; max: number; chests: Array<{ step: number; rewards: Reward[]; claimed: boolean; ready: boolean }> };
     /** 本季（本月）通行证：累计军功、点卯天数 */
     season: { name: string; merit: number; checkin_days: number };
 }
+
+/** 一封军书；attachments 为附物，claimed 表示已领 */
+export interface MailData {
+    id: number;
+    title: string;
+    sender: string;
+    body: string;
+    attachments: Reward[];
+    is_read: boolean;
+    claimed: boolean;
+    /** ISO 时间（UTC） */
+    created_at: string | null;
+    expires_at: string | null;
+}
+
+/** /mail 返回的整页数据：新的在前 */
+export interface MailState { mails: MailData[]; unread: number }
 
 /** 成长 / 装备写操作的公共返回：后端会附上最新 user */
 interface WithUser { user: UserInfo; message?: string }
@@ -532,13 +551,33 @@ export class GameApi {
 
     /** 领取一道军令（key）或一键领取某类全部可领（tab） */
     static async claimOrders(target: { key: string } | { tab: string }): Promise<ApiResult<WithUser & {
-        claimed: Array<{ key: string; merit: number; rewards: OrderReward[] }>; state: OrdersState;
+        claimed: Array<{ key: string; merit: number; rewards: Reward[] }>; state: OrdersState;
     }>> {
         return this.postWithUser('/orders/claim', target);
     }
 
-    static async openOrderChest(step: number): Promise<ApiResult<WithUser & { rewards: OrderReward[]; state: OrdersState }>> {
+    static async openOrderChest(step: number): Promise<ApiResult<WithUser & { rewards: Reward[]; state: OrdersState }>> {
         return this.postWithUser('/orders/chest', { step });
+    }
+
+    // ============ 军书 ============
+
+    static async fetchMail(): Promise<ApiResult<MailState>> {
+        return Http.get('/mail');
+    }
+
+    static async readMail(id: number): Promise<ApiResult<MailState>> {
+        return Http.post('/mail/read', { id });
+    }
+
+    /** 领取附物：一封（id）或一键全部（all） */
+    static async claimMail(target: { id: number } | { all: true }): Promise<ApiResult<WithUser & { rewards: Reward[]; count: number; state: MailState }>> {
+        return this.postWithUser('/mail/claim', target);
+    }
+
+    /** 弃书：一封（id）或清掉全部已阅（all） */
+    static async deleteMail(target: { id: number } | { all: true }): Promise<ApiResult<{ count: number; state: MailState }>> {
+        return Http.post('/mail/delete', target);
     }
 
     // ============ 内部 ============

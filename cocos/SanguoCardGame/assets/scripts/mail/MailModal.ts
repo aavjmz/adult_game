@@ -1,12 +1,12 @@
 import { _decorator, Color, Component, Label, Node, UITransform, Vec2 } from 'cc';
 import { Theme } from '../core/UiTheme';
-import { MockStore } from '../core/MockStore';
+import { GameApi, MailData, MailState, UserInfo } from '../core/GameApi';
+import { rewardName, rewardText } from '../core/ItemNames';
 import { showToast } from '../core/Toast';
 import {
     createButton, createLabel, createModalBackdrop, createNode, createScrollList,
     drawPanel, labelOf, setButtonEnabled, withAlpha,
 } from '../core/UIFactory';
-import { MAIL_ALL, MailItem } from './MailData';
 
 const { ccclass } = _decorator;
 
@@ -14,6 +14,18 @@ const PANEL_W = 880;
 const PANEL_H = 560;
 const LIST_W = 302;
 
+/** 附物颜色：货币按顶栏胶囊配色，道具统一淡蓝 */
+const LOOT_COLOR: Record<string, Color> = {
+    coins: new Color(200, 189, 166, 255),
+    gems: new Color(224, 182, 74, 255),
+    tickets: new Color(160, 111, 216, 255),
+    item: new Color(91, 155, 213, 255),
+};
+
+/**
+ * 军书弹层：信件来自后端 /api/v1/mail（欢迎信、平定整章的赏赐、运维用 send_mail.py 发的补偿与公告）。
+ * 阅读、领取附物、弃书都走接口，后端返回整页最新数据后重绘。
+ */
 @ccclass('MailModal')
 class MailModalController extends Component {
     private list: Node = null!;
@@ -25,8 +37,14 @@ class MailModalController extends Component {
     private takeBtn: Node = null!;
     private unreadLabel: Label = null!;
     private selected = -1;
+    private state: MailState = { mails: [], unread: 0 };
+    private busy = false;
+    private onUnread: ((unread: number) => void) | null = null;
+    private onUser: ((user: UserInfo) => void) | null = null;
 
-    build(host: Node): void {
+    build(host: Node, onUnread?: (unread: number) => void, onUser?: (user: UserInfo) => void): void {
+        this.onUnread = onUnread ?? null;
+        this.onUser = onUser ?? null;
         const backdrop = createModalBackdrop(
             host.getComponent(UITransform)!.width,
             host.getComponent(UITransform)!.height,
@@ -42,6 +60,25 @@ class MailModalController extends Component {
         this.buildListSide(panel);
         this.buildDetailSide(panel);
 
+        this.refresh();
+        this.load();
+    }
+
+    private async load(): Promise<void> {
+        this.unreadLabel.string = '启封中…';
+        const res = await GameApi.fetchMail();
+        if (!this.isValid) return;
+        if (!res.success || !res.data) {
+            showToast(this.node, res.error || '军书加载失败');
+            return;
+        }
+        this.apply(res.data);
+    }
+
+    /** 接口返回的最新数据：重绘并同步顶栏角标 */
+    private apply(state: MailState): void {
+        this.state = state;
+        this.onUnread?.(state.unread);
         this.refresh();
     }
 
@@ -136,23 +173,15 @@ class MailModalController extends Component {
         side.addChild(this.takeBtn);
     }
 
-    private mails(): MailItem[] {
-        const s = MockStore.state;
-        return MAIL_ALL.filter((m) => !s.mailGone.includes(m.id));
-    }
-
     private refresh(): void {
-        const s = MockStore.state;
-        const mails = this.mails();
+        const mails = this.state.mails;
         if (this.selected < 0 || !mails.some((m) => m.id === this.selected)) {
             this.selected = mails[0]?.id ?? -1;
         }
-        const unreadN = mails.filter((m) => !s.mailRead.includes(m.id)).length;
-        this.unreadLabel.string = `未启 ${unreadN} 封`;
+        this.unreadLabel.string = `未启 ${this.state.unread} 封`;
 
         this.list.removeAllChildren();
         for (const m of mails) {
-            const read = s.mailRead.includes(m.id);
             const row = createNode('Row', LIST_W, 58);
             drawPanel(row, {
                 fill: m.id === this.selected ? withAlpha(Theme.color.gold, 26) : Theme.color.panel,
@@ -160,72 +189,80 @@ class MailModalController extends Component {
             });
             const title = createLabel(m.title, {
                 fontSize: 12, width: LIST_W - 60, align: Label.HorizontalAlign.LEFT,
-                color: read ? Theme.color.textMuted : Theme.color.text,
+                color: m.is_read ? Theme.color.textMuted : Theme.color.text,
             });
             title.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
             title.setPosition(-LIST_W / 2 + 14, 9);
             row.addChild(title);
 
-            if (m.loot.length && !s.mailTaken.includes(m.id)) {
+            if (hasLoot(m)) {
                 const tag = createLabel('附物', { fontSize: 9, color: Theme.color.goldBright, width: 40 });
                 tag.setPosition(LIST_W / 2 - 24, 9);
                 row.addChild(tag);
             }
 
-            const meta = createLabel(`${m.from}   ${m.time}`, {
+            const meta = createLabel(`${m.sender}   ${timeAgo(m.created_at)}`, {
                 fontSize: 9, color: Theme.color.textDisabled, width: LIST_W - 28, align: Label.HorizontalAlign.LEFT,
             });
             meta.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
             meta.setPosition(-LIST_W / 2 + 14, -12);
             row.addChild(meta);
 
-            row.on(Node.EventType.TOUCH_END, () => {
-                this.selected = m.id;
-                if (!s.mailRead.includes(m.id)) { s.mailRead.push(m.id); MockStore.save(); }
-                this.refresh();
-            });
+            row.on(Node.EventType.TOUCH_END, () => this.select(m));
             this.list.addChild(row);
         }
 
-        const anyLoot = mails.some((m) => m.loot.length && !s.mailTaken.includes(m.id));
-        setButtonEnabled(this.takeAllBtn, anyLoot);
-
+        setButtonEnabled(this.takeAllBtn, mails.some(hasLoot));
         this.showDetail(mails.find((m) => m.id === this.selected) ?? null);
     }
 
-    private showDetail(mail: MailItem | null): void {
-        const s = MockStore.state;
+    private select(mail: MailData): void {
+        this.selected = mail.id;
+        this.refresh();
+        if (!mail.is_read) this.markRead(mail.id);
+    }
+
+    private async markRead(id: number): Promise<void> {
+        const res = await GameApi.readMail(id);
+        if (!this.isValid) return;
+        if (res.success && res.data) this.apply(res.data);
+    }
+
+    private showDetail(mail: MailData | null): void {
         if (!mail) {
             this.titleLabel.string = '无 书';
             this.fromLabel.string = '—';
             this.bodyLabel.string = '军书已尽，帐中清静。';
             this.lootHost.removeAllChildren();
+            labelOf(this.takeBtn.children[0]).string = '领 取 附 物';
+            setButtonEnabled(this.takeBtn, false);
             return;
         }
         this.titleLabel.string = mail.title;
-        this.fromLabel.string = `${mail.from} · ${mail.time}`;
-        this.bodyLabel.string = mail.body;
+        const expires = mail.expires_at ? ` · ${expireText(mail.expires_at)}` : '';
+        this.fromLabel.string = `${mail.sender} · ${timeAgo(mail.created_at)}${expires}`;
+        this.bodyLabel.string = mail.body || '（无正文）';
 
         this.lootHost.removeAllChildren();
-        const taken = s.mailTaken.includes(mail.id);
         let x = 0;
-        for (const l of mail.loot) {
+        for (const r of mail.attachments) {
             const chip = createNode('Loot', 96, 26);
             chip.setPosition(x + 48, -13);
             drawPanel(chip, { fill: Theme.color.panelSunken, stroke: Theme.color.divider, lineWidth: 1, radius: 3 });
-            const lbl = createLabel(`${l.name}×${l.qty}`, { fontSize: 10, color: l.color, width: 88 });
+            const color = mail.claimed ? Theme.color.textDisabled : LOOT_COLOR[r.kind] ?? Theme.color.text;
+            const lbl = createLabel(`${rewardName(r)}×${r.quantity.toLocaleString()}`, { fontSize: 10, color, width: 88 });
             chip.addChild(lbl);
             this.lootHost.addChild(chip);
             x += 100;
         }
 
         const btnLabel = labelOf(this.takeBtn.children[0]);
-        if (!mail.loot.length) {
+        if (!mail.attachments.length) {
             btnLabel.string = '阅 毕 · 弃 书';
             setButtonEnabled(this.takeBtn, true);
-        } else if (taken) {
-            btnLabel.string = '已 领 取';
-            setButtonEnabled(this.takeBtn, false);
+        } else if (mail.claimed) {
+            btnLabel.string = '已 领 · 弃 书';
+            setButtonEnabled(this.takeBtn, true);
         } else {
             btnLabel.string = '领 取 附 物';
             setButtonEnabled(this.takeBtn, true);
@@ -233,59 +270,85 @@ class MailModalController extends Component {
     }
 
     private takeCurrent(): void {
-        const s = MockStore.state;
-        const mail = this.mails().find((m) => m.id === this.selected);
+        const mail = this.state.mails.find((m) => m.id === this.selected);
         if (!mail) return;
-
-        if (!mail.loot.length) {
-            s.mailGone.push(mail.id);
-            MockStore.save();
-            showToast(this.node, '已弃此书');
-            this.refresh();
-            return;
+        if (hasLoot(mail)) {
+            this.claim({ id: mail.id });
+        } else {
+            this.remove({ id: mail.id }, '已弃此书');
         }
-        if (s.mailTaken.includes(mail.id)) return;
-
-        s.mailTaken.push(mail.id);
-        if (!s.mailRead.includes(mail.id)) s.mailRead.push(mail.id);
-        MockStore.save();
-        showToast(this.node, '附物已入库');
-        this.refresh();
     }
 
     private takeAll(): void {
-        const s = MockStore.state;
-        const ids = this.mails().filter((m) => m.loot.length && !s.mailTaken.includes(m.id)).map((m) => m.id);
-        if (!ids.length) { showToast(this.node, '无附物可领'); return; }
-        s.mailTaken.push(...ids);
-        ids.forEach((id) => { if (!s.mailRead.includes(id)) s.mailRead.push(id); });
-        MockStore.save();
-        showToast(this.node, `已领 ${ids.length} 封附物`);
-        this.refresh();
+        if (!this.state.mails.some(hasLoot)) { showToast(this.node, '无附物可领'); return; }
+        this.claim({ all: true });
     }
 
     private sweep(): void {
-        const s = MockStore.state;
-        const ids = this.mails()
-            .filter((m) => s.mailRead.includes(m.id) && (!m.loot.length || s.mailTaken.includes(m.id)))
-            .map((m) => m.id);
-        if (!ids.length) { showToast(this.node, '无已阅之书可清'); return; }
-        s.mailGone.push(...ids);
-        MockStore.save();
-        showToast(this.node, `已清 ${ids.length} 封`);
-        this.refresh();
+        this.remove({ all: true });
+    }
+
+    private async claim(target: { id: number } | { all: true }): Promise<void> {
+        if (this.busy) return;
+        this.busy = true;
+        const res = await GameApi.claimMail(target);
+        if (!this.isValid) return;
+        this.busy = false;
+        if (!res.success || !res.data) {
+            showToast(this.node, res.error || '领取失败');
+            return;
+        }
+        this.onUser?.(res.data.user);
+        this.apply(res.data.state);
+        const head = res.data.count > 1 ? `已领 ${res.data.count} 封附物` : '附物已入库';
+        showToast(this.node, `${head} · ${rewardText(res.data.rewards)}`);
+    }
+
+    private async remove(target: { id: number } | { all: true }, done?: string): Promise<void> {
+        if (this.busy) return;
+        this.busy = true;
+        const res = await GameApi.deleteMail(target);
+        if (!this.isValid) return;
+        this.busy = false;
+        if (!res.success || !res.data) {
+            showToast(this.node, res.error || '操作失败');
+            return;
+        }
+        this.apply(res.data.state);
+        showToast(this.node, done ?? `已清 ${res.data.count} 封`);
     }
 }
 
-/** 军书弹层入口，由 TopBar 的「书」按钮调用 */
-export function openMailModal(host: Node): void {
-    const node = createNode('MailModal', host.getComponent(UITransform)!.width, host.getComponent(UITransform)!.height);
-    host.addChild(node);
-    node.addComponent(MailModalController).build(host);
+function hasLoot(m: MailData): boolean {
+    return m.attachments.length > 0 && !m.claimed;
 }
 
-/** 当前未读数，供 TopBar 显示角标 */
-export function unreadMailCount(): number {
-    const s = MockStore.state;
-    return MAIL_ALL.filter((m) => !s.mailGone.includes(m.id) && !s.mailRead.includes(m.id)).length;
+/** 发信时间：刚刚 / N 刻前 / N 时前 / 昨日 / N 日前 */
+function timeAgo(iso: string | null): string {
+    if (!iso) return '';
+    const mins = Math.max(0, (Date.now() - Date.parse(iso)) / 60000);
+    if (mins < 15) return '刚刚';
+    if (mins < 60) return `${Math.floor(mins / 15)} 刻前`;
+    const hours = mins / 60;
+    if (hours < 24) return `${Math.floor(hours)} 时前`;
+    const days = Math.floor(hours / 24);
+    return days === 1 ? '昨日' : `${days} 日前`;
+}
+
+/** 过期提示：剩余天数，不足一日按时辰 */
+function expireText(iso: string): string {
+    const hours = (Date.parse(iso) - Date.now()) / 3600000;
+    if (hours <= 0) return '已过期';
+    return hours < 24 ? `${Math.ceil(hours)} 时后过期` : `${Math.ceil(hours / 24)} 日后过期`;
+}
+
+/**
+ * 军书弹层入口，由 TopBar 的「书」按钮调用
+ * @param onUnread 未读数变化时回调，顶栏据此更新角标
+ * @param onUser 领取附物后回调最新资源，顶栏据此刷新银两 / 元宝
+ */
+export function openMailModal(host: Node, onUnread?: (unread: number) => void, onUser?: (user: UserInfo) => void): void {
+    const node = createNode('MailModal', host.getComponent(UITransform)!.width, host.getComponent(UITransform)!.height);
+    host.addChild(node);
+    node.addComponent(MailModalController).build(host, onUnread, onUser);
 }

@@ -15,6 +15,8 @@
 """
 from datetime import datetime, timedelta
 
+from app.rewards import coins, gems, item, tickets
+
 # ============ 行为计数 key（UserActivity.key） ============
 
 ACT_BATTLE = 'battle'          # 出征或扫荡一次（每扣一次关卡体力记一次）
@@ -26,30 +28,6 @@ ACT_SKILL_UP = 'skill_up'      # 技能升级
 ACT_STAR_UP = 'star_up'        # 升星或突破
 ACT_SHOP = 'shop'              # 市集购买
 ACT_CHECKIN = 'checkin'        # 当日登入（点卯）
-
-# ============ 奖励 ============
-
-
-def _r(kind, quantity, item_type=None, subtype=None):
-    """kind: coins 银两 / gems 元宝 / tickets 招贤令 / item 背包道具"""
-    return {'kind': kind, 'quantity': quantity, 'item_type': item_type, 'item_subtype': subtype}
-
-
-def coins(n):
-    return _r('coins', n)
-
-
-def gems(n):
-    return _r('gems', n)
-
-
-def tickets(n):
-    return _r('tickets', n)
-
-
-def item(item_type, n, subtype=None):
-    return _r('item', n, item_type, subtype)
-
 
 # ============ 军令 ============
 
