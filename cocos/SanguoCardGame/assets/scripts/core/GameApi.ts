@@ -322,6 +322,94 @@ export interface MailData {
 /** /mail 返回的整页数据：新的在前 */
 export interface MailState { mails: MailData[]; unread: number }
 
+/** 军演对手：真人（打其最新编伍）或电脑阵容 */
+export interface ArenaFoe {
+    kind: 'player' | 'npc';
+    name: string;
+    /** 主将（阵中第一员） */
+    lead: string;
+    score: number;
+    tier: string;
+    power: number;
+    /** 按双方战力估算的胜算（%），实际胜负以服务端战斗为准 */
+    odds: number;
+    /** 本批已挑战过 */
+    fought: boolean;
+    /** 对手阵容为空（真人撤阵）时不可挑战 */
+    available: boolean;
+}
+
+/** 军演战报：defense 为别人来挑战我（防守）；win、delta 均为我方视角 */
+export interface ArenaLog { defense: boolean; foe: string; win: boolean; delta: number; created_at: string | null }
+
+/** /arena 返回的整页数据 */
+export interface ArenaState {
+    score: number;
+    rank: number;
+    best_rank: number | null;
+    tier: string;
+    wins: number;
+    losses: number;
+    today: { wins: number; losses: number };
+    streak: number;
+    tickets: { left: number; max: number };
+    /** 我军（编伍阵容）战力 */
+    power: number;
+    foes: ArenaFoe[];
+    logs: ArenaLog[];
+    tier_reward: { tier: string; rewards: Reward[]; claimed: boolean };
+    tiers: Array<{ name: string; min_score: number }>;
+    win_rewards: Reward[];
+}
+
+/** 一场军演的结果 */
+export interface ArenaResult { win: boolean; delta: number; score: number; rank: number; foe: string; rewards: Reward[]; rounds: number }
+
+/** 盟列表里的一个盟 */
+export interface GuildBrief {
+    id: number;
+    name: string;
+    motto: string;
+    level: number;
+    members: number;
+    max_members: number;
+    leader: string;
+}
+
+export interface GuildMemberData {
+    user_id: number;
+    name: string;
+    role: string;
+    total_contribution: number;
+    week_contribution: number;
+    online: boolean;
+}
+
+/** 盟仓里的一件：用盟功兑换，每日限换 */
+export interface GuildWare { key: string; name: string; cost: number; daily_limit: number; bought: number; reward: Reward }
+
+/** /guild 返回的整页数据：guild 为 null 时未入盟，只有 guilds 列表与建盟条件 */
+export interface GuildState {
+    guild: (GuildBrief & { exp: number; next_exp: number | null; rank: number; week_contribution: number }) | null;
+    guilds?: GuildBrief[];
+    create_cost?: number;
+    name_len?: [number, number];
+    motto_max?: number;
+    me?: { role: string; contribution: number; total_contribution: number; is_leader: boolean };
+    members?: GuildMemberData[];
+    donate?: { used: number; max: number; cost: number; contribution: number; exp: number };
+    order?: { progress: number; target: number; rewards: Reward[]; claimed: boolean };
+    warehouse?: GuildWare[];
+    roles?: string[];
+}
+
+export type ChatChannel = 'guild' | 'world';
+
+export interface ChatMessage { id: number; name: string; badge: string; text: string; mine: boolean; created_at: string | null }
+
+/** 盟的写操作统一返回：最新整页数据 + user，兑换 / 盟令另带 rewards */
+type GuildWrite = WithUser & { state: GuildState; rewards?: Reward[] };
+
 /** 成长 / 装备写操作的公共返回：后端会附上最新 user */
 interface WithUser { user: UserInfo; message?: string }
 
@@ -578,6 +666,75 @@ export class GameApi {
     /** 弃书：一封（id）或清掉全部已阅（all） */
     static async deleteMail(target: { id: number } | { all: true }): Promise<ApiResult<{ count: number; state: MailState }>> {
         return Http.post('/mail/delete', target);
+    }
+
+    // ============ 军演 ============
+
+    static async fetchArena(): Promise<ApiResult<ArenaState>> {
+        return Http.get('/arena');
+    }
+
+    /** 换一批对手 */
+    static async refreshArena(): Promise<ApiResult<ArenaState>> {
+        return Http.post('/arena/refresh', {});
+    }
+
+    /** 挑战本批第 index 名对手，消耗一张演券 */
+    static async fightArena(index: number): Promise<ApiResult<WithUser & { result: ArenaResult; state: ArenaState }>> {
+        return this.postWithUser('/arena/fight', { index });
+    }
+
+    /** 领取今日段位之赏 */
+    static async claimArenaReward(): Promise<ApiResult<WithUser & { rewards: Reward[]; state: ArenaState }>> {
+        return this.postWithUser('/arena/reward', {});
+    }
+
+    // ============ 盟 ============
+
+    static async fetchGuild(): Promise<ApiResult<GuildState>> {
+        return Http.get('/guild');
+    }
+
+    static async createGuild(name: string, motto: string): Promise<ApiResult<GuildWrite>> {
+        return this.postWithUser('/guild/create', { name, motto });
+    }
+
+    static async joinGuild(guildId: number): Promise<ApiResult<GuildWrite>> {
+        return this.postWithUser('/guild/join', { guild_id: guildId });
+    }
+
+    /** 离盟；盟主离盟自动传位，只剩自己则解散 */
+    static async leaveGuild(): Promise<ApiResult<GuildWrite>> {
+        return this.postWithUser('/guild/leave', {});
+    }
+
+    /** 盟主任命；role 为「盟主」即让位 */
+    static async setGuildRole(userId: number, role: string): Promise<ApiResult<GuildWrite>> {
+        return this.postWithUser('/guild/role', { user_id: userId, role });
+    }
+
+    static async kickGuildMember(userId: number): Promise<ApiResult<GuildWrite>> {
+        return this.postWithUser('/guild/kick', { user_id: userId });
+    }
+
+    static async donateGuild(): Promise<ApiResult<GuildWrite>> {
+        return this.postWithUser('/guild/donate', {});
+    }
+
+    static async claimGuildOrder(): Promise<ApiResult<GuildWrite>> {
+        return this.postWithUser('/guild/order', {});
+    }
+
+    static async exchangeGuildWare(key: string): Promise<ApiResult<GuildWrite>> {
+        return this.postWithUser('/guild/exchange', { key });
+    }
+
+    static async fetchChat(channel: ChatChannel): Promise<ApiResult<{ messages: ChatMessage[] }>> {
+        return Http.get(`/guild/chat?channel=${channel}`);
+    }
+
+    static async sendChat(channel: ChatChannel, text: string): Promise<ApiResult<{ messages: ChatMessage[] }>> {
+        return Http.post('/guild/chat', { channel, text });
     }
 
     // ============ 内部 ============
