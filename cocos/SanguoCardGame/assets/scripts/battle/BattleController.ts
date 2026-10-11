@@ -5,8 +5,7 @@ import { BattleLogEntry, BattleResult, GameApi } from '../core/GameApi';
 import { BattleContext } from '../core/BattleContext';
 import { SceneNav } from '../core/SceneNav';
 import { showToast } from '../core/Toast';
-import { MockStore } from '../core/MockStore';
-import { formationUserCardIds, loadRoster } from '../roster/RosterData';
+import { formationUserCardIds, loadFormation, loadRoster } from '../roster/RosterData';
 import { BattleUnitView } from './BattleUnitView';
 import {
     createButton, createLabel, createModalBackdrop, createNode, createScrollList,
@@ -66,7 +65,9 @@ export class BattleController extends Component {
 
         const roster = await loadRoster();
         if (!this.isValid) return;
-        this.teamIds = formationUserCardIds(roster, MockStore.state.field);
+        const field = await loadFormation(roster);
+        if (!this.isValid) return;
+        this.teamIds = formationUserCardIds(roster, field);
         if (!this.teamIds.length) {
             showToast(this.overlay, '阵中无人，先去编伍点将');
             this.scheduleOnce(() => SceneNav.go(SceneNav.FORMATION), 1.6);

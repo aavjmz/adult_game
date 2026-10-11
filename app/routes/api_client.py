@@ -433,7 +433,7 @@ def _unit_payload(unit):
 def pve_battle_start():
     """出征：整场战斗在服务端一次算完，返回战报供客户端回放
 
-    请求：{"stage_id": 1, "team": [UserCard id, ...]}
+    请求：{"stage_id": 1, "team": [UserCard id, ...]}；不传 team 时用服务端编伍阵容
 
     客户端的战斗界面是「回放服务端算好的 battle_log」，不是逐回合发指令——
     PVEBattle 的设计就是一次跑完，要做成手动出招得先改战斗引擎。
@@ -442,7 +442,11 @@ def pve_battle_start():
 
     body = _json_body()
     stage_id = body.get('stage_id')
-    team_ids = body.get('team') or []
+    team_ids = body.get('team')
+    if team_ids is None:
+        # 不传 team 时用服务端保存的编伍阵容
+        team_ids = [s for s in _load_formation(g.current_user.id) if s is not None]
+    team_ids = team_ids or []
 
     stage = Stage.query.get(stage_id)
     if not stage:
@@ -491,6 +495,67 @@ def pve_battle_start():
         'battle_log': result.get('battle_log', []),
         'user': _user_payload(user),
     })
+
+
+# ============ 编伍 ============
+#
+# 阵容存服务端（UserFormation），六个阵位各放一张玩家自己的 UserCard。
+# 出征不传 team 时默认用这里的阵容。
+
+FORMATION_SIZE = 6
+
+
+def _load_formation(user_id):
+    """读取阵容，剔除已不属于该玩家的卡；返回长度 6 的 [UserCard.id | None]"""
+    from app.models import UserFormation
+    row = db.session.get(UserFormation, user_id)
+    try:
+        slots = json.loads(row.slots) if row else []
+    except (TypeError, ValueError):
+        slots = []
+    slots = (list(slots) + [None] * FORMATION_SIZE)[:FORMATION_SIZE]
+
+    ids = [s for s in slots if s is not None]
+    owned = {uc.id for uc in UserCard.query.filter(UserCard.user_id == user_id, UserCard.id.in_(ids)).all()} if ids else set()
+    return [s if s in owned else None for s in slots]
+
+
+@bp.route('/formation', methods=['GET'])
+@token_required
+def formation_get():
+    """当前阵容：{"slots": [UserCard.id | null] × 6}"""
+    return ok({'slots': _load_formation(g.current_user.id)})
+
+
+@bp.route('/formation', methods=['POST'])
+@token_required
+def formation_save():
+    """保存阵容：{"slots": [UserCard.id | null] × 6}；卡须属于本人且不重复"""
+    from app.models import UserFormation
+
+    slots = _json_body().get('slots')
+    if not isinstance(slots, list) or len(slots) != FORMATION_SIZE:
+        return fail(f'阵容须为 {FORMATION_SIZE} 个阵位')
+    if any(s is not None and (not isinstance(s, int) or isinstance(s, bool)) for s in slots):
+        return fail('阵位只能填卡牌 id 或留空')
+
+    ids = [s for s in slots if s is not None]
+    if len(ids) != len(set(ids)):
+        return fail('同一员武将不能占两个阵位')
+    if ids:
+        owned = {uc.id for uc in UserCard.query.filter(
+            UserCard.user_id == g.current_user.id, UserCard.id.in_(ids)).all()}
+        missing = [i for i in ids if i not in owned]
+        if missing:
+            return fail(f'卡牌 {missing[0]} 不存在或不属于你')
+
+    row = db.session.get(UserFormation, g.current_user.id)
+    if row is None:
+        row = UserFormation(user_id=g.current_user.id)
+        db.session.add(row)
+    row.slots = json.dumps(slots)
+    db.session.commit()
+    return ok({'slots': slots})
 
 
 # ============ 市集 ============

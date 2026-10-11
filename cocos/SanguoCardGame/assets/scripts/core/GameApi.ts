@@ -364,6 +364,17 @@ export class GameApi {
         return this.postWithUser('/equipment/enhance', { equipment_id: equipmentId });
     }
 
+    // ============ 编伍 ============
+
+    /** 阵容：六个阵位各为 UserCard id 或 null；已不属于玩家的卡会被后端剔除 */
+    static async fetchFormation(): Promise<ApiResult<{ slots: Array<number | null> }>> {
+        return Http.get('/formation');
+    }
+
+    static async saveFormation(slots: Array<number | null>): Promise<ApiResult<{ slots: Array<number | null> }>> {
+        return Http.post('/formation', { slots });
+    }
+
     // ============ 市集 ============
 
     static async fetchShop(): Promise<ApiResult<{ tabs: string[]; goods: ShopGood[] }>> {

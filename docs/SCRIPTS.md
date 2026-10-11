@@ -107,6 +107,7 @@ docker-compose exec game cp /app/data/game.db /app/data/game.db.bak
 |---|---|---|
 | `test_api_client_growth.py` | `/api/v1` 成长、装备、碎片合成接口 | ✅ 临时库 |
 | `test_api_client_shop.py` | `/api/v1` 市集：购买、限购、隔天重置 | ✅ 临时库 |
+| `test_api_client_formation.py` | `/api/v1` 编伍：阵容读写、归属与重复校验、失效卡剔除、出征默认用服务端阵容 | ✅ 临时库 |
 | `test_api_client.py` | `/api/v1` 注册 → 登录 → 抽卡 → 收藏 → 登出 | ⚠️ 当前库，会注册随机账号 |
 | `test_pve_system.py` | PVE 表结构、关卡、战斗流程 | ⚠️ 当前库，会建测试用户 |
 | `test_equipment_system.py` | 装备强化、套装、属性计算；空库时会自动补装备模板 | ⚠️ 当前库，测试账号 `testuser`，结束时交互询问是否清理 |

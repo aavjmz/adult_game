@@ -11,7 +11,10 @@ import { sys } from 'cc';
  * 等后端补上对应系统后，把读写这里的地方换成真实接口即可，字段名尽量保持一致。
  */
 export interface MockState {
-    /** 编伍：六个阵位各放的武将 id，null 表示空位。顺序：前军x2/中军x2/后军x2 */
+    /**
+     * 旧版本地阵容（武将 id × 6）。阵容已改存服务端，这里只在首次进编伍等页面时
+     * 由 RosterData.loadFormation() 读出迁移上传一次，随后清空，不再写入。
+     */
     field: Array<number | null>;
 
     /** 军令：已领取的任务 id（"日常-0" 这种复合 key），累计军功宝箱格档 */

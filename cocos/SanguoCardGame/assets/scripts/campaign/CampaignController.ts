@@ -11,9 +11,7 @@ import { ImageSlot } from '../core/ImageSlot';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
 import { unreadMailCount } from '../mail/MailModal';
-import { heroPower } from '../core/GameContent';
-import { loadRoster } from '../roster/RosterData';
-import { MockStore } from '../core/MockStore';
+import { formationPower, loadFormation, loadRoster } from '../roster/RosterData';
 import { chapterLabel, KIND_COLOR, kindOf, layoutStages } from './CampaignData';
 import {
     createButton, createLabel, createNode, drawPanel, graphicsOf, labelOf, withAlpha,
@@ -64,12 +62,9 @@ export class CampaignController extends Component {
 
         const roster = await loadRoster();
         if (!this.isValid) return;
-        const ownedById = new Map(roster.filter((e) => e.owned).map((e) => [e.hero.id, e.hero]));
-        this.myPower = MockStore.state.field
-            .filter((id) => id != null)
-            .map((id) => ownedById.get(id!))
-            .filter((h): h is NonNullable<typeof h> => !!h)
-            .reduce((t, h) => t + heroPower(h), 0);
+        const field = await loadFormation(roster);
+        if (!this.isValid) return;
+        this.myPower = formationPower(roster, field);
 
         const res = await GameApi.fetchStages();
         if (!this.isValid) return;

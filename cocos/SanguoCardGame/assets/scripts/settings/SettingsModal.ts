@@ -40,7 +40,7 @@ const TABS: Record<string, Row[]> = {
         { name: '自动战斗', desc: '进入战斗即托管', kind: 'toggle', key: '自动战斗' },
         { name: '战斗速度', kind: 'text', key: '', value: '×2' },
         { name: '自动出招策略', kind: 'text', key: '', value: '优先高耗能技' },
-        { name: '重置阵型', desc: '恢复为一键上阵结果', kind: 'action', key: 'reset_field' },
+        { name: '重置阵型', desc: '清空编伍阵容', kind: 'action', key: 'reset_field' },
     ],
     '通 知': [
         { name: '好友申请', kind: 'toggle', key: '好友申请' },
@@ -266,16 +266,24 @@ class SettingsModalController extends Component {
 
     private buildAction(row: Row): Node {
         if (row.key === 'logout') return this.buildLogout(row);
+        if (row.key === 'reset_field') return this.buildResetField(row);
         const btn = createButton(row.name.length > 4 ? row.name.slice(-2) : row.name, 68, 28, () => {
-            if (row.key === 'reset_field') {
-                const s = MockStore.state;
-                s.field = [null, null, null, null, null, null];
-                MockStore.save();
-            }
             showToast(this.node, `『${row.name}』尚在筹备`);
         }, row.danger
             ? { fill: Theme.color.bgDeep, stroke: new Color(107, 58, 42, 255), textColor: Theme.faction.wu }
             : { fill: Theme.color.panelSunken, stroke: Theme.color.gold, textColor: Theme.color.gold });
+        btn.setPosition(CONTROL_RIGHT - 34, 0);
+        return btn;
+    }
+
+    /** 重置阵型：清空服务端编伍阵容 */
+    private buildResetField(row: Row): Node {
+        const btn = createButton('重 置', 68, 28, () => {
+            void GameApi.saveFormation([null, null, null, null, null, null]).then((res) => {
+                if (!this.isValid) return;
+                showToast(this.node, res.success ? '阵型已清空，可去编伍重新点将' : (res.error || '重置失败'));
+            });
+        }, { fill: Theme.color.panelSunken, stroke: Theme.color.gold, textColor: Theme.color.gold });
         btn.setPosition(CONTROL_RIGHT - 34, 0);
         return btn;
     }

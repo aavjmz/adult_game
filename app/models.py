@@ -305,6 +305,22 @@ class UserItem(db.Model):
         return f'<UserItem user={self.user_id} {self.item_type}:{self.item_subtype} x{self.quantity}>'
 
 
+class UserFormation(db.Model):
+    """编伍阵容：六个阵位（前排 0-1、中军 2-3、后阵 4-5）各放一张 UserCard 或空
+
+    slots 存 JSON 数组，长度固定 6，元素为 UserCard.id 或 null。
+    读取时会剔除已不属于该玩家的卡（如升星消耗掉的同名卡）。
+    """
+    __tablename__ = 'user_formations'
+
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    slots = db.Column(db.Text, nullable=False, default='[null, null, null, null, null, null]')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<UserFormation user={self.user_id} {self.slots}>'
+
+
 class ShopPurchase(db.Model):
     """市集购买记录：按自然日统计每件商品的已购次数，用于每日限购
 
