@@ -18,6 +18,8 @@ from flask import Blueprint, jsonify, request, g
 
 from app.models import db, User, Card, UserCard, ApiToken, Stage, UserStageProgress, UserItem
 from app.skills import skill_profile
+from app.utils import orders
+from app.orders_data import ACT_GACHA, ACT_GACHA_MULTI, ACT_SHOP, ACT_WIN
 from app.utils.stamina import StaminaSystem
 from config import Config
 
@@ -147,6 +149,7 @@ def register():
 
     token = ApiToken.generate(user, device)
     db.session.commit()
+    orders.mark_checkin(user.id)
 
     return ok({
         'token': token.token,
@@ -170,6 +173,7 @@ def login():
 
     token = ApiToken.generate(user, device)
     db.session.commit()
+    orders.mark_checkin(user.id)
 
     return ok({
         'token': token.token,
@@ -192,7 +196,8 @@ def logout():
 @bp.route('/user/info', methods=['GET'])
 @token_required
 def user_info():
-    """获取当前用户资源"""
+    """获取当前用户资源；客户端每次启动都会调，顺带记当日点卯"""
+    orders.mark_checkin(g.current_user.id)
     return ok(_user_payload(g.current_user))
 
 
@@ -278,6 +283,9 @@ def gacha_pull():
         payload['is_new'] = is_new
         pulled.append(payload)
 
+    orders.record(user.id, ACT_GACHA, count)
+    if pull_type == 'multi':
+        orders.record(user.id, ACT_GACHA_MULTI)
     db.session.commit()
 
     return ok({
@@ -390,6 +398,7 @@ def pve_sweep():
     for _ in range(times):
         if not StaminaSystem.consume_stamina(user, stage.stamina_cost):
             break
+        orders.record(user.id, ACT_WIN)
 
         total_rewards['coins'] += (base_rewards['coins']['min'] + base_rewards['coins']['max']) // 2
         total_rewards['exp'] += base_rewards.get('exp', 0)
@@ -750,6 +759,7 @@ def shop_buy():
         item = UserItem(user_id=user.id, item_type=good['item_type'], item_subtype=good['item_subtype'], quantity=0)
         db.session.add(item)
     item.quantity = (item.quantity or 0) + gained
+    orders.record(user.id, ACT_SHOP)
 
     db.session.commit()
 
@@ -759,6 +769,50 @@ def shop_buy():
         'owned': item.quantity,
         'user': _user_payload(user),
     })
+
+
+# ============ 军令 ============
+#
+# 军令定义在 app/orders_data.py，进度统计与发奖在 app/utils/orders.py。
+# 领取类接口都返回最新的整页数据（state），客户端直接重绘。
+
+@bp.route('/orders', methods=['GET'])
+@token_required
+def orders_list():
+    """军令页：四类军令及进度、今日军功与宝箱、本季通行证"""
+    return ok(orders.orders_state(g.current_user))
+
+
+@bp.route('/orders/claim', methods=['POST'])
+@token_required
+def orders_claim():
+    """领取：{"key": "daily_battle"} 领一道，或 {"tab": "日常"} 一键领取该类全部可领"""
+    body = _json_body()
+    user = g.current_user
+    if body.get('key'):
+        keys = [body['key']]
+    elif body.get('tab'):
+        keys = orders.ready_keys(user, body['tab'])
+        if not keys:
+            return fail('暂无可领军令')
+    else:
+        return fail('请指定 key 或 tab')
+
+    claimed, err = orders.claim(user, keys)
+    if err:
+        return fail(err)
+    return ok({'claimed': claimed, 'state': orders.orders_state(user), 'user': _user_payload(user)})
+
+
+@bp.route('/orders/chest', methods=['POST'])
+@token_required
+def orders_chest():
+    """开军功宝箱：{"step": 30}"""
+    user = g.current_user
+    rewards, err = orders.open_chest(user, _json_body().get('step'))
+    if err:
+        return fail(err)
+    return ok({'rewards': rewards, 'state': orders.orders_state(user), 'user': _user_payload(user)})
 
 
 # ============ 成长 / 装备 ============

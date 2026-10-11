@@ -269,6 +269,40 @@ export interface ShopGood {
     remaining: number;
 }
 
+/** 军令奖励，对应后端 app/orders_data.py：kind 为 coins 银两 / gems 元宝 / tickets 招贤令 / item 背包道具 */
+export interface OrderReward {
+    kind: 'coins' | 'gems' | 'tickets' | 'item';
+    quantity: number;
+    item_type: string | null;
+    item_subtype: string | null;
+}
+
+/** 一道军令；日常 / 周常按北京时间零点、周一重置，成就永久，通行证按月 */
+export interface OrderData {
+    key: string;
+    tab: string;
+    name: string;
+    desc: string;
+    progress: number;
+    target: number;
+    /** 领取得到的军功（成就、通行证为 0） */
+    merit: number;
+    rewards: OrderReward[];
+    claimed: boolean;
+    /** 已完成且未领 */
+    ready: boolean;
+}
+
+/** /orders 返回的整页数据 */
+export interface OrdersState {
+    tabs: string[];
+    orders: OrderData[];
+    /** 今日军功（日常领取所得）与军功宝箱 */
+    merit: { today: number; max: number; chests: Array<{ step: number; rewards: OrderReward[]; claimed: boolean; ready: boolean }> };
+    /** 本季（本月）通行证：累计军功、点卯天数 */
+    season: { name: string; merit: number; checkin_days: number };
+}
+
 /** 成长 / 装备写操作的公共返回：后端会附上最新 user */
 interface WithUser { user: UserInfo; message?: string }
 
@@ -488,6 +522,23 @@ export class GameApi {
 
     static async buyShop(key: string, times = 1): Promise<ApiResult<WithUser & { good: ShopGood; owned: number }>> {
         return this.postWithUser('/shop/buy', { key, times });
+    }
+
+    // ============ 军令 ============
+
+    static async fetchOrders(): Promise<ApiResult<OrdersState>> {
+        return Http.get('/orders');
+    }
+
+    /** 领取一道军令（key）或一键领取某类全部可领（tab） */
+    static async claimOrders(target: { key: string } | { tab: string }): Promise<ApiResult<WithUser & {
+        claimed: Array<{ key: string; merit: number; rewards: OrderReward[] }>; state: OrdersState;
+    }>> {
+        return this.postWithUser('/orders/claim', target);
+    }
+
+    static async openOrderChest(step: number): Promise<ApiResult<WithUser & { rewards: OrderReward[]; state: OrdersState }>> {
+        return this.postWithUser('/orders/chest', { step });
     }
 
     // ============ 内部 ============

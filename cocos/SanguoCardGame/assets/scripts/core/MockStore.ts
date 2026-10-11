@@ -3,7 +3,7 @@ import { sys } from 'cc';
 /**
  * 本地模拟状态仓库
  *
- * 军令 / 盟 / 军演 / 军书 / 设置 / 编伍这些界面在当前后端里
+ * 盟 / 军演 / 军书 / 设置这些界面在当前后端里
  * 还没有对应接口（见 CLAUDE.md「未开始」清单），先用这里的本地状态把交互跑通，
  * 数据形状照抄自设计稿 十三州.dc.html 里的 `state`。
  *
@@ -16,10 +16,6 @@ export interface MockState {
      * 由 RosterData.loadFormation() 读出迁移上传一次，随后清空，不再写入。
      */
     field: Array<number | null>;
-
-    /** 军令：已领取的任务 id（"日常-0" 这种复合 key），累计军功宝箱格档 */
-    ordersClaimed: string[];
-    ordersChest: number;
 
 
     /** 盟：自己发出的聊天记录 */
@@ -48,8 +44,6 @@ const KEY = 'sanguo_mock_state_v1';
 
 const DEFAULTS: MockState = {
     field: [null, null, null, null, null, null],
-    ordersClaimed: [],
-    ordersChest: 0,
     guildSent: [],
     arenaTickets: 4,
     arenaRank: 1284,

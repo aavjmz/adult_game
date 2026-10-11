@@ -13,6 +13,8 @@ from app.growth_utils import (
 )
 from app.utils.pve_battle import player_battle_stats
 from app.skills import skill_profile
+from app.utils import orders
+from app.orders_data import ACT_SKILL_UP, ACT_STAR_UP
 from config import Config
 
 bp = Blueprint('growth', __name__, url_prefix='/growth')
@@ -150,6 +152,7 @@ def star_up_card():
     # 消耗金币并升星
     current_user.coins -= required['coins']
     user_card.star_level += 1
+    orders.record(current_user.id, ACT_STAR_UP)
 
     db.session.commit()
 
@@ -210,6 +213,7 @@ def upgrade_skill():
     else:
         user_card.passive_skill_level += 1
         new_level = user_card.passive_skill_level
+    orders.record(current_user.id, ACT_SKILL_UP)
 
     db.session.commit()
 
@@ -345,6 +349,7 @@ def breakthrough_card():
     user_card.breakthrough_level += 1
 
     new_max_level = get_max_level(user_card.breakthrough_level)
+    orders.record(current_user.id, ACT_STAR_UP)
 
     db.session.commit()
 

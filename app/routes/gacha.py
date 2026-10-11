@@ -2,6 +2,8 @@ import random
 from flask import Blueprint, render_template, jsonify, request
 from flask_login import login_required, current_user
 from app.models import db, Card, UserCard, GachaRecord
+from app.utils import orders
+from app.orders_data import ACT_GACHA, ACT_GACHA_MULTI
 from config import Config
 
 bp = Blueprint('gacha', __name__, url_prefix='/gacha')
@@ -74,6 +76,9 @@ def pull():
         )
         db.session.add(user_card)
 
+    orders.record(current_user.id, ACT_GACHA, count)
+    if pull_type == 'multi':
+        orders.record(current_user.id, ACT_GACHA_MULTI)
     db.session.commit()
 
     return jsonify({

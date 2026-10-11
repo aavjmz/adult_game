@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models import db, User
+from app.utils.orders import mark_checkin
 from config import Config
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -69,6 +70,7 @@ def login():
             return render_template('login.html')
 
         login_user(user, remember=remember)
+        mark_checkin(user.id)
         next_page = request.args.get('next')
         if not next_page or not next_page.startswith('/'):
             next_page = url_for('main.dashboard')

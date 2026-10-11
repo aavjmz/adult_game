@@ -6,6 +6,8 @@
 
 from datetime import datetime, timedelta
 from app.models import db, UserItem
+from app.orders_data import ACT_BATTLE, ACT_STAMINA
+from app.utils.orders import record
 
 
 class StaminaSystem:
@@ -80,8 +82,10 @@ class StaminaSystem:
         if user.stamina < amount:
             return False
 
-        # 消耗体力
+        # 消耗体力；目前只有出征 / 扫荡扣体力，同时记作一次出征（军令进度）
         user.stamina -= amount
+        record(user.id, ACT_STAMINA, amount)
+        record(user.id, ACT_BATTLE)
         db.session.commit()
 
         return True
