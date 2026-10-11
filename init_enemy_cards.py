@@ -5,7 +5,7 @@
 
 敌军数据统一写在 app/enemy_cards.py。改完后重跑本脚本：
 - 新名字：新增为敌军卡（is_enemy=True，不进卡池）
-- 已有的敌军卡：数值按配置同步
+- 已有的敌军卡：以配置为准逐列同步，配置里删掉的字段恢复为默认值
 - 与玩家武将同名的：跳过，关卡直接复用玩家卡
 可重复执行。
 """
@@ -15,6 +15,10 @@ import io
 from app import create_app, db
 from app.models import Card
 from app.enemy_cards import ENEMY_CARDS
+from app.utils.seed_sync import sync_columns
+
+# 同步时不覆盖的列：主键、匹配键、创建时间，以及敌军标记本身
+_SYNC_SKIP = {'id', 'name', 'created_at', 'is_enemy'}
 
 # 修复Windows命令行编码问题
 if sys.platform == 'win32':
@@ -31,6 +35,7 @@ def init_enemy_cards():
 
         added_count = 0
         updated_count = 0
+        same_count = 0
         skipped_count = 0
 
         for card_data in ENEMY_CARDS:
@@ -49,17 +54,18 @@ def init_enemy_cards():
                 print(f"  [跳过] {card_data['name']} 是玩家武将，关卡直接复用")
                 continue
 
-            # 已有的敌军卡：按 app/enemy_cards.py 同步数值，改配置后重跑即生效
-            changed = {k: v for k, v in card_data.items() if getattr(existing, k) != v}
+            # 已有的敌军卡：以 app/enemy_cards.py 为准逐列同步，
+            # 配置里删掉的字段恢复为列默认值
+            changed = sync_columns(existing, card_data, _SYNC_SKIP)
             if changed:
-                for k, v in changed.items():
-                    setattr(existing, k, v)
                 updated_count += 1
                 print(f"  [~] {card_data['name']}: {', '.join(changed)}")
+            else:
+                same_count += 1
 
         db.session.commit()
 
-        print(f"\n[完成] 新增 {added_count} 张，更新 {updated_count} 张，"
+        print(f"\n[完成] 新增 {added_count} 张，更新 {updated_count} 张，{same_count} 张无变化，"
               f"跳过 {skipped_count} 张与玩家同名的武将")
 
         # 显示统计

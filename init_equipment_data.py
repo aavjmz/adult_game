@@ -22,18 +22,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app
 from app.models import db, EquipmentSet, EquipmentTemplate
+from app.utils.seed_sync import sync_columns
 
 
 # 同步时不覆盖的列：主键、用作匹配键的名字、创建时间
 _SYNC_SKIP = {'id', 'name', 'created_at'}
-
-
-def _column_default(column):
-    """列的标量默认值；无默认值或默认值为函数时返回 None"""
-    default = column.default
-    if default is None or not default.is_scalar:
-        return None
-    return default.arg
 
 
 def sync_row(model, data, label):
@@ -48,15 +41,7 @@ def sync_row(model, data, label):
         print(f"  ✅ 添加{label}: {data['name']}")
         return 'added'
 
-    changed = []
-    for column in model.__table__.columns:
-        if column.name in _SYNC_SKIP:
-            continue
-        value = data.get(column.name, _column_default(column))
-        if getattr(row, column.name) != value:
-            setattr(row, column.name, value)
-            changed.append(column.name)
-
+    changed = sync_columns(row, data, _SYNC_SKIP)
     if changed:
         print(f"  🔄 更新{label}: {data['name']}（{', '.join(changed)}）")
         return 'updated'
