@@ -1,6 +1,12 @@
 """
-装备数据初始化脚本
+装备数据初始化 / 同步脚本
 初始化套装和装备模板数据
+
+按名字匹配，可重复执行：
+- 新名字：新建
+- 已存在：以本脚本里的数据为准逐列同步，只改有变化的列并打印字段名；
+  脚本里没写的列恢复为该列默认值（删掉某个属性也能同步）
+- 只增改，不删除：从脚本里去掉的套装 / 模板在库里保留不动
 """
 
 import sys
@@ -16,6 +22,46 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app
 from app.models import db, EquipmentSet, EquipmentTemplate
+
+
+# 同步时不覆盖的列：主键、用作匹配键的名字、创建时间
+_SYNC_SKIP = {'id', 'name', 'created_at'}
+
+
+def _column_default(column):
+    """列的标量默认值；无默认值或默认值为函数时返回 None"""
+    default = column.default
+    if default is None or not default.is_scalar:
+        return None
+    return default.arg
+
+
+def sync_row(model, data, label):
+    """按 name 新建或同步一条套装 / 装备模板
+
+    Returns:
+        'added' / 'updated' / 'same'
+    """
+    row = model.query.filter_by(name=data['name']).first()
+    if row is None:
+        db.session.add(model(**data))
+        print(f"  ✅ 添加{label}: {data['name']}")
+        return 'added'
+
+    changed = []
+    for column in model.__table__.columns:
+        if column.name in _SYNC_SKIP:
+            continue
+        value = data.get(column.name, _column_default(column))
+        if getattr(row, column.name) != value:
+            setattr(row, column.name, value)
+            changed.append(column.name)
+
+    if changed:
+        print(f"  🔄 更新{label}: {data['name']}（{', '.join(changed)}）")
+        return 'updated'
+    print(f"  ⏭️ {label} {data['name']} 无变化")
+    return 'same'
 
 
 def init_equipment_sets():
@@ -81,14 +127,7 @@ def init_equipment_sets():
     ]
 
     for set_data in sets_data:
-        existing = EquipmentSet.query.filter_by(name=set_data['name']).first()
-        if existing:
-            print(f"  ⏭️ 套装 {set_data['name']} 已存在")
-            continue
-
-        equipment_set = EquipmentSet(**set_data)
-        db.session.add(equipment_set)
-        print(f"  ✅ 添加套装: {set_data['name']}")
+        sync_row(EquipmentSet, set_data, '套装')
 
     db.session.commit()
     print("✅ 套装配置初始化完成")
@@ -221,14 +260,7 @@ def init_mythic_equipments():
     ]
 
     for equip_data in mythic_data:
-        existing = EquipmentTemplate.query.filter_by(name=equip_data['name']).first()
-        if existing:
-            print(f"  ⏭️ 装备 {equip_data['name']} 已存在")
-            continue
-
-        equipment = EquipmentTemplate(**equip_data)
-        db.session.add(equipment)
-        print(f"  ✅ 添加神话装备: {equip_data['name']} ({equip_data['type']})")
+        sync_row(EquipmentTemplate, equip_data, '神话装备')
 
     db.session.commit()
     print("✅ 神话级装备初始化完成")
@@ -436,14 +468,7 @@ def init_legendary_equipments():
     ]
 
     for equip_data in legendary_data:
-        existing = EquipmentTemplate.query.filter_by(name=equip_data['name']).first()
-        if existing:
-            print(f"  ⏭️ 装备 {equip_data['name']} 已存在")
-            continue
-
-        equipment = EquipmentTemplate(**equip_data)
-        db.session.add(equipment)
-        print(f"  ✅ 添加传说装备: {equip_data['name']} ({equip_data['type']})")
+        sync_row(EquipmentTemplate, equip_data, '传说装备')
 
     db.session.commit()
     print("✅ 传说级装备初始化完成")
@@ -488,15 +513,11 @@ def init_basic_equipments():
          'base_attack_pct': 0.12, 'base_defense_pct': 0.12, 'base_hp_pct': 0.12, 'description': '张良圯上所受之书'},
     ]
 
+    quality_label = {'common': '普通装备', 'rare': '稀有装备', 'epic': '史诗装备'}
     for equip_data in basic_data:
-        existing = EquipmentTemplate.query.filter_by(name=equip_data['name']).first()
-        if existing:
-            print(f"  ⏭️ 装备 {equip_data['name']} 已存在")
-            continue
-
-        equipment = EquipmentTemplate(**equip_data, max_enhance_level=30, obtain_method='碎片合成')
-        db.session.add(equipment)
-        print(f"  ✅ 添加{equip_data['quality']}装备: {equip_data['name']} ({equip_data['type']})")
+        # 这两项三档共用，并进数据里一起参与同步
+        data = dict(equip_data, max_enhance_level=30, obtain_method='碎片合成')
+        sync_row(EquipmentTemplate, data, quality_label[equip_data['quality']])
 
     db.session.commit()
     print("✅ 普通 / 稀有 / 史诗装备初始化完成")
