@@ -33,6 +33,8 @@ python run.py
 docker-compose up
 ```
 
+See `docs/SCRIPTS.md` for every root-level script: what it does, when to run it, whether it is safe to re-run, and which steps `create_app()` already does on startup (new deployments only need `init_enemy_cards.py` and `init_equipment_data.py`).
+
 The default port is **8080** (not 5000). Set `FLASK_PORT` and `FLASK_HOST` env vars to change.
 
 ## Repository Structure
