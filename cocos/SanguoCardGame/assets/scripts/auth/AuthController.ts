@@ -59,20 +59,58 @@ export class AuthController extends Component {
     private strengthBars: Node[] = [];
     private strengthLabel: Label = null!;
 
+    /** 本地有令牌、正在静默登录时显示的进入画面；校验失败才换成登录表单 */
+    private splash: Node | null = null;
+
     onLoad(): void {
-        const size = this.node.getComponent(UITransform)?.contentSize ?? view.getVisibleSize();
-        const width = size.width || Theme.design.width;
-        const height = size.height || Theme.design.height;
-        this.build(width, height);
-        this.render();
+        // 已登录过的玩家不该看到登录表单一闪而过：先只铺进入画面，
+        // 等 start() 里令牌校验有了结果再决定进主页还是显示表单
+        if (GameApi.hasToken()) {
+            this.showSplash();
+        } else {
+            this.showForm();
+        }
     }
 
     async start(): Promise<void> {
-        // 本地已有令牌时尝试静默登录，跳过表单
         if (!GameApi.hasToken()) return;
         const res = await GameApi.fetchUserInfo();
         if (!this.isValid) return;
-        if (res.success) SceneNav.go(SceneNav.MAIN_MENU);
+        if (res.success) {
+            // 主场景加载失败（如未加入构建列表）时退回表单，不让玩家卡在进入画面
+            SceneNav.go(SceneNav.MAIN_MENU, (reason) => this.showForm(reason));
+            return;
+        }
+        this.showForm(res.error || '登录已失效，请重新登录');
+    }
+
+    private sceneSize(): { width: number; height: number } {
+        const size = this.node.getComponent(UITransform)?.contentSize ?? view.getVisibleSize();
+        return { width: size.width || Theme.design.width, height: size.height || Theme.design.height };
+    }
+
+    private showSplash(): void {
+        const { width, height } = this.sceneSize();
+        const splash = createNode('Splash', width, height);
+        drawPanel(splash, { fill: Theme.color.bgDeep, radius: 0 });
+        const title = createLabel('十 三 州', { fontSize: 40, bold: true, color: Theme.color.goldBright, width: 400 });
+        title.setPosition(0, 24);
+        splash.addChild(title);
+        const tip = createLabel('正在进入……', { fontSize: 13, color: Theme.color.textMuted, width: 300 });
+        tip.setPosition(0, -30);
+        splash.addChild(tip);
+        this.node.addChild(splash);
+        this.splash = splash;
+    }
+
+    /** 显示登录表单；reason 为静默登录失败的原因，提示给玩家 */
+    private showForm(reason?: string): void {
+        if (this.splash?.isValid) this.splash.destroy();
+        this.splash = null;
+        const { width, height } = this.sceneSize();
+        this.build(width, height);
+        this.render();
+        if (reason) showToast(this.node, reason);
     }
 
     private build(width: number, height: number): void {
