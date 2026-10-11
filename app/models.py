@@ -427,6 +427,50 @@ class Mail(db.Model):
         return f'<Mail {self.id} user={self.user_id} {self.title}>'
 
 
+class ArenaPlayer(db.Model):
+    """军演：玩家的积分、战绩、当日演券与当前对手批次
+
+    首次进入军演页时建档。名次按积分现排（积分高者在前）。
+    foes 为当前这批对手的 JSON 快照（真人只记 user_id，出战时读其最新编伍；电脑记阵容）。
+    """
+    __tablename__ = 'arena_players'
+
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    score = db.Column(db.Integer, nullable=False, default=1000, index=True)
+    wins = db.Column(db.Integer, nullable=False, default=0)
+    losses = db.Column(db.Integer, nullable=False, default=0)
+    best_rank = db.Column(db.Integer)
+    # 演券：tickets_day 不是今天时视为已重置
+    tickets_used = db.Column(db.Integer, nullable=False, default=0)
+    tickets_day = db.Column(db.Date)
+    foes = db.Column(db.Text, nullable=False, default='[]')
+    # 最近一次领取段位之赏的日期
+    reward_day = db.Column(db.Date)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<ArenaPlayer user={self.user_id} score={self.score}>'
+
+
+class ArenaRecord(db.Model):
+    """军演战报：攻方视角记一条；守方为真人时其战报里也能看到（防守）"""
+    __tablename__ = 'arena_records'
+
+    id = db.Column(db.Integer, primary_key=True)
+    attacker_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    defender_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)  # 电脑对手为空
+    attacker_name = db.Column(db.String(64), nullable=False)
+    defender_name = db.Column(db.String(64), nullable=False)
+    win = db.Column(db.Boolean, nullable=False)          # 攻方是否获胜
+    attacker_delta = db.Column(db.Integer, nullable=False, default=0)
+    defender_delta = db.Column(db.Integer, nullable=False, default=0)
+    day = db.Column(db.Date, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def __repr__(self):
+        return f'<ArenaRecord {self.attacker_name} vs {self.defender_name} win={self.win}>'
+
+
 class EquipmentSet(db.Model):
     """套装配置表"""
     __tablename__ = 'equipment_sets'

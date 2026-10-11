@@ -322,6 +322,49 @@ export interface MailData {
 /** /mail 返回的整页数据：新的在前 */
 export interface MailState { mails: MailData[]; unread: number }
 
+/** 军演对手：真人（打其最新编伍）或电脑阵容 */
+export interface ArenaFoe {
+    kind: 'player' | 'npc';
+    name: string;
+    /** 主将（阵中第一员） */
+    lead: string;
+    score: number;
+    tier: string;
+    power: number;
+    /** 按双方战力估算的胜算（%），实际胜负以服务端战斗为准 */
+    odds: number;
+    /** 本批已挑战过 */
+    fought: boolean;
+    /** 对手阵容为空（真人撤阵）时不可挑战 */
+    available: boolean;
+}
+
+/** 军演战报：defense 为别人来挑战我（防守）；win、delta 均为我方视角 */
+export interface ArenaLog { defense: boolean; foe: string; win: boolean; delta: number; created_at: string | null }
+
+/** /arena 返回的整页数据 */
+export interface ArenaState {
+    score: number;
+    rank: number;
+    best_rank: number | null;
+    tier: string;
+    wins: number;
+    losses: number;
+    today: { wins: number; losses: number };
+    streak: number;
+    tickets: { left: number; max: number };
+    /** 我军（编伍阵容）战力 */
+    power: number;
+    foes: ArenaFoe[];
+    logs: ArenaLog[];
+    tier_reward: { tier: string; rewards: Reward[]; claimed: boolean };
+    tiers: Array<{ name: string; min_score: number }>;
+    win_rewards: Reward[];
+}
+
+/** 一场军演的结果 */
+export interface ArenaResult { win: boolean; delta: number; score: number; rank: number; foe: string; rewards: Reward[]; rounds: number }
+
 /** 成长 / 装备写操作的公共返回：后端会附上最新 user */
 interface WithUser { user: UserInfo; message?: string }
 
@@ -578,6 +621,27 @@ export class GameApi {
     /** 弃书：一封（id）或清掉全部已阅（all） */
     static async deleteMail(target: { id: number } | { all: true }): Promise<ApiResult<{ count: number; state: MailState }>> {
         return Http.post('/mail/delete', target);
+    }
+
+    // ============ 军演 ============
+
+    static async fetchArena(): Promise<ApiResult<ArenaState>> {
+        return Http.get('/arena');
+    }
+
+    /** 换一批对手 */
+    static async refreshArena(): Promise<ApiResult<ArenaState>> {
+        return Http.post('/arena/refresh', {});
+    }
+
+    /** 挑战本批第 index 名对手，消耗一张演券 */
+    static async fightArena(index: number): Promise<ApiResult<WithUser & { result: ArenaResult; state: ArenaState }>> {
+        return this.postWithUser('/arena/fight', { index });
+    }
+
+    /** 领取今日段位之赏 */
+    static async claimArenaReward(): Promise<ApiResult<WithUser & { rewards: Reward[]; state: ArenaState }>> {
+        return this.postWithUser('/arena/reward', {});
     }
 
     // ============ 内部 ============

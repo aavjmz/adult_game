@@ -19,7 +19,7 @@ from flask import Blueprint, jsonify, request, g
 from app.models import db, User, Card, UserCard, ApiToken, Stage, UserStageProgress, UserItem
 from app.skills import skill_profile
 from app.mail_data import WELCOME
-from app.utils import mail, orders
+from app.utils import arena, formation, mail, orders
 from app.orders_data import ACT_GACHA, ACT_GACHA_MULTI, ACT_SHOP, ACT_WIN
 from app.utils.stamina import StaminaSystem
 from config import Config
@@ -634,22 +634,8 @@ def pve_battle_auto():
 # 阵容存服务端（UserFormation），六个阵位各放一张玩家自己的 UserCard。
 # 出征不传 team 时默认用这里的阵容。
 
-FORMATION_SIZE = 6
-
-
-def _load_formation(user_id):
-    """读取阵容，剔除已不属于该玩家的卡；返回长度 6 的 [UserCard.id | None]"""
-    from app.models import UserFormation
-    row = db.session.get(UserFormation, user_id)
-    try:
-        slots = json.loads(row.slots) if row else []
-    except (TypeError, ValueError):
-        slots = []
-    slots = (list(slots) + [None] * FORMATION_SIZE)[:FORMATION_SIZE]
-
-    ids = [s for s in slots if s is not None]
-    owned = {uc.id for uc in UserCard.query.filter(UserCard.user_id == user_id, UserCard.id.in_(ids)).all()} if ids else set()
-    return [s if s in owned else None for s in slots]
+FORMATION_SIZE = formation.FORMATION_SIZE
+_load_formation = formation.load_formation
 
 
 @bp.route('/formation', methods=['GET'])
@@ -882,6 +868,50 @@ def mail_delete():
     if not count:
         return fail('无已阅之书可清')
     return ok({'count': count, 'state': mail.mail_state(user_id)})
+
+
+# ============ 军演 ============
+#
+# 异步 PVP：对手为积分相近的真人（打其最新编伍，对方不必在线）或电脑阵容，
+# 服务端一次打完。逻辑见 app/utils/arena.py，数值见 app/arena_data.py。
+
+@bp.route('/arena', methods=['GET'])
+@token_required
+def arena_get():
+    """军演页：积分、名次、段位、演券、本批对手、战报、段位之赏"""
+    return ok(arena.arena_state(g.current_user))
+
+
+@bp.route('/arena/refresh', methods=['POST'])
+@token_required
+def arena_refresh():
+    """换一批对手"""
+    user = g.current_user
+    arena.refresh_foes(user, arena.get_player(user.id))
+    db.session.commit()
+    return ok(arena.arena_state(user))
+
+
+@bp.route('/arena/fight', methods=['POST'])
+@token_required
+def arena_fight():
+    """挑战：{"index": 0}（本批对手的序号），消耗一张演券"""
+    user = g.current_user
+    result, err = arena.fight(user, _json_body().get('index'))
+    if err:
+        return fail(err)
+    return ok({'result': result, 'state': arena.arena_state(user), 'user': _user_payload(user)})
+
+
+@bp.route('/arena/reward', methods=['POST'])
+@token_required
+def arena_reward():
+    """领取今日段位之赏"""
+    user = g.current_user
+    rewards, err = arena.claim_tier_reward(user)
+    if err:
+        return fail(err)
+    return ok({'rewards': rewards, 'state': arena.arena_state(user), 'user': _user_payload(user)})
 
 
 # ============ 成长 / 装备 ============

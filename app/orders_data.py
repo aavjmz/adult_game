@@ -28,6 +28,7 @@ ACT_SKILL_UP = 'skill_up'      # 技能升级
 ACT_STAR_UP = 'star_up'        # 升星或突破
 ACT_SHOP = 'shop'              # 市集购买
 ACT_CHECKIN = 'checkin'        # 当日登入（点卯）
+ACT_ARENA = 'arena'            # 军演挑战一次
 
 # ============ 军令 ============
 
@@ -58,6 +59,7 @@ ORDERS = [
     _order('weekly_multi', '周常', '招贤十连', '完成一次十连招贤', ACT_GACHA_MULTI, 1, 40, [tickets(3)]),
     _order('weekly_star', '周常', '升星突破', '任一武将升星或突破一次', ACT_STAR_UP, 1, 40, [item('star_stone', 2)]),
     _order('weekly_skill', '周常', '磨刃五次', '本周升级技能五次', ACT_SKILL_UP, 5, 30, [item('skill_book', 1, 'small')]),
+    _order('weekly_arena', '周常', '军演十场', '本周军演挑战十场', ACT_ARENA, 10, 30, [gems(100)]),
 
     # 成就：一次性
     _order('ach_collect', '成就', '麾下十员', '收录不同武将十员', 'collect', 10, 0, [gems(300)]),
