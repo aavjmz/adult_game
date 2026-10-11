@@ -155,6 +155,23 @@ export interface EquipmentData {
 /** 经验丹：item_type=exp_potion，item_subtype 为档位 */
 export interface ExpItem { item_type: string; item_subtype: string; quantity: number }
 
+/** 市集商品，对应后端 app/shop_data.py；全部银两购买，每日限购 */
+export interface ShopGood {
+    key: string;
+    tab: string;
+    name: string;
+    desc: string;
+    item_type: string;
+    item_subtype: string | null;
+    /** 每次购买获得的数量 */
+    quantity: number;
+    /** 每次购买的银两价格 */
+    price: number;
+    daily_limit: number;
+    bought_today: number;
+    remaining: number;
+}
+
 /** 成长 / 装备写操作的公共返回：后端会附上最新 user */
 interface WithUser { user: UserInfo; message?: string }
 
@@ -309,6 +326,16 @@ export class GameApi {
     /** 强化有成败：result 为 success / fail / fail_protected，失败也是 success:true */
     static async enhanceEquipment(equipmentId: number): Promise<ApiResult<WithUser & { result: string; old_level: number; new_level: number }>> {
         return this.postWithUser('/equipment/enhance', { equipment_id: equipmentId });
+    }
+
+    // ============ 市集 ============
+
+    static async fetchShop(): Promise<ApiResult<{ tabs: string[]; goods: ShopGood[] }>> {
+        return Http.get('/shop');
+    }
+
+    static async buyShop(key: string, times = 1): Promise<ApiResult<WithUser & { good: ShopGood; owned: number }>> {
+        return this.postWithUser('/shop/buy', { key, times });
     }
 
     // ============ 内部 ============

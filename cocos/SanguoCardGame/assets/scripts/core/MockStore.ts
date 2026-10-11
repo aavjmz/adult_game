@@ -3,7 +3,7 @@ import { sys } from 'cc';
 /**
  * 本地模拟状态仓库
  *
- * 军令 / 市集 / 盟 / 行囊 / 军演 / 军书 / 设置 / 编伍这些界面在当前后端里
+ * 军令 / 盟 / 行囊 / 军演 / 军书 / 设置 / 编伍这些界面在当前后端里
  * 还没有对应接口（见 CLAUDE.md「未开始」清单），先用这里的本地状态把交互跑通，
  * 数据形状照抄自设计稿 十三州.dc.html 里的 `state`。
  *
@@ -18,9 +18,6 @@ export interface MockState {
     ordersClaimed: string[];
     ordersChest: number;
 
-    /** 市集：本日已购的商品 id，剩余刷新次数 */
-    shopBought: string[];
-    shopRefreshes: number;
 
     /** 盟：自己发出的聊天记录 */
     guildSent: string[];
@@ -54,8 +51,6 @@ const DEFAULTS: MockState = {
     field: [null, null, null, null, null, null],
     ordersClaimed: [],
     ordersChest: 0,
-    shopBought: [],
-    shopRefreshes: 2,
     guildSent: [],
     bagLocks: [2, 5, 9],
     bagListed: [],

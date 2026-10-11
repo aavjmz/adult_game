@@ -493,6 +493,89 @@ def pve_battle_start():
     })
 
 
+# ============ 市集 ============
+#
+# 商品定义在 app/shop_data.py；全部用银两购买，道具直接进背包，每日限购。
+
+def _shop_bought_today(user_id):
+    """今天各商品已购次数 {good_key: count}"""
+    from app.models import ShopPurchase
+    from app.shop_data import shop_today
+    rows = ShopPurchase.query.filter_by(user_id=user_id, day=shop_today()).all()
+    return {r.good_key: r.count for r in rows}
+
+
+def _good_payload(good, bought):
+    return dict(good, bought_today=bought, remaining=max(0, good['daily_limit'] - bought))
+
+
+@bp.route('/shop', methods=['GET'])
+@token_required
+def shop_list():
+    """市集货架：商品、价格、今日已购与剩余次数"""
+    from app.shop_data import SHOP_GOODS, SHOP_TABS
+    bought = _shop_bought_today(g.current_user.id)
+    return ok({
+        'tabs': SHOP_TABS,
+        'goods': [_good_payload(gd, bought.get(gd['key'], 0)) for gd in SHOP_GOODS],
+    })
+
+
+@bp.route('/shop/buy', methods=['POST'])
+@token_required
+def shop_buy():
+    """购买：{"key": "exp_small", "times": 1}；扣银两、道具入背包、计入今日限购"""
+    from app.models import ShopPurchase
+    from app.shop_data import GOODS_BY_KEY, shop_today
+
+    body = _json_body()
+    good = GOODS_BY_KEY.get(body.get('key'))
+    if not good:
+        return fail('商品不存在', 404)
+
+    try:
+        times = int(body.get('times', 1))
+    except (TypeError, ValueError):
+        return fail('购买数量无效')
+    if times < 1:
+        return fail('购买数量无效')
+
+    user = g.current_user
+    today = shop_today()
+    record = ShopPurchase.query.filter_by(user_id=user.id, good_key=good['key'], day=today).first()
+    bought = record.count if record else 0
+    if bought + times > good['daily_limit']:
+        left = good['daily_limit'] - bought
+        return fail(f"{good['name']}今日限购 {good['daily_limit']} 次，" + (f'还可买 {left} 次' if left > 0 else '已售罄'))
+
+    cost = good['price'] * times
+    if user.coins < cost:
+        return fail(f'银两不足，需要 {cost:,}，当前 {user.coins:,}')
+
+    user.coins -= cost
+    if record is None:
+        record = ShopPurchase(user_id=user.id, good_key=good['key'], day=today, count=0)
+        db.session.add(record)
+    record.count = bought + times
+
+    gained = good['quantity'] * times
+    item = UserItem.query.filter_by(
+        user_id=user.id, item_type=good['item_type'], item_subtype=good['item_subtype']).first()
+    if item is None:
+        item = UserItem(user_id=user.id, item_type=good['item_type'], item_subtype=good['item_subtype'], quantity=0)
+        db.session.add(item)
+    item.quantity = (item.quantity or 0) + gained
+
+    db.session.commit()
+
+    return ok({
+        'good': _good_payload(good, record.count),
+        'gained': {'item_type': good['item_type'], 'item_subtype': good['item_subtype'], 'quantity': gained},
+        'owned': item.quantity,
+        'user': _user_payload(user),
+    })
+
+
 # ============ 成长 / 装备 ============
 #
 # 业务逻辑完全复用 Web 端 routes/growth.py、routes/equipment.py 的视图函数，

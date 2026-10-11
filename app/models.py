@@ -305,6 +305,25 @@ class UserItem(db.Model):
         return f'<UserItem user={self.user_id} {self.item_type}:{self.item_subtype} x{self.quantity}>'
 
 
+class ShopPurchase(db.Model):
+    """市集购买记录：按自然日统计每件商品的已购次数，用于每日限购
+
+    商品定义在 app/shop_data.py（good_key 对应其 key）；day 为北京时间日期。
+    """
+    __tablename__ = 'shop_purchases'
+    __table_args__ = (db.UniqueConstraint('user_id', 'good_key', 'day', name='uq_shop_purchase_day'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    good_key = db.Column(db.String(50), nullable=False)
+    day = db.Column(db.Date, nullable=False)
+    count = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<ShopPurchase user={self.user_id} {self.good_key} {self.day} x{self.count}>'
+
+
 class EquipmentSet(db.Model):
     """套装配置表"""
     __tablename__ = 'equipment_sets'
