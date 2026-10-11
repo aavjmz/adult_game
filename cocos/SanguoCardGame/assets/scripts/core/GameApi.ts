@@ -149,7 +149,25 @@ export interface EquipmentData {
     enhance_level: number;
     is_locked?: boolean;
     owner_card_id?: number | null;
+    /** 穿戴者姓名，未穿戴为 null（仅 /equipment/list 返回） */
+    owner_card_name?: string | null;
     power?: number;
+    /** 模板装备的属性加成（已含强化倍率）；pct 为小数，rate/dmg 为百分数 */
+    bonus?: Record<string, number>;
+    /** 旧式装备（无模板）的单项属性 */
+    base_stat_type?: string | null;
+    base_stat_value?: number | null;
+}
+
+/** /equipment/templates 的单条：可合成的装备 */
+export interface EquipmentTemplateData {
+    id: number;
+    name: string;
+    type: EquipSlot;
+    quality: string;
+    description: string | null;
+    /** fragments 指同品级碎片 */
+    synthesize_cost: { fragments: number; coins: number } | null;
 }
 
 /** 经验丹：item_type=exp_potion，item_subtype 为档位 */
@@ -321,6 +339,24 @@ export class GameApi {
 
     static async unequip(equipmentId: number): Promise<ApiResult<WithUser>> {
         return this.postWithUser('/equipment/unequip', { equipment_id: equipmentId });
+    }
+
+    static async lockEquipment(equipmentId: number, lock: boolean): Promise<ApiResult<WithUser & { is_locked: boolean }>> {
+        return this.postWithUser('/equipment/lock', { equipment_id: equipmentId, lock });
+    }
+
+    /** 分解：返还与装备同品级的碎片；已穿戴或已锁定的会被拒绝 */
+    static async dismantleEquipment(equipmentId: number): Promise<ApiResult<WithUser & { fragments_gained: number; fragment_quality: string }>> {
+        return this.postWithUser('/equipment/dismantle', { equipment_id: equipmentId });
+    }
+
+    static async fetchEquipmentTemplates(quality?: string): Promise<ApiResult<{ templates: EquipmentTemplateData[] }>> {
+        return Http.get(`/equipment/templates${quality ? `?quality=${quality}` : ''}`);
+    }
+
+    /** 合成：消耗同品级碎片与银两 */
+    static async synthesizeEquipment(templateId: number): Promise<ApiResult<WithUser & { equipment: { id: number; name: string } }>> {
+        return this.postWithUser('/equipment/synthesize', { template_id: templateId });
     }
 
     /** 强化有成败：result 为 success / fail / fail_protected，失败也是 success:true */

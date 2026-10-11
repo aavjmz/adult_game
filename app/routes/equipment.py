@@ -86,6 +86,9 @@ def list_equipments():
                 'power': calc_equipment_power(equip)
             }
 
+        # 穿在哪位武将身上（客户端行囊展示用）
+        equip_data['owner_card_name'] = equip.owner_card.card.name if equip.owner_card else None
+
         # 应用过滤器
         if quality_filter and equip_data.get('quality') != quality_filter:
             continue

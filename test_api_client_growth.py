@@ -46,7 +46,7 @@ def main():
         eq = Equipment(user_id=user.id, name='青釭剑', type='weapon', quality='rare')
         db.session.add(eq)
         db.session.commit()
-        uc_id, eq_id, user_id = uc.id, eq.id, user.id
+        uc_id, eq_id, user_id, card_name = uc.id, eq.id, user.id, card.name
 
     print('\n[认证]')
     res = client.get('/api/v1/growth/materials')
@@ -100,6 +100,9 @@ def main():
     body = client.post('/api/v1/equipment/equip', headers=auth,
                        json={'user_card_id': uc_id, 'equipment_id': eq_id}).get_json()
     check(body['success'], f"穿戴装备 {body.get('error') or ''}")
+    worn = next(e for e in client.get('/api/v1/equipment/list', headers=auth).get_json()['data']['equipments']
+                if e['id'] == eq_id)
+    check(worn['owner_card_name'] == card_name, f"装备列表带穿戴者 {worn['owner_card_name']}")
 
     body = client.get(f'/api/v1/equipment/card/{uc_id}', headers=auth).get_json()
     check(body['success'], '查询武将身上装备')

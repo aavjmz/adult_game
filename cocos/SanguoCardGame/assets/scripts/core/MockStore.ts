@@ -3,7 +3,7 @@ import { sys } from 'cc';
 /**
  * 本地模拟状态仓库
  *
- * 军令 / 盟 / 行囊 / 军演 / 军书 / 设置 / 编伍这些界面在当前后端里
+ * 军令 / 盟 / 军演 / 军书 / 设置 / 编伍这些界面在当前后端里
  * 还没有对应接口（见 CLAUDE.md「未开始」清单），先用这里的本地状态把交互跑通，
  * 数据形状照抄自设计稿 十三州.dc.html 里的 `state`。
  *
@@ -22,10 +22,6 @@ export interface MockState {
     /** 盟：自己发出的聊天记录 */
     guildSent: string[];
 
-    /** 行囊：加锁 / 已挂市 / 已售出的物品序号 */
-    bagLocks: number[];
-    bagListed: number[];
-    bagSold: number[];
 
     /** 军演：剩余演券、名次、积分、已挑战对手 id、战报 */
     arenaTickets: number;
@@ -52,9 +48,6 @@ const DEFAULTS: MockState = {
     ordersClaimed: [],
     ordersChest: 0,
     guildSent: [],
-    bagLocks: [2, 5, 9],
-    bagListed: [],
-    bagSold: [],
     arenaTickets: 4,
     arenaRank: 1284,
     arenaScore: 2860,
