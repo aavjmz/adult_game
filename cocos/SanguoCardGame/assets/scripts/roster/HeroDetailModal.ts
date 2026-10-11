@@ -651,6 +651,21 @@ class HeroDetailModalController extends Component {
             section(56, '升星 · 已达 ★5', []);
         }
 
+        // 觉醒是突破的前置，未觉醒时这一段先显示觉醒；需求与后端 growth.awaken_card 一致
+        if (st.awaken_level < 1) {
+            const stones = this.materials['awaken_stone'] ?? 0;
+            const box = section(150, '觉醒 · 完成后开放突破', [
+                `前置：LV.${st.level}/50　★${st.star_level}/3`,
+                `觉醒石 ${fmt(stones, 50)}　同名卡 ${fmt(st.duplicates_owned, 1)}　银两 ${fmt(coins, 1_000_000)}`,
+            ]);
+            const btn = createButton('觉 醒', width - 24, 34, () => void this.act(() => GameApi.awaken(id)), goldBtn);
+            btn.setPosition(0, -150 / 2 + 26);
+            box.addChild(btn);
+            setButtonEnabled(btn, st.level >= 50 && st.star_level >= 3 && stones >= 50
+                && st.duplicates_owned >= 1 && coins >= 1_000_000);
+            return;
+        }
+
         // 突破
         const bt = st.next_breakthrough;
         if (bt) {

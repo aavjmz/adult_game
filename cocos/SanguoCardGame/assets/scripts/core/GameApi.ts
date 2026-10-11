@@ -274,6 +274,11 @@ export class GameApi {
         return this.postWithUser('/growth/star-up', { user_card_id: userCardId, material_type: material });
     }
 
+    /** 觉醒：Lv.50、★3、觉醒石 50、同名卡 1、银两 100 万；突破的前置条件 */
+    static async awaken(userCardId: number): Promise<ApiResult<WithUser>> {
+        return this.postWithUser('/growth/awaken', { user_card_id: userCardId });
+    }
+
     static async breakthrough(userCardId: number): Promise<ApiResult<WithUser & { breakthrough_level: number; new_max_level: number }>> {
         return this.postWithUser('/growth/breakthrough', { user_card_id: userCardId });
     }
