@@ -112,6 +112,7 @@ docker-compose exec game cp /app/data/game.db /app/data/game.db.bak
 | `test_api_client_orders.py` | `/api/v1` 军令：玩法计入进度、领取、军功宝箱、日常 / 周常重置、成就 | ✅ 临时库 |
 | `test_api_client_mail.py` | `/api/v1` 军书：欢迎信、阅读、领取附物、弃书、过期、平定整章赏赐、send_mail.py 群发 | ✅ 临时库 |
 | `test_api_client_arena.py` | `/api/v1` 军演：对手批次（真人 + 电脑）、挑战与积分、守方战报、演券与隔天重置、段位之赏 | ✅ 临时库 |
+| `test_api_client_guild.py` | `/api/v1` 盟：建盟、入盟、捐献、盟令、盟仓、任命与逐出、离盟传位与解散、聊天 | ✅ 临时库 |
 | `test_battle_skills.py` | 技能解析与等级换算、出手顺序与冷却、附加效果、自动 / 手动战斗与转托管 | ✅ 临时库 |
 | `test_battle_stats.py` | 出战属性：星级、觉醒、突破、装备、强化逐项生效，战斗单位与接口一致 | ✅ 临时库 |
 | `test_api_client_formation.py` | `/api/v1` 编伍：阵容读写、归属与重复校验、失效卡剔除、出征默认用服务端阵容 | ✅ 临时库 |

@@ -3,7 +3,7 @@ import { sys } from 'cc';
 /**
  * 本地模拟状态仓库
  *
- * 盟 / 设置这些界面在当前后端里
+ * 设置界面在当前后端里
  * 还没有对应接口（见 CLAUDE.md「未开始」清单），先用这里的本地状态把交互跑通，
  * 数据形状照抄自设计稿 十三州.dc.html 里的 `state`。
  *
@@ -17,9 +17,6 @@ export interface MockState {
      */
     field: Array<number | null>;
 
-    /** 盟：自己发出的聊天记录 */
-    guildSent: string[];
-
     /** 设置：真开关状态与分段选项 */
     toggles: Record<string, boolean>;
     levels: Record<string, string>;
@@ -29,7 +26,6 @@ const KEY = 'sanguo_mock_state_v1';
 
 const DEFAULTS: MockState = {
     field: [null, null, null, null, null, null],
-    guildSent: [],
     toggles: {
         音效: true, 战斗语音: true, 震动: false, 自动战斗: true,
         好友申请: true, 盟战提醒: true, 活动推送: false, 低耗电模式: false,

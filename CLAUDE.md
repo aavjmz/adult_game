@@ -150,6 +150,7 @@ python test_api_client_shop.py     # temp DB
 python test_api_client_orders.py   # temp DB
 python test_api_client_mail.py     # temp DB
 python test_api_client_arena.py    # temp DB
+python test_api_client_guild.py    # temp DB
 python test_api_client_formation.py  # temp DB
 python test_battle_stats.py          # temp DB
 python test_battle_skills.py         # temp DB

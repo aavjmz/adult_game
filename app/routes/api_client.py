@@ -19,7 +19,7 @@ from flask import Blueprint, jsonify, request, g
 from app.models import db, User, Card, UserCard, ApiToken, Stage, UserStageProgress, UserItem
 from app.skills import skill_profile
 from app.mail_data import WELCOME
-from app.utils import arena, formation, mail, orders
+from app.utils import arena, formation, guild, mail, orders
 from app.orders_data import ACT_GACHA, ACT_GACHA_MULTI, ACT_SHOP, ACT_WIN
 from app.utils.stamina import StaminaSystem
 from config import Config
@@ -912,6 +912,110 @@ def arena_reward():
     if err:
         return fail(err)
     return ok({'rewards': rewards, 'state': arena.arena_state(user), 'user': _user_payload(user)})
+
+
+# ============ 盟 ============
+#
+# 逻辑见 app/utils/guild.py，数值见 app/guild_data.py。
+# 写操作都返回最新的整页数据（state）与 user，客户端直接重绘、刷新顶栏。
+
+def _guild_ok(err, extra=None):
+    """盟的写操作统一返回：失败给错误，成功给 state + user（及额外字段）"""
+    if err:
+        return fail(err)
+    data = {'state': guild.guild_state(g.current_user), 'user': _user_payload(g.current_user)}
+    data.update(extra or {})
+    return ok(data)
+
+
+@bp.route('/guild', methods=['GET'])
+@token_required
+def guild_get():
+    """盟页：已入盟时为盟信息、成员、捐献、盟令、盟仓；未入盟时为可加入的盟列表"""
+    return ok(guild.guild_state(g.current_user))
+
+
+@bp.route('/guild/create', methods=['POST'])
+@token_required
+def guild_create():
+    """建盟：{"name": "虎牢义盟", "motto": "..."}，花银两"""
+    body = _json_body()
+    return _guild_ok(guild.create_guild(g.current_user, body.get('name'), body.get('motto')))
+
+
+@bp.route('/guild/join', methods=['POST'])
+@token_required
+def guild_join():
+    """入盟：{"guild_id": 1}"""
+    return _guild_ok(guild.join_guild(g.current_user, _json_body().get('guild_id')))
+
+
+@bp.route('/guild/leave', methods=['POST'])
+@token_required
+def guild_leave():
+    """离盟；盟主离盟自动传位，只剩自己则解散"""
+    return _guild_ok(guild.leave_guild(g.current_user))
+
+
+@bp.route('/guild/role', methods=['POST'])
+@token_required
+def guild_role():
+    """盟主任命：{"user_id": 2, "role": "副盟主"}；role 为「盟主」即让位"""
+    body = _json_body()
+    return _guild_ok(guild.set_role(g.current_user, body.get('user_id'), body.get('role')))
+
+
+@bp.route('/guild/kick', methods=['POST'])
+@token_required
+def guild_kick():
+    """逐出：{"user_id": 2}"""
+    return _guild_ok(guild.kick(g.current_user, _json_body().get('user_id')))
+
+
+@bp.route('/guild/donate', methods=['POST'])
+@token_required
+def guild_donate():
+    """捐献一次：花银两，得盟功与盟阶经验"""
+    return _guild_ok(guild.donate(g.current_user))
+
+
+@bp.route('/guild/order', methods=['POST'])
+@token_required
+def guild_order():
+    """领取今日盟令奖励"""
+    rewards, err = guild.claim_order(g.current_user)
+    return _guild_ok(err, {'rewards': rewards})
+
+
+@bp.route('/guild/exchange', methods=['POST'])
+@token_required
+def guild_exchange():
+    """盟仓兑换：{"key": "star_stone"}"""
+    reward, err = guild.exchange(g.current_user, _json_body().get('key'))
+    return _guild_ok(err, {'rewards': [reward] if reward else []})
+
+
+@bp.route('/guild/chat', methods=['GET'])
+@token_required
+def guild_chat_get():
+    """聊天记录：?channel=guild（盟内）| world（世界）"""
+    msgs, err = guild.messages(g.current_user, request.args.get('channel', 'guild'))
+    if err:
+        return fail(err)
+    return ok({'messages': msgs})
+
+
+@bp.route('/guild/chat', methods=['POST'])
+@token_required
+def guild_chat_send():
+    """发言：{"channel": "guild" | "world", "text": "..."}，返回该频道最新记录"""
+    body = _json_body()
+    channel = body.get('channel', 'guild')
+    err = guild.send_message(g.current_user, channel, body.get('text'))
+    if err:
+        return fail(err)
+    msgs, err = guild.messages(g.current_user, channel)
+    return ok({'messages': msgs})
 
 
 # ============ 成长 / 装备 ============
