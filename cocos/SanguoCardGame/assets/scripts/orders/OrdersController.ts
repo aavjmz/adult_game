@@ -39,6 +39,9 @@ const GO_TO: Record<string, string> = {
  */
 @ccclass('OrdersController')
 export class OrdersController extends Component {
+    /** 从别的场景跳来时要打开的分类（如主城通行证卡 → 「通行证」），用过即清 */
+    static pendingTab = '';
+
     private topBar: TopBar = null!;
     private tabsHost: Node = null!;
     private list: Node = null!;
@@ -69,7 +72,9 @@ export class OrdersController extends Component {
             return;
         }
         this.state = res.data;
-        this.tab = this.state.tabs[0] ?? this.tab;
+        const wanted = OrdersController.pendingTab;
+        OrdersController.pendingTab = '';
+        this.tab = this.state.tabs.includes(wanted) ? wanted : this.state.tabs[0] ?? this.tab;
         this.renderAll();
     }
 
