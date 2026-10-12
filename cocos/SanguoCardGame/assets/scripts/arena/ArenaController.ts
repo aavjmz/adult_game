@@ -5,6 +5,7 @@ import { showToast } from '../core/Toast';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
 import { ArenaFoe, ArenaState, GameApi } from '../core/GameApi';
+import { BattleContext } from '../core/BattleContext';
 import { rewardText } from '../core/ItemNames';
 import { TIER_COLOR } from './ArenaData';
 import {
@@ -365,10 +366,16 @@ export class ArenaController extends Component {
         this.state = state;
         this.topBar.apply(user);
         this.renderAll();
-        const loot = result.rewards.length ? ` · ${rewardText(result.rewards)}` : '';
-        showToast(this.node, result.win
-            ? `胜 ${result.foe} · 积分 +${result.delta} · 第 ${result.rank} 名${loot}`
-            : `负于 ${result.foe} · 积分 ${result.delta}`);
+
+        // 胜负已在服务端定下，去战斗场景回放这一场；场景缺失时退回只弹结果
+        BattleContext.setArenaReplay(result);
+        SceneNav.go(SceneNav.BATTLE, () => {
+            BattleContext.clear();
+            const loot = result.rewards.length ? ` · ${rewardText(result.rewards)}` : '';
+            showToast(this.node, result.win
+                ? `胜 ${result.foe} · 积分 +${result.delta} · 第 ${result.rank} 名${loot}`
+                : `负于 ${result.foe} · 积分 ${result.delta}`);
+        });
     }
 
     private async reroll(): Promise<void> {

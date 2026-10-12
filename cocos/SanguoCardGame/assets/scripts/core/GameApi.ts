@@ -362,8 +362,22 @@ export interface ArenaState {
     win_rewards: Reward[];
 }
 
-/** 一场军演的结果 */
-export interface ArenaResult { win: boolean; delta: number; score: number; rank: number; foe: string; rewards: Reward[]; rounds: number }
+/** 一场军演的结果；allies / enemies 为开战前阵容、battle_log 为整场战报，供战斗场景回放 */
+export interface ArenaResult {
+    win: boolean;
+    delta: number;
+    score: number;
+    rank: number;
+    foe: string;
+    rewards: Reward[];
+    rounds: number;
+    damage_dealt: number;
+    damage_taken: number;
+    deaths: number;
+    allies: BattleUnit[];
+    enemies: BattleUnit[];
+    battle_log: BattleLogEntry[];
+}
 
 /** 盟列表里的一个盟 */
 export interface GuildBrief {

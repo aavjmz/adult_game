@@ -6,21 +6,29 @@ import { showToast } from '../core/Toast';
 import { ImageSlot } from '../core/ImageSlot';
 import { TopBar } from '../core/TopBar';
 import { BottomNav } from '../core/BottomNav';
-import { createButton, createLabel, createNode, createProgressBar, drawPanel, withAlpha } from '../core/UIFactory';
+import { OrdersController } from '../orders/OrdersController';
+import {
+    createButton, createLabel, createNode, createProgressBar, drawPanel, setProgressRatio, withAlpha,
+} from '../core/UIFactory';
 
 const { ccclass } = _decorator;
 
 /**
  * 主城（对应原型 isHub）：顶部条 + 主推立绘 + 征伐卡/月卡/通行证挂件 + 左侧活动入口 + 底部导航。
  *
- * 「征伐」卡的出征按钮真正跳去征伐场景；「贤」「演」两个活动入口分别接到招贤台与军演，
- * 与原型「贤接到招贤台 UP 卡池、演接到军演页」的处理一致。月卡/通行证当前没有后端系统，
- * 保留挂件但点击维持原型的「尚在筹备」提示。
+ * 「征伐」卡显示下一个未通关的主线关卡，出征按钮跳去征伐场景；「通行证」卡读军令里
+ * 本季通行证的军功进度，点击跳到军令的通行证页；「贤」「演」两个活动入口分别接到招贤台
+ * 与军演。月卡当前没有后端系统，保留挂件但点击维持原型的「尚在筹备」提示。
  */
 @ccclass('HubController')
 export class HubController extends Component {
     private topBar: TopBar = null!;
     private overlay: Node = null!;
+    private warTitle: Label = null!;
+    private warStage: Label = null!;
+    private passTitle: Label = null!;
+    private passProgress: Label = null!;
+    private passBar: { track: Node; fill: Node } = null!;
 
     onLoad(): void {
         const size = this.node.getComponent(UITransform)?.contentSize ?? view.getVisibleSize();
@@ -34,6 +42,35 @@ export class HubController extends Component {
             SceneNav.go(SceneNav.LOGIN, (reason) => showToast(this.overlay, reason));
             return;
         }
+        // 两张卡各自加载，失败时保留占位文字，不影响主城其他入口
+        this.loadWar();
+        this.loadPass();
+    }
+
+    /** 征伐卡：下一个未通关的主线关卡；全部通关时显示最后一关 */
+    private async loadWar(): Promise<void> {
+        const res = await GameApi.fetchStages();
+        if (!this.isValid || !res.success || !res.data) return;
+        const stages = res.data.stages;
+        if (!stages.length) return;
+        const next = stages.find((s) => !s.user_progress.is_cleared);
+        const stage = next ?? stages[stages.length - 1];
+        this.warTitle.string = `征伐 · ${stage.name}`;
+        this.warStage.string = next ? `第 ${stage.stage_number} 阵` : '已一统';
+    }
+
+    /** 通行证卡：本季下一档军功目标（全部领完显示最后一档），有可领的提示「可领」 */
+    private async loadPass(): Promise<void> {
+        const res = await GameApi.fetchOrders();
+        if (!this.isValid || !res.success || !res.data) return;
+        const tiers = res.data.orders.filter((o) => o.tab === '通行证' && o.key.startsWith('pass_merit'));
+        if (!tiers.length) return;
+        const tier = tiers.find((o) => !o.claimed) ?? tiers[tiers.length - 1];
+        const ready = res.data.orders.some((o) => o.tab === '通行证' && o.ready);
+        this.passTitle.string = `征伐通行证 · ${res.data.season.name}`;
+        this.passProgress.string = ready ? '可 领' : `${Math.min(tier.progress, tier.target)} / ${tier.target}`;
+        this.passProgress.color = ready ? Theme.faction.shu : Theme.color.textMuted;
+        setProgressRatio(this.passBar, tier.target ? Math.min(1, tier.progress / tier.target) : 0);
     }
 
     private build(width: number, height: number): void {
@@ -98,8 +135,8 @@ export class HubController extends Component {
         war.setPosition(0, y);
         drawPanel(war, { fill: withAlpha(Theme.color.panel, 235), stroke: Theme.color.gold, lineWidth: 1, radius: 2 });
         col.addChild(war);
-        this.addLine(war, '征伐 · 虎牢关', -cardW / 2 + 14, 34, 14, Theme.color.goldBright, true);
-        this.addLine(war, '第七阵', cardW / 2 - 50, 34, 11, Theme.color.textMuted, false);
+        this.warTitle = this.addLine(war, '征伐', -cardW / 2 + 14, 34, 14, Theme.color.goldBright, true, cardW - 110);
+        this.warStage = this.addLine(war, '', cardW / 2 - 70, 34, 11, Theme.color.textMuted, false, 60);
         const flavor = createLabel('三军可夺帅也，匹夫不可夺志也。\n关下诸侯已至，只待主公一声令下。', {
             fontSize: 10, color: Theme.color.textMuted, width: cardW - 28, align: Label.HorizontalAlign.LEFT,
         });
@@ -131,13 +168,17 @@ export class HubController extends Component {
         const pass = createNode('PassCard', cardW, 62);
         pass.setPosition(0, y);
         drawPanel(pass, { fill: withAlpha(Theme.color.panel, 200), stroke: Theme.color.divider, lineWidth: 1, radius: 2 });
-        pass.on(Node.EventType.TOUCH_END, () => showToast(this.overlay, '该功能尚在筹备'));
+        pass.on(Node.EventType.TOUCH_END, () => {
+            OrdersController.pendingTab = '通行证';
+            SceneNav.go(SceneNav.ORDERS, (reason) => showToast(this.overlay, reason));
+        });
         col.addChild(pass);
-        this.addLine(pass, '征伐通行证 · 第三季', -cardW / 2 + 14, 14, 12, Theme.color.goldBright, false);
-        this.addLine(pass, '28 / 60', cardW / 2 - 40, 14, 10, Theme.color.textMuted, false);
-        const bar = createProgressBar(cardW - 28, 6, 28 / 60, { fillColor: Theme.color.goldBright });
-        bar.track.setPosition(0, -14);
-        pass.addChild(bar.track);
+        this.passTitle = this.addLine(pass, '征伐通行证', -cardW / 2 + 14, 14, 12, Theme.color.goldBright, false, cardW - 110);
+        this.passProgress = this.addLine(pass, '-- / --', cardW / 2 - 80, 14, 10, Theme.color.textMuted, false, 66);
+        this.passProgress.horizontalAlign = Label.HorizontalAlign.RIGHT;
+        this.passBar = createProgressBar(cardW - 28, 6, 0, { fillColor: Theme.color.goldBright });
+        this.passBar.track.setPosition(0, -14);
+        pass.addChild(this.passBar.track);
     }
 
     private buildEvents(content: Node, width: number, height: number): void {
@@ -163,10 +204,11 @@ export class HubController extends Component {
         }
     }
 
-    private addLine(parent: Node, text: string, x: number, y: number, fontSize: number, color: any, bold: boolean): void {
-        const node = createLabel(text, { fontSize, color, bold, width: 200, align: Label.HorizontalAlign.LEFT });
+    private addLine(parent: Node, text: string, x: number, y: number, fontSize: number, color: any, bold: boolean, width = 200): Label {
+        const node = createLabel(text, { fontSize, color, bold, width, align: Label.HorizontalAlign.LEFT });
         node.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
         node.setPosition(x, y);
         parent.addChild(node);
+        return node.getComponent(Label)!;
     }
 }

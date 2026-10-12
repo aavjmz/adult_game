@@ -61,6 +61,17 @@ def _npc_units(spec, side):
     return units
 
 
+def _unit_payload(unit):
+    """战斗单位快照，字段同征伐出征返回的 allies / enemies"""
+    skill = unit['skill']
+    return {
+        'id': unit['id'], 'name': unit['name'], 'level': unit.get('level', 1),
+        'max_hp': unit['max_hp'], 'attack': unit['attack'], 'defense': unit['defense'], 'speed': unit['speed'],
+        'rarity': unit.get('rarity'), 'image_url': unit.get('image_url'),
+        'skill': {k: skill[k] for k in ('name', 'description', 'multiplier', 'cooldown', 'target', 'level')},
+    }
+
+
 def _team_power(units):
     return sum(unit_power(u) for u in units)
 
@@ -262,6 +273,8 @@ def fight(user, index):
     if not enemies:
         return None, '对手已撤阵，请换一批'
 
+    # 开战前的阵容快照，客户端回放用（战斗过程会就地扣 hp）
+    lineup = {'allies': [_unit_payload(u) for u in allies], 'enemies': [_unit_payload(u) for u in enemies]}
     state = battle_core.new_state(allies, enemies)
     battle_core.run(state, manual=False)
     win = state['result'] == 'win'
@@ -296,7 +309,9 @@ def fight(user, index):
     return {
         'win': win, 'delta': delta, 'score': player.score, 'rank': rank, 'foe': foe_name,
         'rewards': WIN_REWARDS if win else [], 'rounds': state['round'],
-        'battle_log': state['events'],
+        'damage_dealt': state['stats']['damage_dealt'], 'damage_taken': state['stats']['damage_taken'],
+        'deaths': state['stats']['deaths'],
+        'battle_log': state['events'], **lineup,
     }, None
 
 

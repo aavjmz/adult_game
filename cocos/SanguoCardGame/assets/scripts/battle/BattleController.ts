@@ -1,7 +1,7 @@
 import { _decorator, Component, Label, Node, UITransform, view } from 'cc';
-import { summarizeItems } from '../core/ItemNames';
+import { rewardText, summarizeItems } from '../core/ItemNames';
 import { Theme } from '../core/UiTheme';
-import { BattleAwaiting, BattleLogEntry, BattleMode, BattleStep, BattleUnit, GameApi } from '../core/GameApi';
+import { ArenaResult, BattleAwaiting, BattleLogEntry, BattleMode, BattleStep, BattleUnit, GameApi } from '../core/GameApi';
 import { BattleContext } from '../core/BattleContext';
 import { MockStore } from '../core/MockStore';
 import { SceneNav } from '../core/SceneNav';
@@ -37,6 +37,9 @@ const EFFECT_TEXT: Record<string, string> = { def_down: '破防', atk_down: '降
  *
  * 默认模式取设置里的「自动战斗」开关，顶栏可切换（下一场生效）。
  * 血量以后端为准：命中事件带剩余生命，手动模式每一步还带全体快照。
+ *
+ * 另有**军演回放**：军演页挑战完把结果放进 BattleContext.arenaReplay，这里不再请求后端，
+ * 直接按服务端返回的阵容与战报回放，结算显示积分得失，返回军演页。
  */
 @ccclass('BattleController')
 export class BattleController extends Component {
@@ -71,6 +74,8 @@ export class BattleController extends Component {
     private busy = false;
     private finished = false;
     private final: BattleStep | null = null;
+    /** 军演回放（非空时为回放模式，不向后端发起战斗） */
+    private replay: ArenaResult | null = null;
 
     onLoad(): void {
         const size = this.node.getComponent(UITransform)?.contentSize ?? view.getVisibleSize();
@@ -78,6 +83,12 @@ export class BattleController extends Component {
     }
 
     async start(): Promise<void> {
+        this.replay = BattleContext.arenaReplay;
+        if (this.replay) {
+            this.modeBtn.active = false;
+            this.startReplay();
+            return;
+        }
         const stage = BattleContext.stage;
         if (!stage) {
             showToast(this.overlay, '未选择关卡，请自征伐进入');
@@ -99,6 +110,31 @@ export class BattleController extends Component {
         }
 
         await this.fight();
+    }
+
+    /** 军演回放：用服务端返回的开战阵容与整场战报，从头播一遍 */
+    private startReplay(): void {
+        const r = this.replay;
+        if (!r) return;
+        this.unscheduleAllCallbacks();
+        this.mode = 'auto';
+        this.queue = [];
+        this.pending = null;
+        this.final = null;
+        this.finished = false;
+        this.setAwaiting(null);
+        this.stageLabel.string = `军演 · ${r.foe}`;
+        this.buildTeams(r.allies ?? [], r.enemies ?? []);
+        this.handleStep({
+            finished: true, result: r.win ? 'win' : 'lose', turns: r.rounds,
+            damage_dealt: r.damage_dealt, damage_taken: r.damage_taken, deaths: r.deaths,
+            battle_log: r.battle_log ?? [], user: GameApi.user!,
+        });
+    }
+
+    /** 返回键与结算页的去处：军演回放回军演，其余回征伐 */
+    private backScene(): string {
+        return this.replay ? SceneNav.ARENA : SceneNav.CAMPAIGN;
     }
 
     private preferredMode(): BattleMode {
@@ -140,7 +176,7 @@ export class BattleController extends Component {
         drawPanel(bg, { fill: Theme.color.bgDeep, radius: 0 });
         this.node.addChild(bg);
 
-        const back = createButton('◄ 返回', 74, 28, () => SceneNav.go(SceneNav.CAMPAIGN), {
+        const back = createButton('◄ 返回', 74, 28, () => SceneNav.go(this.backScene()), {
             fill: withAlpha(Theme.color.bgDeep, 0), stroke: Theme.color.divider,
             textColor: Theme.color.textMuted, fontSize: Theme.font.badge,
         });
@@ -508,6 +544,7 @@ export class BattleController extends Component {
         const height = this.node.getComponent(UITransform)!.height;
         const win = data.result === 'win';
         const starCount = data.stars ?? 0;
+        const arena = this.replay;
 
         const layer = createModalBackdrop(width, height);
         this.node.addChild(layer);
@@ -524,8 +561,12 @@ export class BattleController extends Component {
         title.setPosition(0, 130);
         panel.addChild(title);
 
-        const stars = createLabel('★'.repeat(starCount) + '☆'.repeat(Math.max(0, 3 - starCount)), {
-            fontSize: 20, color: Theme.color.gold, width: 300,
+        // 军演无星级，这一行换成积分得失与名次
+        const starText = arena
+            ? `积分 ${arena.delta > 0 ? '+' : ''}${arena.delta} · 第 ${arena.rank.toLocaleString()} 名`
+            : '★'.repeat(starCount) + '☆'.repeat(Math.max(0, 3 - starCount));
+        const stars = createLabel(starText, {
+            fontSize: arena ? 16 : 20, color: arena && arena.delta < 0 ? Theme.faction.wu : Theme.color.gold, width: 300,
         });
         stars.setPosition(0, 92);
         panel.addChild(stars);
@@ -550,14 +591,15 @@ export class BattleController extends Component {
             cell.addChild(vl);
         });
 
-        const rewardText = win
+        let lootText = win
             ? `战利：银两 +${data.rewards?.coins ?? 0} · 经验 +${data.rewards?.exp ?? 0}`
             : '败军之师，无所获';
-        const reward = createLabel(rewardText, {
+        if (arena) lootText = win && arena.rewards.length ? `战利：${rewardText(arena.rewards)}` : win ? '' : '败军之师，无所获';
+        const reward = createLabel(lootText, {
             fontSize: 12, color: win ? Theme.color.gold : Theme.color.textDisabled, width: 420,
         });
         reward.setPosition(0, -26);
-        const dropText = win ? summarizeItems(data.drops ?? null) : '';
+        const dropText = win && !arena ? summarizeItems(data.drops ?? null) : '';
         if (dropText) {
             const drops = createLabel(`掉落：${dropText}`, { fontSize: 11, color: Theme.color.textMuted, width: 420 });
             drops.setPosition(0, -46);
@@ -565,13 +607,17 @@ export class BattleController extends Component {
         }
         panel.addChild(reward);
 
-        const again = createButton('再 战', 180, 44, () => { layer.destroy(); this.fight(); }, {
+        // 军演的胜负已由服务端定下，「再战」会再耗一张演券，这里只给「重看」
+        const again = createButton(arena ? '重 看' : '再 战', 180, 44, () => {
+            layer.destroy();
+            if (arena) this.startReplay(); else this.fight();
+        }, {
             fill: withAlpha(Theme.color.bgDeep, 0), stroke: Theme.color.gold, textColor: Theme.color.goldBright,
         });
         again.setPosition(-100, -120);
         panel.addChild(again);
 
-        const backBtn = createButton('返回征伐', 180, 44, () => SceneNav.go(SceneNav.CAMPAIGN), {
+        const backBtn = createButton(arena ? '返回军演' : '返回征伐', 180, 44, () => SceneNav.go(this.backScene()), {
             fill: Theme.color.goldBright, stroke: Theme.color.goldBright, textColor: Theme.color.bgDeep,
         });
         backBtn.setPosition(100, -120);

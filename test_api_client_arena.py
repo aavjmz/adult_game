@@ -84,6 +84,9 @@ def main():
     check(body['data']['state']['tickets']['left'] == 4, '演券 4/5')
     check(body['data']['state']['foes'][idx]['fought'], '该对手标记已演')
     check(res['battle_log'], '返回战报事件')
+    check(len(res['allies']) == 3 and res['enemies'] and res['allies'][0]['id'] == 'a0'
+          and res['allies'][0]['max_hp'] > 0 and res['allies'][0]['skill']['name'], '返回双方开战前阵容（回放用）')
+    check(res['damage_dealt'] > 0 and 'deaths' in res, '返回战斗统计')
     check(post(strong, 'fight', index=idx)['error'].startswith('此人本批已演'), '同一对手不能再打')
     check(post(strong, 'fight', index=9)['error'] == '对手不存在', '序号越界')
 
